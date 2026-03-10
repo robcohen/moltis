@@ -5,7 +5,7 @@
   "branch": "soul-location",
   "checkpoints_count": 0,
   "files_touched": [
-    "crates/projects/src/worktree.rs"
+    "crates/config/src/loader.rs"
   ],
   "sessions": [
     {
@@ -17,10 +17,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 18,
-    "cache_creation_tokens": 14420,
-    "cache_read_tokens": 1326288,
-    "output_tokens": 330,
-    "api_call_count": 14
+    "input_tokens": 32,
+    "cache_creation_tokens": 105733,
+    "cache_read_tokens": 3327307,
+    "output_tokens": 1794,
+    "api_call_count": 30
   }
 }

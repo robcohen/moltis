@@ -993,3 +993,74 @@ error: test run failed
 ~/.s/w/m/soul-location soul-location ❯
 
 Run those tests yourself until it's fixed
+
+---
+
+-  202 …] › e2e/specs/onboarding-anthropic.spec.js:73:2 › Onboarding Anthropic provider › configures Anthropic and loads models
+  -  203 …spec.js:114:2 › Onboarding Anthropic provider › continue without selecting a model still persists Anthropic credentials
+
+
+  1) [default] › e2e/specs/settings-nav.spec.js:146:2 › Settings navigation › identity name fields autosave on blur
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AutoBotNameA"
+    Received: "e2e-bot"
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      159 |             await botNameInput.blur();
+      160 |             await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+    > 161 |             await expect
+          |             ^
+      162 |                     .poll(() => page.evaluate(() => (window.__MOLTIS__?.identity?.name || "").trim()))
+      163 |                     .toBe(nextValues.nextBotName);
+      164 |
+        at /Users/penso/.superset/worktrees/moltis/soul-location/crates/web/ui/e2e/specs/settings-nav.spec.js:161:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-nav-Settings-navi-28bec-ame-fields-autosave-on-blur-default/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: identity name fields autosave on blur
+    **Status**: failed
+
+    ### Page 1: [soul-location] e2e-bot
+    - **URL**: http://127.0.0.1:59684/settings/identity
+
+    ```
+    Running on: soul-location
+    e2e-bot
+    345MB · 25GB free / 68GB
+    Settings
+    Report issue
+    Back to Chats
+    GENERAL
+    Identity
+    Agents
+    No...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/settings-nav-Settings-navi-28bec-ame-fields-autosave-on-blur-default/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/settings-nav-Settings-navi-28bec-ame-fields-autosave-on-blur-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/settings-nav-Settings-navi-28bec-ame-fields-autosave-on-blur-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [default] › e2e/specs/settings-nav.spec.js:146:2 › Settings navigation › identity name fields autosave on blur
+  5 skipped
+  22 did not run
+  197 passed (2.7m)
+[local/e2e] failed in 164s
+~/.s/w/m/soul-location soul-location ❯

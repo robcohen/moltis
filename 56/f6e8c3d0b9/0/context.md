@@ -115,3 +115,18 @@ PASS [   0.006s] moltis-protocol tests::v4_connect_params_parses_and_converts
         PASS [   0.469s] moltis-projects worktree::tests::test_copy_project_config_skips_if_exists
         PASS [   0.453s] moltis-projects w...
 
+### Prompt 15
+
+-  202 …] › e2e/specs/onboarding-anthropic.spec.js:73:2 › Onboarding Anthropic provider › configures Anthropic and loads models
+  -  203 …spec.js:114:2 › Onboarding Anthropic provider › continue without selecting a model still persists Anthropic credentials
+
+
+  1) [default] › e2e/specs/settings-nav.spec.js:146:2 › Settings navigation › identity name fields autosave on blur
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "AutoBotNameA"
+    Received: "e2e-bot"
+
+...
+
