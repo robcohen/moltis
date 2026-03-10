@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "56f6e8c3d0b9",
+  "session_id": "336722ff-bab8-42b8-b5cc-1496eaab8ae4",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-10T13:21:18.485614Z",
+  "branch": "soul-location",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/projects/src/worktree.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "19559f003ba8",
+  "checkpoint_transcript_start": 617,
+  "transcript_lines_at_start": 617,
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 14420,
+    "cache_read_tokens": 1326288,
+    "output_tokens": 330,
+    "api_call_count": 14
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-10T13:21:17.899866Z",
+    "agent_lines": 6,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "agent_percentage": 100
+  }
+}
