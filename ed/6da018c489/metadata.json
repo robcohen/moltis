@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ed6da018c489",
+  "strategy": "manual-commit",
+  "branch": "blossom-game",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/gateway/src/auth_routes.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ed/6da018c489/0/metadata.json",
+      "transcript": "/ed/6da018c489/0/full.jsonl",
+      "context": "/ed/6da018c489/0/context.md",
+      "content_hash": "/ed/6da018c489/0/content_hash.txt",
+      "prompt": "/ed/6da018c489/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 45,
+    "cache_creation_tokens": 57397,
+    "cache_read_tokens": 1557777,
+    "output_tokens": 9305,
+    "api_call_count": 37
+  }
+}
