@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7655d116911f",
+  "strategy": "manual-commit",
+  "branch": "fix/html-to-text-use-crate",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Cargo.toml",
+    "crates/tools/Cargo.toml",
+    "crates/tools/src/web_fetch.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/76/55d116911f/0/metadata.json",
+      "transcript": "/76/55d116911f/0/full.jsonl",
+      "context": "/76/55d116911f/0/context.md",
+      "content_hash": "/76/55d116911f/0/content_hash.txt",
+      "prompt": "/76/55d116911f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 41,
+    "cache_creation_tokens": 39931,
+    "cache_read_tokens": 1482280,
+    "output_tokens": 7402,
+    "api_call_count": 37
+  }
+}
