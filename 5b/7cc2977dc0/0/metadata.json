@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5b7cc2977dc0",
+  "session_id": "90fe8996-6d79-4cf4-ad8b-0e33627f37cb",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T10:40:22.242374Z",
+  "branch": "feat/send-document-v2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/containers.rs",
+    "crates/tools/src/sandbox/mod.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "dd0cf41963f2",
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 84530,
+    "cache_read_tokens": 3632179,
+    "output_tokens": 8845,
+    "api_call_count": 50
+  },
+  "summary": {
+    "intent": "Extract the useful send_document feature work from a messy closed PR (PR #353) that was polluted with unrelated merge commits, and create a clean PR with just that feature.",
+    "outcome": "Successfully cherry-picked the send_document commit (eec08a2), manually resolved a sandbox.rs conflict by adapting to the refactored sandbox module structure, verified all tests pass, and committed the clean feature to a new branch ready for PR.",
+    "learnings": {
+      "repo": [
+        "PR #353 was closed and contained 33 commits, but only the last one (eec08a2) was the actual feature work — the rest were unrelated merges from main polluting the diff",
+        "The sandbox module was refactored from a single sandbox.rs file into a directory (sandbox/mod.rs, sandbox/containers.rs, sandbox/paths.rs) at some point after the original PR branch diverged",
+        "detected_container_cli() already existed in a more sophisticated form in sandbox/paths.rs taking a config parameter; the patch's simpler OnceLock version was added as a separate public container_cli() function",
+        "is_cli_available was already pub(crate) in the refactored sandbox module — one of the patch's changes was already present",
+        "The send_document feature includes: blocked extensions, MIME validation, size limits, shared file_io module (DRY with send_image), MIME maps in moltis_media::mime, filename field on MediaAttachment, Content-Disposition header on media API, document card UI component, and E2E tests"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/sandbox/containers.rs",
+          "finding": "Added public container_cli() function using OnceLock for podman/docker detection, plus podman localhost/ prefix stripping in list_sandbox_images()"
+        },
+        {
+          "path": "crates/tools/src/sandbox/mod.rs",
+          "finding": "Added container_cli to re-exports so crate::sandbox::container_cli() works from image_cache.rs and swift-bridge"
+        },
+        {
+          "path": "crates/tools/src/sandbox/paths.rs",
+          "finding": "Contains the more sophisticated detected_container_cli() that takes a config — distinct from the new simpler container_cli()"
+        }
+      ],
+      "workflow": [
+        "When a PR is polluted with merge commits, use git show \u003clast-commit-sha\u003e or git format-patch to extract just the relevant commit as a patch rather than cherry-picking the whole branch",
+        "git apply --3way --reject is useful for partial patch application — it applies what it can and creates .rej files for conflicts rather than rolling back everything",
+        "After applying a patch with rejects, check .rej files to understand what needs manual resolution rather than trying to re-apply the full patch"
+      ]
+    },
+    "friction": [
+      "sandbox.rs patch failed because the module had been refactored into a directory structure since the original branch diverged — required manual analysis and adaptation",
+      "git apply --3way rolled back entirely on conflict rather than applying partial changes, requiring a second pass with --reject flag",
+      "Multiple Read tool calls to the same cached tool-result file suggest the diff output was large and had to be read in chunks"
+    ],
+    "open_items": [
+      "PR not yet pushed/created in the transcript — commit was made but gh pr create step was not shown as completed",
+      "The document card UI component and CSS changes were applied via patch but not explicitly verified in the build output",
+      "E2E tests from the original commit were included but only unit tests were explicitly run to verify"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T10:40:01.689719Z",
+    "agent_lines": 26,
+    "human_added": 1820,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1846,
+    "agent_percentage": 1.4084507042253522
+  }
+}

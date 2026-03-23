@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5b7cc2977dc0",
+  "strategy": "manual-commit",
+  "branch": "feat/send-document-v2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/containers.rs",
+    "crates/tools/src/sandbox/mod.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/5b/7cc2977dc0/0/metadata.json",
+      "transcript": "/5b/7cc2977dc0/0/full.jsonl",
+      "context": "/5b/7cc2977dc0/0/context.md",
+      "content_hash": "/5b/7cc2977dc0/0/content_hash.txt",
+      "prompt": "/5b/7cc2977dc0/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 84530,
+    "cache_read_tokens": 3632179,
+    "output_tokens": 8845,
+    "api_call_count": 50
+  }
+}
