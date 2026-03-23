@@ -1,0 +1,90 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "308b42036d7a",
+  "session_id": "d54b36d5-9de2-4437-9d28-5af3740a34a6",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T14:37:45.009857Z",
+  "branch": "feat/send-document-v2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/send-document.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d1de15e8e633",
+  "token_usage": {
+    "input_tokens": 133,
+    "cache_creation_tokens": 211273,
+    "cache_read_tokens": 7551542,
+    "output_tokens": 25623,
+    "api_call_count": 109
+  },
+  "summary": {
+    "intent": "Replace a manual MIME type lookup function with the `mime_guess` crate, then fix PR review comments including a blocking async issue, XSS vulnerability, missing blocked extensions, and broken e2e tests.",
+    "outcome": "All changes were implemented and pushed: mime_guess integration with edge-case fallbacks, security fixes (HTML forced to attachment, scripting extensions blocked), async warmup at startup, and e2e tests rewritten to use the correct RPC dispatch pattern. The websocket.spec.js failure remained unresolved at session end.",
+    "learnings": {
+      "repo": [
+        "The websocket event dispatch has TWO separate maps: `eventListeners` (pub/sub via events.js `onEvent()`) and `eventHandlers` (internal map in websocket.js). Chat events go through `eventHandlers`, NOT `eventListeners`. Dispatching to `eventListeners['chat']` does NOT reach `handleChatEvent`.",
+        "The correct e2e test pattern for simulating server WS events is `expectRpcOk(page, 'system-event', { event: 'chat', payload: {...} })`, not direct `eventListeners` manipulation.",
+        "Warmup pattern exists in `spawn_post_listener_warmups` in gateway/src/server.rs — this is where blocking initialization should be placed via `spawn_blocking`.",
+        "mime_guess v2.0.5 was already a transitive dependency (via lettre/image/reqwest) but not directly declared anywhere in the workspace.",
+        "mime_guess knows extensions like `bmp`, `svg`, `xyz` (chemical/x-xyz) that the manual match did not — tests asserting these return None needed updating.",
+        "The moltis-web crate cannot compile in isolation without a pre-built Tailwind CSS asset, making unit tests in that crate hard to run directly.",
+        "Nightly rustfmt (nightly-2025-11-30) requires trailing commas on wildcard match arms: `_ =\u003e {},` not `_ =\u003e {}`."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "line": 1289,
+          "end_line": 1301,
+          "finding": "`dispatchFrame` routes to `eventHandlers[frame.event]` (internal map) separately from `eventListeners[frame.event]` (pub/sub). Chat handler is in eventHandlers, not eventListeners."
+        },
+        {
+          "path": "crates/media/src/mime.rs",
+          "finding": "Only 'text', 'log', and 'ppm' need manual fallbacks — mime_guess handles everything else in the original match. extension_for_mime kept manual for opinionated preferred extensions (jpg not jpeg)."
+        },
+        {
+          "path": "crates/web/src/api.rs",
+          "finding": "text/html was in the inline content-disposition allowlist, enabling stored XSS. Removed; HTML now forces attachment/download."
+        },
+        {
+          "path": "crates/tools/src/send_document.rs",
+          "finding": "Blocked extensions list was missing scripting languages: py, pyw, php, rb, pl, lua, tcl."
+        },
+        {
+          "path": "crates/web/ui/e2e/specs/websocket.spec.js",
+          "line": 195,
+          "end_line": 243,
+          "finding": "Correct pattern for dispatching WS events in e2e tests uses expectRpcOk(page, 'system-event', {...}) — see this test for reference."
+        }
+      ],
+      "workflow": [
+        "When mime_guess expands supported extensions, existing tests asserting 'None' for extensions like bmp/svg/xyz need updating — use truly obscure extensions like '.qqqq' for 'unsupported' test cases.",
+        "Greptile review comments appear as PR review comments fetchable via `gh api repos/.../pulls/.../comments`.",
+        "PR comments can be resolved by replying via `gh api` with a POST to the comments endpoint.",
+        "Nightly rustfmt format checks (`cargo +nightly fmt --check`) can catch style issues not caught by stable fmt — check before pushing."
+      ]
+    },
+    "friction": [
+      "The e2e test fix required two full iteration cycles because the first fix (dispatching through eventListeners['chat']) was architecturally wrong — the chat handler isn't in the pub/sub system.",
+      "mime_guess recognizes 'xyz' as chemical/x-xyz, unexpectedly breaking a test that used it as an 'unsupported' extension sentinel.",
+      "The moltis-web crate requires a pre-built CSS asset to compile, preventing direct test runs and requiring cargo check as a proxy for correctness.",
+      "The websocket.spec.js test ('final chat text is kept when it includes tool output plus analysis') started failing partway through the session — likely a pre-existing flake or a side effect of changes, not investigated.",
+      "Finding the correct e2e dispatch mechanism required reading through multiple files (events.js, websocket.js, websocket.spec.js) before discovering the expectRpcOk/'system-event' RPC pattern."
+    ],
+    "open_items": [
+      "websocket.spec.js test 'final chat text is kept when it includes tool output plus analysis' (line 195) was still failing at end of session — needs investigation.",
+      "The moltis-web unit tests (content_disposition_attachment_for_html) couldn't be verified to pass locally due to missing CSS build asset — relies on CI for confirmation.",
+      "extension_for_mime is kept as a manual match with opinionated extension preferences — could eventually be replaced with a thin wrapper over mime_guess if preferred extension ordering is codified.",
+      "The send-document e2e tests were rewritten but not confirmed passing — session ended after commit/push without seeing test results."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T14:37:07.41568Z",
+    "agent_lines": 77,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 77,
+    "agent_percentage": 100
+  }
+}
