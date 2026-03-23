@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a27a8cf59e8b",
+  "strategy": "manual-commit",
+  "branch": "temikus/fix/sanitize-mangled-tool-names",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a2/7a8cf59e8b/0/metadata.json",
+      "transcript": "/a2/7a8cf59e8b/0/full.jsonl",
+      "context": "/a2/7a8cf59e8b/0/context.md",
+      "content_hash": "/a2/7a8cf59e8b/0/content_hash.txt",
+      "prompt": "/a2/7a8cf59e8b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 55882,
+    "cache_read_tokens": 446826,
+    "output_tokens": 3071,
+    "api_call_count": 11
+  }
+}
