@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d4333365eb2f",
+  "strategy": "manual-commit",
+  "branch": "temikus/fix-mcp-naming",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/page-mcp.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d4/333365eb2f/0/metadata.json",
+      "transcript": "/d4/333365eb2f/0/full.jsonl",
+      "context": "/d4/333365eb2f/0/context.md",
+      "content_hash": "/d4/333365eb2f/0/content_hash.txt",
+      "prompt": "/d4/333365eb2f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 46,
+    "cache_creation_tokens": 60146,
+    "cache_read_tokens": 2445344,
+    "output_tokens": 6756,
+    "api_call_count": 40
+  }
+}
