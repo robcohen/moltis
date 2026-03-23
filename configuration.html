@@ -292,6 +292,19 @@ duckduckgo_fallback = false      # Default: do not use DuckDuckGo fallback
 <li>with <code>duckduckgo_fallback = false</code> (default), Moltis returns a clear hint to set <code>BRAVE_API_KEY</code> or <code>PERPLEXITY_API_KEY</code></li>
 <li>with <code>duckduckgo_fallback = true</code>, Moltis attempts DuckDuckGo HTML search, which may hit CAPTCHA/rate limits</li>
 </ul>
+<h2 id="skills"><a class="header" href="#skills">Skills</a></h2>
+<p>Configure skill discovery and agent-managed personal skills:</p>
+<pre><code class="language-toml">[skills]
+enabled = true
+auto_load = ["commit"]
+enable_agent_sidecar_files = false  # Opt-in: allow agents to write sidecar text files in personal skills
+</code></pre>
+<p><code>enable_agent_sidecar_files</code> is disabled by default. When enabled, Moltis
+registers the <code>write_skill_files</code> tool so agents can write supplementary files
+such as <code>script.sh</code>, <code>Dockerfile</code>, templates, or <code>_meta.json</code> inside
+<code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code>. Writes stay confined to that personal skill
+directory, reject path traversal and symlink escapes, and are recorded in
+<code>~/.moltis/logs/security-audit.jsonl</code>.</p>
 <h2 id="chat-message-queue"><a class="header" href="#chat-message-queue">Chat Message Queue</a></h2>
 <p>When a new message arrives while an agent run is already active, Moltis can either
 replay queued messages one-by-one or merge them into a single follow-up message.</p>

@@ -184,24 +184,32 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="skill-self-extension"><a class="header" href="#skill-self-extension">Skill Self-Extension</a></h1>
-<p>Moltis can create, update, and delete skills at runtime through agent tools,
-enabling the system to extend its own capabilities during a conversation.</p>
+<p>Moltis can create, update, and delete personal skills at runtime through agent
+tools, enabling the system to extend its own capabilities during a conversation.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>Three agent tools manage project-local skills:</p>
+<p>Three agent tools manage personal skills by default:</p>
 <div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>create_skill</code></td><td>Write a new <code>SKILL.md</code> to <code>.moltis/skills/&lt;name&gt;/</code></td></tr>
+<tr><td><code>create_skill</code></td><td>Write a new <code>SKILL.md</code> to <code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code></td></tr>
 <tr><td><code>update_skill</code></td><td>Overwrite an existing skill’s <code>SKILL.md</code></td></tr>
 <tr><td><code>delete_skill</code></td><td>Remove a skill directory</td></tr>
 </tbody></table>
 </div>
-<p>Skills created this way are project-local and stored in the working directory’s
-<code>.moltis/skills/</code> folder. They become available on the next message
+<p>When <code>skills.enable_agent_sidecar_files = true</code>, a fourth tool becomes
+available:</p>
+<div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>write_skill_files</code></td><td>Write supplementary UTF-8 text files inside an existing personal skill directory</td></tr>
+</tbody></table>
+</div>
+<p>Skills created this way are personal and stored in the configured data
+directory’s <code>skills/</code> folder. They become available on the next message
 automatically thanks to the skill watcher.</p>
 <h2 id="skill-watcher"><a class="header" href="#skill-watcher">Skill Watcher</a></h2>
 <p>The skill watcher (<code>crates/skills/src/watcher.rs</code>) monitors skill directories
 for filesystem changes using debounced notifications. When a <code>SKILL.md</code> file is
 created, modified, or deleted, the watcher emits a <code>skills.changed</code> event via
-the WebSocket event bus so the UI can refresh.</p>
+the WebSocket event bus so the UI can refresh. Supplementary file writes do not
+change discovery on their own, so the watcher intentionally stays focused on
+<code>SKILL.md</code>.</p>
 <div id="admonition-tip" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-title">
 <div class="admonition-title">
 <div id="admonition-tip-title">
@@ -222,8 +230,33 @@ successive edits (e.g. an editor writing a temp file then renaming).</p>
   "description": "Summarize GitHub PRs with key changes and review notes"
 }
 </code></pre>
-<p>This writes <code>.moltis/skills/summarize-pr/SKILL.md</code> with the provided content.
+<p>This writes <code>&lt;data_dir&gt;/skills/summarize-pr/SKILL.md</code> with the provided content.
 The skill discoverer picks it up on the next message.</p>
+<h2 id="writing-supplementary-files"><a class="header" href="#writing-supplementary-files">Writing Supplementary Files</a></h2>
+<p>When <code>skills.enable_agent_sidecar_files = true</code>, the agent can add sidecar
+files such as shell scripts, templates, <code>_meta.json</code>, or <code>Dockerfile</code>:</p>
+<pre><code class="language-json">{
+  "name": "summarize-pr",
+  "files": [
+    {
+      "path": "script.sh",
+      "content": "#!/usr/bin/env bash\necho summarize\n"
+    },
+    {
+      "path": "templates/prompt.txt",
+      "content": "Summarize the pull request with risks first.\n"
+    }
+  ]
+}
+</code></pre>
+<p>Safety rules:</p>
+<ul>
+<li>only writes inside <code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code></li>
+<li>only relative UTF-8 text files</li>
+<li>rejects <code>..</code>, absolute paths, hidden path components, and <code>SKILL.md</code></li>
+<li>rejects symlink escapes and oversized batches</li>
+<li>appends an audit entry to <code>~/.moltis/logs/security-audit.jsonl</code></li>
+</ul>
 <h2 id="updating-a-skill"><a class="header" href="#updating-a-skill">Updating a Skill</a></h2>
 <pre><code class="language-json">{
   "name": "summarize-pr",
@@ -235,7 +268,8 @@ The skill discoverer picks it up on the next message.</p>
   "name": "summarize-pr"
 }
 </code></pre>
-<p>This removes the entire <code>.moltis/skills/summarize-pr/</code> directory.</p>
+<p>This removes the entire <code>&lt;data_dir&gt;/skills/summarize-pr/</code> directory, including
+any supplementary files written alongside <code>SKILL.md</code>.</p>
 <div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
 <div class="admonition-title">
 <div id="admonition-warning-title">

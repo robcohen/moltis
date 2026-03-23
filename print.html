@@ -789,6 +789,19 @@ duckduckgo_fallback = false      # Default: do not use DuckDuckGo fallback
 <li>with <code>duckduckgo_fallback = false</code> (default), Moltis returns a clear hint to set <code>BRAVE_API_KEY</code> or <code>PERPLEXITY_API_KEY</code></li>
 <li>with <code>duckduckgo_fallback = true</code>, Moltis attempts DuckDuckGo HTML search, which may hit CAPTCHA/rate limits</li>
 </ul>
+<h2 id="skills"><a class="header" href="#skills">Skills</a></h2>
+<p>Configure skill discovery and agent-managed personal skills:</p>
+<pre><code class="language-toml">[skills]
+enabled = true
+auto_load = ["commit"]
+enable_agent_sidecar_files = false  # Opt-in: allow agents to write sidecar text files in personal skills
+</code></pre>
+<p><code>enable_agent_sidecar_files</code> is disabled by default. When enabled, Moltis
+registers the <code>write_skill_files</code> tool so agents can write supplementary files
+such as <code>script.sh</code>, <code>Dockerfile</code>, templates, or <code>_meta.json</code> inside
+<code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code>. Writes stay confined to that personal skill
+directory, reject path traversal and symlink escapes, and are recorded in
+<code>~/.moltis/logs/security-audit.jsonl</code>.</p>
 <h2 id="chat-message-queue"><a class="header" href="#chat-message-queue">Chat Message Queue</a></h2>
 <p>When a new message arrives while an agent run is already active, Moltis can either
 replay queued messages one-by-one or merge them into a single follow-up message.</p>
@@ -5991,24 +6004,32 @@ sandbox isolation, and job notification details.</p>
 <tr><td><code>moltis_cron_output_tokens_total</code></td><td>Counter</td><td>Output tokens from cron runs</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="skill-self-extension"><a class="header" href="#skill-self-extension">Skill Self-Extension</a></h1>
-<p>Moltis can create, update, and delete skills at runtime through agent tools,
-enabling the system to extend its own capabilities during a conversation.</p>
+<p>Moltis can create, update, and delete personal skills at runtime through agent
+tools, enabling the system to extend its own capabilities during a conversation.</p>
 <h2 id="overview-3"><a class="header" href="#overview-3">Overview</a></h2>
-<p>Three agent tools manage project-local skills:</p>
+<p>Three agent tools manage personal skills by default:</p>
 <div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>create_skill</code></td><td>Write a new <code>SKILL.md</code> to <code>.moltis/skills/&lt;name&gt;/</code></td></tr>
+<tr><td><code>create_skill</code></td><td>Write a new <code>SKILL.md</code> to <code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code></td></tr>
 <tr><td><code>update_skill</code></td><td>Overwrite an existing skill’s <code>SKILL.md</code></td></tr>
 <tr><td><code>delete_skill</code></td><td>Remove a skill directory</td></tr>
 </tbody></table>
 </div>
-<p>Skills created this way are project-local and stored in the working directory’s
-<code>.moltis/skills/</code> folder. They become available on the next message
+<p>When <code>skills.enable_agent_sidecar_files = true</code>, a fourth tool becomes
+available:</p>
+<div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>write_skill_files</code></td><td>Write supplementary UTF-8 text files inside an existing personal skill directory</td></tr>
+</tbody></table>
+</div>
+<p>Skills created this way are personal and stored in the configured data
+directory’s <code>skills/</code> folder. They become available on the next message
 automatically thanks to the skill watcher.</p>
 <h2 id="skill-watcher"><a class="header" href="#skill-watcher">Skill Watcher</a></h2>
 <p>The skill watcher (<code>crates/skills/src/watcher.rs</code>) monitors skill directories
 for filesystem changes using debounced notifications. When a <code>SKILL.md</code> file is
 created, modified, or deleted, the watcher emits a <code>skills.changed</code> event via
-the WebSocket event bus so the UI can refresh.</p>
+the WebSocket event bus so the UI can refresh. Supplementary file writes do not
+change discovery on their own, so the watcher intentionally stays focused on
+<code>SKILL.md</code>.</p>
 <div id="admonition-tip" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-title">
 <div class="admonition-title">
 <div id="admonition-tip-title">
@@ -6029,8 +6050,33 @@ successive edits (e.g. an editor writing a temp file then renaming).</p>
   "description": "Summarize GitHub PRs with key changes and review notes"
 }
 </code></pre>
-<p>This writes <code>.moltis/skills/summarize-pr/SKILL.md</code> with the provided content.
+<p>This writes <code>&lt;data_dir&gt;/skills/summarize-pr/SKILL.md</code> with the provided content.
 The skill discoverer picks it up on the next message.</p>
+<h2 id="writing-supplementary-files"><a class="header" href="#writing-supplementary-files">Writing Supplementary Files</a></h2>
+<p>When <code>skills.enable_agent_sidecar_files = true</code>, the agent can add sidecar
+files such as shell scripts, templates, <code>_meta.json</code>, or <code>Dockerfile</code>:</p>
+<pre><code class="language-json">{
+  "name": "summarize-pr",
+  "files": [
+    {
+      "path": "script.sh",
+      "content": "#!/usr/bin/env bash\necho summarize\n"
+    },
+    {
+      "path": "templates/prompt.txt",
+      "content": "Summarize the pull request with risks first.\n"
+    }
+  ]
+}
+</code></pre>
+<p>Safety rules:</p>
+<ul>
+<li>only writes inside <code>&lt;data_dir&gt;/skills/&lt;name&gt;/</code></li>
+<li>only relative UTF-8 text files</li>
+<li>rejects <code>..</code>, absolute paths, hidden path components, and <code>SKILL.md</code></li>
+<li>rejects symlink escapes and oversized batches</li>
+<li>appends an audit entry to <code>~/.moltis/logs/security-audit.jsonl</code></li>
+</ul>
 <h2 id="updating-a-skill"><a class="header" href="#updating-a-skill">Updating a Skill</a></h2>
 <pre><code class="language-json">{
   "name": "summarize-pr",
@@ -6042,7 +6088,8 @@ The skill discoverer picks it up on the next message.</p>
   "name": "summarize-pr"
 }
 </code></pre>
-<p>This removes the entire <code>.moltis/skills/summarize-pr/</code> directory.</p>
+<p>This removes the entire <code>&lt;data_dir&gt;/skills/summarize-pr/</code> directory, including
+any supplementary files written alongside <code>SKILL.md</code>.</p>
 <div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
 <div class="admonition-title">
 <div id="admonition-warning-title">
@@ -8518,7 +8565,7 @@ routes commands between sandbox and host.</p>
 <li>Geolocation (from browser or <code>USER.md</code>)</li>
 <li>Sandbox configuration from the sandbox router</li>
 </ul>
-<h3 id="skills"><a class="header" href="#skills">Skills</a></h3>
+<h3 id="skills-1"><a class="header" href="#skills-1">Skills</a></h3>
 <p>When skills are registered, they are listed as an XML block generated by
 <code>moltis_skills::prompt_gen::generate_skills_prompt()</code>:</p>
 <pre><code class="language-xml">## Available Skills
