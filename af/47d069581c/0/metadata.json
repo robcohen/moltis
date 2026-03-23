@@ -1,0 +1,83 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "af47d069581c",
+  "session_id": "0b9f24ee-d5e4-44de-b6d4-27967204d58f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T22:36:34.353538Z",
+  "branch": "issue-122",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d9ecee970894",
+  "token_usage": {
+    "input_tokens": 185,
+    "cache_creation_tokens": 339078,
+    "cache_read_tokens": 18451687,
+    "output_tokens": 48222,
+    "api_call_count": 167
+  },
+  "summary": {
+    "intent": "Fix all open PR review comments on PR #408 (moltis-org/moltis), merge main into the branch, and keep the branch up to date with remote.",
+    "outcome": "Successfully merged main twice, fixed glslc→glslang-tools→LunarG Vulkan SDK CI package issue, deduplicated meminfo helpers, fixed gguf_backend_description GPU fallback, added BackendAlreadyInitialized debug log, updated docs, committed and pushed. A large backend concurrency refactor was scoped out as a follow-up.",
+    "learnings": {
+      "repo": [
+        "sandbox.rs was refactored into a sandbox/ module directory on main; branches that touched it see a delete conflict during merge.",
+        "GgufRuntimeDevice lives in a pub(crate) module (local_gguf::runtime_devices), so it cannot be constructed in tests from the gateway crate without making the module pub.",
+        "LlamaBackend from llama-cpp-2 is an empty struct used purely as a proof-of-initialization token; load_from_file takes \u0026LlamaBackend but never reads from it.",
+        "glslc is NOT available as an apt package on Ubuntu 22.04 (Jammy); glslang-tools also does NOT ship glslc — the LunarG Vulkan SDK is the correct source.",
+        "The --all-features Rust CI job only runs on main or when GPU-related files change, so Vulkan build errors can be missed in PRs.",
+        "local-validate.sh checks SHA equality between local HEAD and PR head on GitHub; a forced push or history rewrite on either side causes it to refuse to run.",
+        "The 4 sandboxes.spec.js E2E failures (looking for a Refresh button) are pre-existing flakes requiring Docker, unrelated to provider/CI changes."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/local_gguf/runtime_devices.rs",
+          "finding": "read_proc_meminfo and parse_meminfo_kb were duplicated between local_gguf/system_info.rs and local_llm/system_info.rs; canonical location is runtime_devices.rs as pub(crate)."
+        },
+        {
+          "path": "crates/gateway/src/local_llm_setup.rs",
+          "finding": "gguf_backend_description and gguf_backend_note returned CPU-inference strings for unknown GPU backends (ROCm, HIP, SYCL) even when has_gpu() was true; fixed by adding a None guard for the unknown-backend+GPU case."
+        },
+        {
+          "path": "crates/providers/src/local_gguf/mod.rs",
+          "finding": "Making runtime_devices pub (instead of pub(crate)) is needed to allow gateway-crate tests to construct GgufRuntimeDevice for unit testing backend description logic."
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "Vulkan shader compilation in CI requires installing glslc from the LunarG Vulkan SDK apt repo, not from Ubuntu's glslang-tools package."
+        }
+      ],
+      "workflow": [
+        "git stash + pop can silently drop uncommitted changes when a hook or external process modifies files during the stash operation — prefer explicit branch commits or patches over stashing during active editing sessions.",
+        "greptile automated review comments can contradict human reviewer comments and each other; verify package contents independently (e.g., packages.ubuntu.com) before acting on either.",
+        "OnceLock::get_or_try_init is unstable in stable Rust; use get_or_init with a panic on unexpected error, or OnceLock\u003cOption\u003cT\u003e\u003e, as a workaround for fallible one-time initialization.",
+        "Running cargo fmt before committing is required; the repo enforces formatting and the local-validate.sh script checks it."
+      ]
+    },
+    "friction": [
+      "git stash + pop dropped all uncommitted changes mid-session, forcing a full re-application of all edits from scratch.",
+      "local-validate.sh refused to run because local HEAD SHA didn't match PR head SHA after a history divergence, requiring a git reset --hard to remote.",
+      "GgufRuntimeDevice being in a pub(crate) module blocked writing gateway-crate unit tests until the module visibility was widened.",
+      "OnceLock::get_or_try_init being unstable required a workaround (OnceLock\u003cOption\u003cT\u003e\u003e) for the shared backend initialization pattern.",
+      "Conflicting PR review comments (greptile vs human reviewer) about glslc vs glslang-tools required independent research to resolve correctly.",
+      "Docker unavailability on the local machine prevented direct verification of Ubuntu package contents, requiring web search."
+    ],
+    "open_items": [
+      "Backend concurrency race between detect_runtime_support() and model loads (comments #4/#5): requires a shared OnceLock\u003cLlamaBackend\u003e so LlamaBackend is initialized once and reused rather than init/drop per call. Intentionally deferred as a larger architectural change.",
+      "The --all-features CI job is skipped for PRs unless GPU-related files change, meaning Vulkan build errors can go undetected until merge to main.",
+      "Sandbox E2E tests (sandboxes.spec.js) have 4 pre-existing flakes related to a missing Refresh button in Docker container UI; root cause not investigated."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T22:35:57.855639Z",
+    "agent_lines": 0,
+    "human_added": 4879,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 4879,
+    "agent_percentage": 0
+  }
+}
