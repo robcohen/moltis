@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "bb9cbf111b2e",
+  "strategy": "manual-commit",
+  "branch": "blossom-game",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/auth_routes.rs",
+    "crates/gateway/src/state.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bb/9cbf111b2e/0/metadata.json",
+      "transcript": "/bb/9cbf111b2e/0/full.jsonl",
+      "context": "/bb/9cbf111b2e/0/context.md",
+      "content_hash": "/bb/9cbf111b2e/0/content_hash.txt",
+      "prompt": "/bb/9cbf111b2e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 18469,
+    "cache_read_tokens": 1353106,
+    "output_tokens": 3517,
+    "api_call_count": 19
+  }
+}
