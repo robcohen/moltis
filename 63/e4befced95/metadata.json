@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "63e4befced95",
+  "strategy": "manual-commit",
+  "branch": "settings-system-prompt-v2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CHANGELOG.md",
+    "apps/ios/GraphQL/Schema/schema.graphqls",
+    "crates/agents/src/prompt.rs",
+    "crates/chat/src/lib.rs",
+    "crates/config/src/lib.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/gateway/src/methods/mod.rs",
+    "crates/gateway/src/methods/services.rs",
+    "crates/web/src/assets/css/components.css",
+    "crates/web/src/assets/js/page-settings.js",
+    "crates/web/ui/e2e/specs/agents.spec.js",
+    "crates/web/ui/e2e/specs/chat-input.spec.js",
+    "crates/web/ui/e2e/specs/sessions.spec.js",
+    "crates/web/ui/e2e/specs/settings-nav.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/63/e4befced95/0/metadata.json",
+      "transcript": "/63/e4befced95/0/full.jsonl",
+      "context": "/63/e4befced95/0/context.md",
+      "content_hash": "/63/e4befced95/0/content_hash.txt",
+      "prompt": "/63/e4befced95/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 55,
+    "cache_creation_tokens": 53520,
+    "cache_read_tokens": 2493735,
+    "output_tokens": 11200,
+    "api_call_count": 53
+  }
+}
