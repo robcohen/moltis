@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "71bb73e907d7",
+  "session_id": "887130b6-e278-488c-9ae6-34e0970cd37e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T15:57:44.478366Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Cargo.toml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "083f9d815918",
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 33622,
+    "cache_read_tokens": 313703,
+    "output_tokens": 2605,
+    "api_call_count": 11
+  },
+  "summary": {
+    "intent": "Reduce massive disk space usage (100GB+) from Rust build artifacts across multiple git worktrees of the moltis project.",
+    "outcome": "Added `debug = \"line-tables-only\"` to the dev profile in Cargo.toml and pushed the change, which should cut target/debug size by 50-70%.",
+    "learnings": {
+      "repo": [
+        "moltis is a Cargo workspace with ~15 crates and hundreds of dependencies, making it especially prone to large target/ directories",
+        "Cargo.toml uses spaces for indentation in members/default-members lists — whitespace must be preserved when editing"
+      ],
+      "code": [
+        {
+          "path": "Cargo.toml",
+          "finding": "Added `debug = \"line-tables-only\"` under [profile.dev] to reduce DWARF debug symbol size by ~5-10x while preserving stack traces"
+        }
+      ],
+      "workflow": [
+        "Each git worktree gets its own target/ by default, causing multiplicative disk usage — sharing a single target dir via CARGO_TARGET_DIR or .cargo/config.toml is the primary fix",
+        "A shell wrapper function for cargo can auto-set CARGO_TARGET_DIR per repo based on git toplevel, sharing artifacts across all worktrees without per-project config",
+        "Rust debug builds are large due to: DWARF symbols (10-50x code size), incremental artifacts, multiple artifact types per crate, proc macros, build scripts, and per-crate test binaries",
+        "cargo sweep --time 7 can prune stale artifacts; CARGO_INCREMENTAL=0 avoids incremental overhead for one-off builds"
+      ]
+    },
+    "friction": [
+      "Editing Cargo.toml introduced unintended whitespace changes (spaces to tabs) that had to be reverted before committing to keep the diff clean"
+    ],
+    "open_items": [
+      "Sharing target/ across worktrees via CARGO_TARGET_DIR or shell wrapper was discussed but not implemented — still each worktree likely has its own target/",
+      "cargo sweep or periodic cargo clean not yet automated",
+      "sccache for shared compilation cache was mentioned but not set up"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T15:57:31.452277Z",
+    "agent_lines": 0,
+    "human_added": 3,
+    "human_modified": 202,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 0
+  }
+}

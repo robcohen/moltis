@@ -1,0 +1,17 @@
+The current rust way generates *tons* of files in target/debug -- is there any way to prevent that? I use tons of worktree and it takes an enormous amount of disk space
+
+---
+
+For option 2 I can't commit in the repo, how does that work when doing worktrees?
+
+---
+
+but why is target/debug so massive? 100GB quickly
+
+---
+
+ok I changed Cargo.toml, commit and push
+
+---
+
+revert the whitespace changes
