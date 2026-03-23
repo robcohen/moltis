@@ -1,0 +1,89 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1c0b1383c18e",
+  "session_id": "492f3e72-6fd6-4a75-95a5-abf3069e973d",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T21:04:48.503177Z",
+  "branch": "honeysuckle-grapple",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/sandboxes.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "212d86c6cf21",
+  "token_usage": {
+    "input_tokens": 219,
+    "cache_creation_tokens": 332929,
+    "cache_read_tokens": 21130103,
+    "output_tokens": 59642,
+    "api_call_count": 199
+  },
+  "summary": {
+    "intent": "Implement a lazy tool registry feature that shows a single `tool_search` meta-tool instead of all tool schemas per LLM turn, reducing token usage from 15,000+ tokens when many MCP servers are connected.",
+    "outcome": "All four phases implemented and merged into PR #467: ToolRegistry plumbing with activated map, ToolSearchTool with keyword/activation search, config wiring via `registry_mode = \"lazy\"`, system prompt hints, and e2e test fixes for pre-existing sandbox test failures unrelated to the feature.",
+    "learnings": {
+      "repo": [
+        "Local `main` is 1566 commits ahead of `origin/main` — this is a fork/private repo setup where local history significantly diverges from remote; PRs must be rebased onto `origin/main` before pushing",
+        "The `beads`/dolt server for issue tracking is not reliably available in the dev environment",
+        "Sandbox e2e tests depend on `window.__MOLTIS__` (gon data) embedded in the initial HTML; when `sandbox.backend` is `'none'`, the Refresh button title changes to a disabled hint which breaks Playwright `getByRole` accessible name matching",
+        "Playwright `route.fetch()` in a `beforeEach` bootstrap mock can throw 'Target page has been closed' if the test completes before the in-flight route callback finishes — requires `afterEach` with `page.unrouteAll({ behavior: 'ignoreErrors' })`",
+        "`ToolRegistry::get()` was changed to return `Arc\u003cdyn AgentTool\u003e` instead of `\u0026dyn AgentTool`; callers in gateway and chat crates needed migration from `get_arc()` to `get()`",
+        "The chat integration point for wrapping the registry is in `crates/chat/src/lib.rs` around line 5994, after `apply_runtime_tool_filters()` and `install_agent_scoped_memory_tools()`, using `persona.config` for the config reference"
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/tool_registry.rs",
+          "finding": "Added `ActivatedTools = Arc\u003cMutex\u003cHashMap\u003cString, Arc\u003cdyn AgentTool\u003e\u003e\u003e\u003e` field; uses `std::sync::Mutex` (not tokio) because lock is held for microseconds and `list_schemas()` must remain sync"
+        },
+        {
+          "path": "crates/agents/src/runner.rs",
+          "finding": "`tool_schemas`/`schemas_for_api` computation moved inside both runner loops (non-streaming and streaming) so activated tools appear on the next iteration after `tool_search` activates them"
+        },
+        {
+          "path": "crates/agents/src/lazy_tools.rs",
+          "finding": "NEW file: `ToolSearchTool` with scoring (exact name=100, name contains=50, word overlap=10×count), max 15 results; `wrap_registry_lazy()` creates empty registry with only `tool_search`, sharing the activated Arc with the full registry"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5994,
+          "finding": "Integration point: wrap registry with `wrap_registry_lazy` when `persona.config.tools.registry_mode == ToolRegistryMode::Lazy`"
+        },
+        {
+          "path": "crates/web/ui/e2e/specs/sandboxes.spec.js",
+          "line": 134,
+          "end_line": 139,
+          "finding": "Bootstrap route mock using `route.fetch()` needs `afterEach` cleanup with `page.unrouteAll({ behavior: 'ignoreErrors' })` to avoid 'Target page closed' errors on fast-completing tests"
+        }
+      ],
+      "workflow": [
+        "When rebasing a branch from a diverged local main onto origin/main, check commit count with `git rev-list --count origin/main..HEAD` after rebase — the rebase warnings about skipped commits are harmless if the count is correct",
+        "PR review comments can be resolved via GitHub GraphQL `resolveReviewThread` mutation using thread node IDs from `gh api graphql` — comment node IDs and thread node IDs are different",
+        "Playwright `page.evaluate(fetch(...))` calls bypass route mocking since they run in the browser context against the real server; mock those endpoints with `page.route` + `route.fulfill` instead",
+        "When mocking gon/bootstrap data in Playwright, `page.addInitScript` alone is insufficient if the app reads `window.__MOLTIS__` at module load time — intercepting the network response with `route.fetch()` + modified JSON is more reliable"
+      ]
+    },
+    "friction": [
+      "Local main being 1566 commits ahead of origin/main caused PR creation to fail silently; required rebase onto origin/main before gh pr create worked",
+      "Beads/dolt issue tracking server was unavailable, so task tracking had to be done manually",
+      "Merge conflict on sandboxes.spec.js when merging origin/main — origin/main had similar (but slightly different) sandbox mock fixes that overlapped with the branch's changes",
+      "Sandbox Playwright tests failed due to `sandboxRuntimeAvailable()` returning false in CI (no Docker daemon), causing button accessible names to change — required multiple iterations to diagnose (initScript → route mock → unrouteAll)",
+      "PR #330 was too large (72K additions) and had to be rewritten from scratch as a focused extraction"
+    ],
+    "open_items": [
+      "Manual QA not yet done: set `registry_mode = 'lazy'` in moltis.toml, connect MCP server, verify model uses tool_search to discover and call tools",
+      "Token comparison benchmarking deferred: count input tokens per turn in full vs lazy mode with 50+ MCP tools",
+      "PR strategy split (PR 1 = Phases 1+2 dead code, PR 2 = Phases 3+4 user-facing) was collapsed into a single PR — the intended incremental PR approach was not followed",
+      "Sub-agents don't inherit activated tools (fresh empty `activated` on clone) — this is intentional but may need revisiting if sub-agent tool discovery is needed",
+      "`max_iterations * 3` multiplier for lazy mode is hardcoded — could be made configurable"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T21:04:02.782229Z",
+    "agent_lines": 8,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 8,
+    "agent_percentage": 100
+  }
+}

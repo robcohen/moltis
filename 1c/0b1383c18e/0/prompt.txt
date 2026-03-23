@@ -1,0 +1,568 @@
+Implement the following plan:
+
+# Lazy Tool Registry — Implementation Plan
+
+## Context
+
+Every LLM turn includes full JSON schemas of all registered tools. With a few MCP servers connected this easily burns 15,000+ tokens per turn before the model reads a single user message. PR #330 proposed a solution but was too large (72K additions, mostly unrelated). This plan extracts the core lazy-tool idea and implements it cleanly.
+
+## Design
+
+When `registry_mode = "lazy"` is set in config, the model sees one meta-tool (`tool_search`) instead of all tool schemas:
+
+- `tool_search(query="memory")` -> name + description pairs, no schemas, max 15 results
+- `tool_search(name="tool_name")` -> full schema returned, tool **activated** in session
+- On next iteration, model calls tool directly — standard runner pipeline, hooks fire normally
+
+Key mechanism: `ToolRegistry` gains an `activated: Arc<Mutex<HashMap<String, Arc<dyn AgentTool>>>>` field (using `std::sync::Mutex`, NOT tokio — lock held for microseconds, keeps `list_schemas()` sync). `ToolSearchTool` shares this Arc and inserts entries when activating. Runner re-computes schemas each iteration so activated tools appear immediately.
+
+## Phases
+
+### Phase 1: ToolRegistry plumbing + runner refactor
+
+**Files:**
+- `crates/agents/src/tool_registry.rs` — Add `activated: Arc<Mutex<HashMap<String, Arc<dyn AgentTool>>>>`
+- `crates/agents/src/runner.rs` — Move `list_schemas()` inside loop, use `get_arc()` for dispatch
+
+**ToolRegistry changes:**
+1. Add `pub(crate) activated: Arc<Mutex<HashMap<String, Arc<dyn AgentTool>>>>` field
+2. Initialize empty in `new()` — always present (simpler than Option)
+3. `get_arc()`: check `tools` first, then `activated` map
+4. `list_schemas()`: append schemas from `activated` map after static tools
+5. Add `list_names()` update to include activated tools
+6. All `clone_*` methods: new registry gets fresh empty `activated` (sub-agents don't inherit)
+
+**Runner changes (both `run_agent_loop_with_context` and `run_agent_loop_streaming`):**
+1. Move `let tool_schemas = tools.list_schemas()` from before the loop to inside it
+2. Move `schemas_for_api` computation inside the loop
+3. Change `tools.get()` to `tools.get_arc()` for tool dispatch (checks activated map)
+4. When registry has activated tools mechanism, multiply `max_iterations` by 3
+
+### Phase 2: ToolSearchTool + wrap_registry_lazy
+
+**Files:**
+- `crates/agents/src/lazy_tools.rs` (NEW)
+- `crates/agents/src/lib.rs` — add `pub mod lazy_tools`
+
+**ToolSearchTool:**
+```rust
+pub struct ToolSearchTool {
+    full_registry: Arc<ToolRegistry>,
+    activated: Arc<Mutex<HashMap<String, Arc<dyn AgentTool>>>>,
+}
+```
+
+- Keyword search: match query against all tool names/descriptions, return top 15 as `{name, description}` pairs (no schemas)
+- Name activation: look up in `full_registry`, insert into `activated`, return full schema + hint
+- Scoring: name match (100) > name contains (50) > word overlap (10)
+
+**`wrap_registry_lazy(full: ToolRegistry) -> ToolRegistry`:**
+1. Wrap `full` in `Arc`
+2. Create new empty `ToolRegistry`
+3. Share the new registry's `activated` Arc with `ToolSearchTool`
+4. Register `ToolSearchTool` into the new registry
+5. Return the new registry (contains only `tool_search`, but `ToolSearchTool` can search/activate from `full`)
+
+### Phase 3: Config + chat integration
+
+**Files:**
+- `crates/config/src/schema.rs` — Add `ToolRegistryMode` enum (Full/Lazy), add `registry_mode` to `ToolsConfig`
+- `crates/config/src/validate.rs` — Update `build_schema_map()`
+- `crates/config/src/lib.rs` — Re-export `ToolRegistryMode`
+- `crates/config/src/template.rs` — Document new field
+
+**Config:**
+```rust
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ToolRegistryMode {
+    #[default]
+    Full,
+    Lazy,
+}
+```
+
+**Chat integration (`crates/chat/src/lib.rs` ~line 5994):**
+After `apply_runtime_tool_filters()` and `install_agent_scoped_memory_tools()`:
+```rust
+if matches!(config.tools.registry_mode, ToolRegistryMode::Lazy) {
+    filtered_registry = moltis_agents::lazy_tools::wrap_registry_lazy(filtered_registry);
+}
+```
+
+### Phase 4: System prompt + docs
+
+**Files:**
+- `crates/agents/src/prompt.rs` — Adapt memory section for lazy mode
+- `docs/src/tool-registry-lazy.md` (NEW)
+- `docs/src/SUMMARY.md` — Add page
+
+**Prompt changes:**
+- When `tool_search` is in schemas but `memory_search` isn't, tell model about memory tools being discoverable
+- Detect lazy mode via `has_tool_schema(tool_schemas, "tool_search")`
+
+## Critical Files
+
+| File | Role |
+|------|------|
+| `crates/agents/src/tool_registry.rs` | Core: activated map, get_arc, list_schemas |
+| `crates/agents/src/runner.rs` | Loop: re-fetch schemas each iteration, get_arc dispatch |
+| `crates/agents/src/lazy_tools.rs` | NEW: ToolSearchTool + wrap_registry_lazy |
+| `crates/chat/src/lib.rs:5994` | Integration point: wrap registry when config says lazy |
+| `crates/config/src/schema.rs` | ToolRegistryMode enum + ToolsConfig field |
+| `crates/agents/src/prompt.rs` | Prompt hints for lazy mode |
+
+## Verification
+
+1. `cargo test` — all existing tests pass (no behavior change in full mode)
+2. Unit tests in `lazy_tools.rs` — search, activate, unknown tool, max results, compact output
+3. Unit tests in `tool_registry.rs` — get_arc finds activated tools, list_schemas includes them
+4. Manual QA: set `registry_mode = "lazy"` in moltis.toml, connect MCP server, verify model uses tool_search to discover and call tools
+5. Token comparison: count input tokens per turn in full vs lazy mode with 50+ MCP tools
+
+## PR Strategy
+
+- **PR 1** (Phases 1+2): `feat(agents): lazy tool registry with tool_search meta-tool` — core implementation, all tests, no config wiring yet (dead code behind `wrap_registry_lazy`)
+- **PR 2** (Phases 3+4): `feat(tools): wire lazy registry mode to config and chat dispatch` — makes it user-facing, adds docs
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-honeysuckle-grapple/da61293c-5bbd-41b8-a8b1-360a52aee43c.jsonl
+
+---
+
+commit and push, create a PR
+
+---
+
+Please rebase and limit changes
+
+---
+
+merge main to this branch
+
+---
+
+merge main to this branch
+
+---
+
+https://github.com/moltis-org/moltis/pull/467 has many new comments to be fixed then solved
+
+---
+
+✓  201 …s:152:2 › OAuth provider connection › OAuth can be completed by pasting callback URL in settings UI (755ms)
+  ✓  202 …uth] › e2e/specs/oauth.spec.js:194:2 › OAuth provider connection › OAuth state mismatch is rejected (143ms)
+  ✓  203 …th] › e2e/specs/oauth.spec.js:208:2 › OAuth provider connection › disconnect removes provider tokens (3.9s)
+  ✓  204 …h] › e2e/specs/oauth.spec.js:252:2 › OAuth provider connection › token exchange failure shows error (606ms)
+  ✓  205 …th] › e2e/specs/oauth.spec.js:288:2 › OAuth provider connection › missing callback code returns 400 (149ms)
+  ✓  206 …h] › e2e/specs/oauth.spec.js:295:2 › OAuth provider connection › missing callback state returns 400 (161ms)
+  -  207 …s/onboarding-anthropic.spec.js:73:2 › Onboarding Anthropic provider › configures Anthropic and loads models
+  -  208 …2 › Onboarding Anthropic provider › continue without selecting a model still persists Anthropic credentials
+
+
+  1) [default] › e2e/specs/sandboxes.spec.js:112:2 › Sandboxes page – Running Containers › running containers section renders with heading and refresh button
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('button', { name: 'Refresh', exact: true })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByRole('button', { name: 'Refresh', exact: true })
+
+
+      116 |             await expect(page.getByRole("heading", { name: "Sandboxes", exact: true })).toBeVisible();
+      117 |             await expect(page.getByText("Running Containers")).toBeVisible();
+    > 118 |             await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
+          |                                                                                      ^
+      119 |
+      120 |             expect(pageErrors).toEqual([]);
+      121 |     });
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:118:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-4ab2e--heading-and-refresh-button-default/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: running containers section renders with heading and refresh button
+    **Status**: failed
+
+    ### Page 1: [honeysuckle-grapple] e2e-bot
+    - **URL**: http://127.0.0.1:54506/settings/sandboxes
+
+    ```
+    Running on: honeysuckle-grapple
+    e2e-bot
+    327MB · 11GB free / 68GB
+    Settings
+    Report issu...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-4ab2e--heading-and-refresh-button-default/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-4ab2e--heading-and-refresh-button-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/sandboxes-Sandboxes-page-–-4ab2e--heading-and-refresh-button-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [default] › e2e/specs/sandboxes.spec.js:123:2 › Sandboxes page – Running Containers › refresh button triggers container list fetch
+
+    Test timeout of 45000ms exceeded.
+
+    Error: page.waitForResponse: Test timeout of 45000ms exceeded.
+
+      125 |             await navigateAndWait(page, "/settings/sandboxes");
+      126 |
+    > 127 |             const fetchPromise = page.waitForResponse((r) => r.url().includes("/api/sandbox/containers") && r.status() === 200);
+          |                                       ^
+      128 |             await page.getByRole("button", { name: "Refresh", exact: true }).click();
+      129 |             const response = await fetchPromise;
+      130 |             const data = await response.json();
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:127:29
+
+    Error: locator.click: Test timeout of 45000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Refresh', exact: true })
+
+
+      126 |
+      127 |             const fetchPromise = page.waitForResponse((r) => r.url().includes("/api/sandbox/containers") && r.status() === 200);
+    > 128 |             await page.getByRole("button", { name: "Refresh", exact: true }).click();
+          |                                                                              ^
+      129 |             const response = await fetchPromise;
+      130 |             const data = await response.json();
+      131 |             expect(data).toHaveProperty("containers");
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:128:68
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-a17c5-iggers-container-list-fetch-default/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: refresh button triggers container list fetch
+    **Status**: timedOut
+
+    ### Page 1: [honeysuckle-grapple] e2e-bot
+    - **URL**: http://127.0.0.1:54506/settings/sandboxes
+
+    ```
+    Running on: honeysuckle-grapple
+    e2e-bot
+    203MB · 9GB free / 68GB
+    Settings
+    Report issue
+    An update is availa...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-a17c5-iggers-container-list-fetch-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/sandboxes-Sandboxes-page-–-a17c5-iggers-container-list-fetch-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [default] › e2e/specs/sandboxes.spec.js:193:2 › Sandboxes page – Running Containers › refresh button also fetches disk usage
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('button', { name: 'Refresh', exact: true })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByRole('button', { name: 'Refresh', exact: true })
+
+
+      203 |             await navigateAndWait(page, "/settings/sandboxes");
+      204 |             const refreshBtn = page.getByRole("button", { name: "Refresh", exact: true });
+    > 205 |             await expect(refreshBtn).toBeVisible();
+          |                                      ^
+      206 |
+      207 |             // Page mount fires the first disk-usage fetch.
+      208 |             const mountCount = diskFetchCount;
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:205:28
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-3585f-ton-also-fetches-disk-usage-default/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: refresh button also fetches disk usage
+    **Status**: failed
+
+    ### Page 1: [honeysuckle-grapple] e2e-bot
+    - **URL**: http://127.0.0.1:54506/settings/sandboxes
+
+    ```
+    Running on: honeysuckle-grapple
+    e2e-bot
+    204MB · 12GB free / 68GB
+    Settings
+    Report issue
+    An update is available v0....
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-3585f-ton-also-fetches-disk-usage-default/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-3585f-ton-also-fetches-disk-usage-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/sandboxes-Sandboxes-page-–-3585f-ton-also-fetches-disk-usage-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [default] › e2e/specs/sandboxes.spec.js:218:2 › Sandboxes page – Running Containers › clean all endpoint responds correctly
+
+    Test timeout of 45000ms exceeded.
+
+    Error: page.evaluate: Test timeout of 45000ms exceeded.
+
+      221 |
+      222 |             // Call the clean all API directly to verify the endpoint works
+    > 223 |             const result = await page.evaluate(async () => {
+          |                                       ^
+      224 |                     const r = await fetch("/api/sandbox/containers/clean", { method: "POST" });
+      225 |                     return { status: r.status, data: await r.json() };
+      226 |             });
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:223:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-8a181-endpoint-responds-correctly-default/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: clean all endpoint responds correctly
+    **Status**: timedOut
+
+    ### Page 1: [honeysuckle-grapple] e2e-bot
+    - **URL**: http://127.0.0.1:54506/settings/sandboxes
+
+    ```
+    Running on: honeysuckle-grapple
+    e2e-bot
+    204MB · 13GB free / 68GB
+    Settings
+    Report issue
+    An update is available v0...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-8a181-endpoint-responds-correctly-default/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-8a181-endpoint-responds-correctly-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/sandboxes-Sandboxes-page-–-8a181-endpoint-responds-correctly-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [default] › e2e/specs/sandboxes.spec.js:112:2 › Sandboxes page – Running Containers › running containers section renders with heading and refresh button
+    [default] › e2e/specs/sandboxes.spec.js:123:2 › Sandboxes page – Running Containers › refresh button triggers container list fetch
+    [default] › e2e/specs/sandboxes.spec.js:193:2 › Sandboxes page – Running Containers › refresh button also fetches disk usage
+    [default] › e2e/specs/sandboxes.spec.js:218:2 › Sandboxes page – Running Containers › clean all endpoint responds correctly
+  5 skipped
+  22 did not run
+  199 passed (4.7m)
+[local/e2e] failed in 286s
+~/.s/w/m/honeysuckle-grapple honeysuckle-grapple ❯
+
+---
+
+Fix them anyway, I can't merge if CI does not pass
+
+---
+
+merge main to this branch, commit and push
+
+---
+
+-  211 …2 › Onboarding Anthropic provider › continue without selecting a model still persists Anthropic credentials
+
+
+  1) [default] › e2e/specs/sandboxes.spec.js:205:2 › Sandboxes page – Running Containers › containers list fetches on page mount
+
+    Error: "route.fetch: Target page, context or browser has been closed
+    Call log:
+      - → GET http://127.0.0.1:57122/api/bootstrap?include_sessions=false
+        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - accept-language: en-US
+        - referer: http://127.0.0.1:57122/settings/sandboxes
+        - sec-ch-ua: "Not:A-Brand";v="99", "HeadlessChrome";v="145", "Chromium";v="145"
+        - sec-ch-ua-mobile: ?0
+        - sec-ch-ua-platform: "macOS"
+      - ← 200 OK
+        - content-type: application/json
+        - vary: accept-encoding, origin, access-control-request-method, access-control-request-headers
+        - content-encoding: gzip
+        - x-content-type-options: nosniff
+        - x-frame-options: sameorigin
+        - referrer-policy: strict-origin-when-cross-origin
+        - x-request-id: b7c97e87-a7fd-45ef-8a84-7034691edbe8
+        - transfer-encoding: chunked
+        - date: Mon, 23 Mar 2026 20:58:59 GMT
+    " while running route callback.
+    Consider awaiting `await page.unrouteAll({ behavior: 'ignoreErrors' })`
+    before the end of the test to ignore remaining routes in flight.
+
+      134 |
+      135 |     await page.route("**/api/bootstrap*", async (route) => {
+    > 136 |             var response = await route.fetch();
+          |                                        ^
+      137 |             var json = await response.json();
+      138 |             json.sandbox = Object.assign(json.sandbox || {}, { backend: "docker" });
+      139 |             return route.fulfill({ response, json });
+        at /Users/penso/.superset/worktrees/moltis/honeysuckle-grapple/crates/web/ui/e2e/specs/sandboxes.spec.js:136:30
+
+    Error: browserContext.close: Test ended.
+    Browser logs:
+
+    <launching> /Users/penso/Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --enable-automation --disable-infobars --disable-search-engine-choice-screen --disable-sync --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/var/folders/0h/dmk6d6mj52s98cq24w9_n4d00000gn/T/REDACTED --remote-debugging-pipe --no-startup-window
+    <launched> pid=66170
+    [pid=66170][err] [0323/205813.750549:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299493668/js/pwa.js (36)
+    [pid=66170][err] [0323/205813.974496:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299493887/js/pwa.js (36)
+    [pid=66170][err] [0323/205814.571215:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299494469/js/pwa.js (36)
+    [pid=66170][err] [0323/205815.195054:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299495109/js/pwa.js (36)
+    [pid=66170][err] [0323/205815.764946:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299495678/js/pwa.js (36)
+    [pid=66170][err] [0323/205816.898515:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299496753/js/pwa.js (36)
+    [pid=66170][err] [0323/205817.366132:WARNING:net/spdy/spdy_session.cc:3071] Received HEADERS for invalid stream 13
+    [pid=66170][err] [0323/205817.405174:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299497327/js/pwa.js (36)
+    [pid=66170][err] [0323/205817.924392:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299497860/js/pwa.js (36)
+    [pid=66170][err] [0323/205818.862181:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299498768/js/pwa.js (36)
+    [pid=66170][err] [0323/205819.543405:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299499439/js/pwa.js (36)
+    [pid=66170][err] [0323/205820.221786:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299500097/js/pwa.js (36)
+    [pid=66170][err] [0323/205820.634060:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299500529/js/pwa.js (36)
+    [pid=66170][err] [0323/205821.238891:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299501142/js/pwa.js (36)
+    [pid=66170][err] [0323/205821.686040:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299501620/js/pwa.js (36)
+    [pid=66170][err] [0323/205821.988753:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299501896/js/pwa.js (36)
+    [pid=66170][err] [0323/205822.528881:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299502414/js/pwa.js (36)
+    [pid=66170][err] [0323/205822.847579:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299502754/js/pwa.js (36)
+    [pid=66170][err] [0323/205823.281620:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299503193/js/pwa.js (36)
+    [pid=66170][err] [0323/205823.608902:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299503511/js/pwa.js (36)
+    [pid=66170][err] [0323/205823.895774:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299503803/js/pwa.js (36)
+    [pid=66170][err] [0323/205824.204298:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299504117/js/pwa.js (36)
+    [pid=66170][err] [0323/205824.502950:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299504405/js/pwa.js (36)
+    [pid=66170][err] [0323/205824.893863:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299504788/js/pwa.js (36)
+    [pid=66170][err] [0323/205825.271107:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299505175/js/pwa.js (36)
+    [pid=66170][err] [0323/205825.691623:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299505575/js/pwa.js (36)
+    [pid=66170][err] [0323/205826.154443:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299506059/js/pwa.js (36)
+    [pid=66170][err] [0323/205826.602016:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299506493/js/pwa.js (36)
+    [pid=66170][err] [0323/205826.789054:ERROR:sandbox/mac/system_services.cc:31] SetApplicationIsDaemon: Error Domain=NSOSStatusErrorDomain Code=-50 "paramErr: error in user parameter list" (-50)
+    [pid=66170][err] [0323/205826.849287:INFO:CONSOLE:713] "[audio] created AudioContext, state: running", source: http://127.0.0.1:57122/assets/v/1774299506493/js/helpers.js (713)
+    [pid=66170][err] [0323/205827.204254:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299507084/js/pwa.js (36)
+    [pid=66170][err] [0323/205827.341275:INFO:CONSOLE:713] "[audio] created AudioContext, state: running", source: http://127.0.0.1:57122/assets/v/1774299507084/js/helpers.js (713)
+    [pid=66170][err] [0323/205827.638987:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299507535/js/pwa.js (36)
+    [pid=66170][err] [0323/205828.038179:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299507944/js/pwa.js (36)
+    [pid=66170][err] [0323/205828.374181:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299508261/js/pwa.js (36)
+    [pid=66170][err] [0323/205828.661123:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299508568/js/pwa.js (36)
+    [pid=66170][err] [0323/205828.993161:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299508901/js/pwa.js (36)
+    [pid=66170][err] [0323/205830.006352:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299509913/js/pwa.js (36)
+    [pid=66170][err] [0323/205830.872178:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299510772/js/pwa.js (36)
+    [pid=66170][err] [0323/205831.022215:INFO:CONSOLE:713] "[audio] created AudioContext, state: running", source: http://127.0.0.1:57122/assets/v/1774299510772/js/helpers.js (713)
+    [pid=66170][err] [0323/205831.271132:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299511181/js/pwa.js (36)
+    [pid=66170][err] [0323/205831.646937:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299511491/js/pwa.js (36)
+    [pid=66170][err] [0323/205832.661553:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299512551/js/pwa.js (36)
+    [pid=66170][err] [0323/205832.940487:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299512827/js/pwa.js (36)
+    [pid=66170][err] [0323/205833.361560:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299513273/js/pwa.js (36)
+    [pid=66170][err] [0323/205833.820301:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299513721/js/pwa.js (36)
+    [pid=66170][err] [0323/205834.150789:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299514052/js/pwa.js (36)
+    [pid=66170][err] [0323/205834.698712:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299514611/js/pwa.js (36)
+    [pid=66170][err] [0323/205835.091173:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299515014/js/pwa.js (36)
+    [pid=66170][err] [0323/205835.569581:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299515465/js/pwa.js (36)
+    [pid=66170][err] [0323/205836.041497:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299515952/js/pwa.js (36)
+    [pid=66170][err] [0323/205836.615669:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299516483/js/pwa.js (36)
+    [pid=66170][err] [0323/205837.080890:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299516955/js/pwa.js (36)
+    [pid=66170][err] [0323/205837.970615:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299517825/js/pwa.js (36)
+    [pid=66170][err] [0323/205838.109575:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299518051/js/pwa.js (36)
+    [pid=66170][err] [0323/205838.586844:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299518493/js/pwa.js (36)
+    [pid=66170][err] [0323/205838.725601:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299518651/js/pwa.js (36)
+    [pid=66170][err] [0323/205839.350680:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299519264/js/pwa.js (36)
+    [pid=66170][err] [0323/205839.503017:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299519428/js/pwa.js (36)
+    [pid=66170][err] [0323/205839.993336:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299519901/js/pwa.js (36)
+    [pid=66170][err] [0323/205840.289511:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299520169/js/pwa.js (36)
+    [pid=66170][err] [0323/205840.605298:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299520516/js/pwa.js (36)
+    [pid=66170][err] [0323/205840.738024:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299520669/js/pwa.js (36)
+    [pid=66170][err] [0323/205841.078522:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299520969/js/pwa.js (36)
+    [pid=66170][err] [0323/205841.553595:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299521453/js/pwa.js (36)
+    [pid=66170][err] [0323/205842.656523:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299522563/js/pwa.js (36)
+    [pid=66170][err] [0323/205843.196366:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299523050/js/pwa.js (36)
+    [pid=66170][err] [0323/205843.446549:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299523348/js/pwa.js (36)
+    [pid=66170][err] [0323/205843.846807:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299523722/js/pwa.js (36)
+    [pid=66170][err] [0323/205844.205837:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299524121/js/pwa.js (36)
+    [pid=66170][err] [0323/205844.550185:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299524457/js/pwa.js (36)
+    [pid=66170][err] [0323/205845.225258:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299525124/js/pwa.js (36)
+    [pid=66170][err] [0323/205845.685723:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299525581/js/pwa.js (36)
+    [pid=66170][err] [0323/205845.978069:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299525886/js/pwa.js (36)
+    [pid=66170][err] [0323/205846.269624:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299526160/js/pwa.js (36)
+    [pid=66170][err] [0323/205846.525797:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299526431/js/pwa.js (36)
+    [pid=66170][err] [0323/205846.915011:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299526781/js/pwa.js (36)
+    [pid=66170][err] [0323/205847.241688:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299527072/js/pwa.js (36)
+    [pid=66170][err] [0323/205847.673894:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299527558/js/pwa.js (36)
+    [pid=66170][err] [0323/205848.084249:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299527976/js/pwa.js (36)
+    [pid=66170][err] [0323/205848.431295:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299528335/js/pwa.js (36)
+    [pid=66170][err] [0323/205848.720035:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299528624/js/pwa.js (36)
+    [pid=66170][err] [0323/205849.053011:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299528934/js/pwa.js (36)
+    [pid=66170][err] [0323/205849.336355:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299529231/js/pwa.js (36)
+    [pid=66170][err] [0323/205849.668195:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299529565/js/pwa.js (36)
+    [pid=66170][err] [0323/205850.024478:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299529929/js/pwa.js (36)
+    [pid=66170][err] [0323/205850.455234:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299530362/js/pwa.js (36)
+    [pid=66170][err] [0323/205850.821340:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299530731/js/pwa.js (36)
+    [pid=66170][err] [0323/205851.190599:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299531062/js/pwa.js (36)
+    [pid=66170][err] [0323/205851.585672:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299531467/js/pwa.js (36)
+    [pid=66170][err] [0323/205851.969503:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299531878/js/pwa.js (36)
+    [pid=66170][err] [0323/205852.465036:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299532349/js/pwa.js (36)
+    [pid=66170][err] [0323/205853.072867:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299532945/js/pwa.js (36)
+    [pid=66170][err] [0323/205853.708185:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299533606/js/pwa.js (36)
+    [pid=66170][err] [0323/205857.064366:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299536975/js/pwa.js (36)
+    [pid=66170][err] [0323/205857.459137:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299537371/js/pwa.js (36)
+    [pid=66170][err] [0323/205857.827556:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299537727/js/pwa.js (36)
+    [pid=66170][err] [0323/205858.263817:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299538153/js/pwa.js (36)
+    [pid=66170][err] [0323/205858.704454:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299538618/js/pwa.js (36)
+    [pid=66170][err] [0323/205859.058010:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299538966/js/pwa.js (36)
+    [pid=66170][err] [0323/205859.470878:INFO:CONSOLE:36] "Service worker registered: http://127.0.0.1:57122/", source: http://127.0.0.1:57122/assets/v/1774299539370/js/pwa.js (36)
+    [pid=66170] <gracefully close start>
+
+    Error Context: test-results/sandboxes-Sandboxes-page-–-165c7--list-fetches-on-page-mount-default/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/sandboxes-Sandboxes-page-–-165c7--list-fetches-on-page-mount-default/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/sandboxes-Sandboxes-page-–-165c7--list-fetches-on-page-mount-default/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [default] › e2e/specs/sandboxes.spec.js:205:2 › Sandboxes page – Running Containers › containers list fetches on page mount
+  5 skipped
+  22 did not run
+  205 passed (4.0m)
+[local/e2e] failed in 245s
+~/.s/w/m/honeysuckle-grapple honeysuckle-grapple ❯

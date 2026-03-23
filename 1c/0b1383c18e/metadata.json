@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1c0b1383c18e",
+  "strategy": "manual-commit",
+  "branch": "honeysuckle-grapple",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/sandboxes.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/1c/0b1383c18e/0/metadata.json",
+      "transcript": "/1c/0b1383c18e/0/full.jsonl",
+      "context": "/1c/0b1383c18e/0/context.md",
+      "content_hash": "/1c/0b1383c18e/0/content_hash.txt",
+      "prompt": "/1c/0b1383c18e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 219,
+    "cache_creation_tokens": 332929,
+    "cache_read_tokens": 21130103,
+    "output_tokens": 59642,
+    "api_call_count": 199
+  }
+}
