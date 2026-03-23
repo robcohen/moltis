@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "22678e68079b",
+  "strategy": "manual-commit",
+  "branch": "temikus/fix-mcp-naming",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "apps/ios/GraphQL/Schema/schema.graphqls"
+  ],
+  "sessions": [
+    {
+      "metadata": "/22/678e68079b/0/metadata.json",
+      "transcript": "/22/678e68079b/0/full.jsonl",
+      "context": "/22/678e68079b/0/context.md",
+      "content_hash": "/22/678e68079b/0/content_hash.txt",
+      "prompt": "/22/678e68079b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 3036,
+    "cache_read_tokens": 669587,
+    "output_tokens": 1089,
+    "api_call_count": 8
+  }
+}

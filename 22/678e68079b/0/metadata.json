@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "22678e68079b",
+  "session_id": "99de5c6c-7baa-471b-8b77-fb0dc7229e4f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T11:48:14.028361Z",
+  "branch": "temikus/fix-mcp-naming",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "apps/ios/GraphQL/Schema/schema.graphqls"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "70a3e79acb1c",
+  "checkpoint_transcript_start": 300,
+  "transcript_lines_at_start": 300,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 3036,
+    "cache_read_tokens": 669587,
+    "output_tokens": 1089,
+    "api_call_count": 8
+  },
+  "summary": {
+    "intent": "Fix PR review comments on moltis PR #439 and ensure all changes are committed and pushed.",
+    "outcome": "Fixed two issues (renderServerName prop destructuring and display_name null handling), resolved all PR threads, and committed a missed iOS GraphQL schema update for the new displayName field.",
+    "learnings": {
+      "repo": [
+        "renderServerName expects a destructured { server } object, not the server value directly",
+        "display_name on add should send null when blank to stay consistent with the edit path",
+        "The iOS GraphQL schema at apps/ios/GraphQL/Schema/schema.graphqls must be manually updated when new fields are added to the API"
+      ],
+      "code": [
+        {
+          "path": "apps/ios/GraphQL/Schema/schema.graphqls",
+          "finding": "iOS GraphQL schema requires a separate commit update when new fields like displayName are added; it is not auto-generated alongside the main schema change"
+        }
+      ],
+      "workflow": [
+        "Git status check revealed a modified file that was missed before declaring the working tree clean — always verify before confirming nothing to commit",
+        "PR thread resolution should be verified via API/CLI after fixes, not assumed"
+      ]
+    },
+    "friction": [
+      "Prematurely declared the working tree clean without running git status, missing the schema.graphqls change",
+      "Re-fetched PR comments that had already been addressed, causing redundant work"
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T11:48:00.191085Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}

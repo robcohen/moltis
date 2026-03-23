@@ -1,0 +1,153 @@
+Look at https://github.com/moltis-org/moltis/pull/439 make sure all comments were fixed and resolve them
+
+---
+
+local validation failed:
+
+cargo +nightly-2025-11-30 fmt --all -- --check
+Failed to publish status 'local/i18n' to Temikus/moltis@c3ba176426cb51edcbdc548a546ede5e5108e58b.
+Check that your token can write commit statuses for that repository.
+
+Expected token access:
+- classic PAT: repo:status (or repo)
+- fine-grained PAT: Commit statuses (Read and write)
+
+If this is an org with SSO enforcement, authorize the token for the org.
+If GH_TOKEN is set in your shell, try unsetting it to use your gh auth token:
+  unset GH_TOKEN
+Disabling further status publication for this run; continuing local checks.
+crates/web/src/assets/js/page-mcp.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+     535  535 │                                 }}
+     536  536 │           onKeyDown=${onKey} />
+     537      │ - ······${detectedName·&&·html`<div·class="project-edit-group·mt-2">
+          537 │ + ······${
+          538 │ + → → → → detectedName·&&
+          539 │ + → → → → html`<div·class="project-edit-group·mt-2">
+     538  540 │           <div class="text-xs text-[var(--muted)] mb-1">Display name (optional)</div>
+     539  541 │           <input type="text" class="provider-key-input w-full" placeholder="${detectedName}"
+    ········· │
+     543  545 │                                         }} />
+     544  546 │           <div class="text-xs text-[var(--muted)] mt-1">Technical ID: <span class="font-mono">${detectedName}</span></div>
+     545      │ - ······</div>`}
+          547 │ + ······</div>`
+          548 │ + → → → }
+     546  549 │       </div>`
+     547  550 │                 }
+    ········· │
+     556  559 │                                         }}
+     557  560 │                 onKeyDown=${onKey} />
+     558      │ - → ······${detectedName·&&·html`<div·class="project-edit-group·mt-2">
+          561 │ + → ······${
+          562 │ + → → → → → detectedName·&&
+          563 │ + → → → → → html`<div·class="project-edit-group·mt-2">
+     559  564 │                 <div class="text-xs text-[var(--muted)] mb-1">Display name (optional)</div>
+     560  565 │                 <input type="text" class="provider-key-input w-full" placeholder="${detectedName}"
+    ········· │
+     564  569 │                                                 }} />
+     565  570 │                 <div class="text-xs text-[var(--muted)] mt-1">Technical ID: <span class="font-mono">${detectedName}</span></div>
+     566      │ - → ······</div>`}
+          571 │ + → ······</div>`
+          572 │ + → → → → }
+     567  573 │               <div class="text-xs text-[var(--muted)] mt-1">If the server requires OAuth, your browser opens for sign-in when you enable or restart it. URL query values may use <code>$NAME</code> or <code>${"{NAME}"}</code> placeholders from Settings → Environment Variables.</div>
+     568  574 │             </div>
+    ········· │
+     809  815 │                     placeholder=${server.display_name || server.name}
+     810  816 │                     onInput=${(e) => {
+     811      │ - → → → → → → editDisplayName.value·=·e.target.value;
+     812      │ - → → → → → }}·/>
+          817 │ + → → → → → editDisplayName.value·=·e.target.value;
+          818 │ + → → → → }}·/>
+     813  819 │                   <div class="text-xs text-[var(--muted)] mt-1">Technical ID: <span class="font-mono">${server.name}</span></div>
+     814  820 │                 </div>`}
+     815      │ - → ········${editTransport.value·===·"sse"·&&
+          821 │ + → ········${
+          822 │ + → → → → → → editTransport.value·===·"sse"·&&
+     816  823 │                                                 html`<div class="project-edit-group mb-2">
+     817  824 │                   <div class="text-xs text-[var(--muted)] mb-1">Current URL</div>
+
+
+Checked 133 files in 246ms. No fixes applied.
+Found 1 error.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+[local/biome] failed in 0s
+🌈 zizmor v1.22.0
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+i18n parity OK: 3 locales, 18 namespaces.
+[local/i18n] passed in 1s
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+[local/fmt] passed in 5s
+[local/fmt] total 5s
+[local/biome] total 0s
+[local/i18n] total 1s
+One or more parallel local checks failed.
+~/.s/w/m/t/fix-mcp-naming temikus/fix-mcp-naming ❯  INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (14 ignored, 47 suppressed)
+[local/zizmor] passed in 7s
+~/.s/w/m/t/fix-mcp-naming temikus/fix-mcp-naming ❯
+
+---
+
+commit and push
+
+---
+
+Checking moltis-swift-bridge v0.1.0 (/Users/penso/.superset/worktrees/moltis/temikus/fix-mcp-naming/crates/swift-bridge)
+error[E0063]: missing field `display_name` in initializer of `moltis_config::schema::McpServerEntry`
+   --> crates/cli/src/doctor_commands.rs:859:21
+    |
+859 |         let entry = moltis_config::schema::McpServerEntry {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `display_name`
+
+error[E0063]: missing field `display_name` in initializer of `moltis_config::schema::McpServerEntry`
+   --> crates/cli/src/doctor_commands.rs:880:21
+    |
+880 |         let entry = moltis_config::schema::McpServerEntry {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `display_name`
+
+error[E0063]: missing field `display_name` in initializer of `moltis_config::schema::McpServerEntry`
+   --> crates/cli/src/doctor_commands.rs:901:21
+    |
+901 |         let entry = moltis_config::schema::McpServerEntry {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `display_name`
+
+error[E0063]: missing field `display_name` in initializer of `moltis_config::schema::McpServerEntry`
+   --> crates/cli/src/doctor_commands.rs:922:21
+    |
+922 |         let entry = moltis_config::schema::McpServerEntry {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `display_name`
+
+error[E0063]: missing field `display_name` in initializer of `moltis_config::schema::McpServerEntry`
+   --> crates/cli/src/doctor_commands.rs:946:21
+    |
+946 |         let entry = moltis_config::schema::McpServerEntry {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `display_name`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `moltis` (bin "moltis" test) due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+      Timing report saved to /Users/penso/.superset/worktrees/moltis/temikus/fix-mcp-naming/target/cargo-timings/cargo-timing-20260323T102810.152032Z.html
+[local/lint] failed in 376s
+~/.s/w/m/t/fix-mcp-naming temikus/fix-mcp-naming ❯
+
+---
+
+Look at new comments from https://github.com/moltis-org/moltis/pull/439, fix and solve conversations
+
+---
+
+Look at new comments from https://github.com/moltis-org/moltis/pull/439, fix and solve conversations
+
+---
+
+commit and push
