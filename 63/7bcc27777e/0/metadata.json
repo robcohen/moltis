@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "637bcc27777e",
+  "session_id": "99de5c6c-7baa-471b-8b77-fb0dc7229e4f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T11:19:02.12898Z",
+  "branch": "temikus/fix-mcp-naming",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-mcp.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7484feb98b0d",
+  "checkpoint_transcript_start": 251,
+  "transcript_lines_at_start": 251,
+  "token_usage": {
+    "input_tokens": 11,
+    "cache_creation_tokens": 4784,
+    "cache_read_tokens": 718993,
+    "output_tokens": 1481,
+    "api_call_count": 9
+  },
+  "summary": {
+    "intent": "Fix two code review comments on PR #439 in the moltis repo: a prop destructuring bug in renderServerName and a display_name null-handling issue on server add.",
+    "outcome": "Both issues were fixed in page-mcp.js, formatted with biome, committed, pushed, and the PR threads resolved.",
+    "learnings": {
+      "repo": [
+        "renderServerName in page-mcp.js receives a props object and requires destructured { server }, not a raw server argument.",
+        "When adding an MCP server, display_name should send null when the field is blank rather than falling back to the technical ID."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-mcp.js",
+          "line": 478,
+          "end_line": 499,
+          "finding": "Both SSE (line 478) and stdio (line 499) add-server handlers needed display_name null-coalescing: send null when the field is empty instead of the technical ID."
+        }
+      ],
+      "workflow": [
+        "biome is used for JS formatting/linting in this repo and is run before committing JS changes.",
+        "PR review threads are resolved programmatically after pushing fixes via GitHub API calls."
+      ]
+    },
+    "friction": [],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T11:18:51.620925Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}
