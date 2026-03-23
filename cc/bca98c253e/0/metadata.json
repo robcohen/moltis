@@ -1,0 +1,64 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ccbca98c253e",
+  "session_id": "0b9f24ee-d5e4-44de-b6d4-27967204d58f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T09:59:30.202876Z",
+  "branch": "issue-122",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "76b4cb030652",
+  "checkpoint_transcript_start": 45,
+  "transcript_lines_at_start": 45,
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 22305,
+    "cache_read_tokens": 336341,
+    "output_tokens": 1601,
+    "api_call_count": 8
+  },
+  "summary": {
+    "intent": "Fix a CI/CD package name issue on PR #408 where `glslc` is not available on Ubuntu 22.04 (Jammy) and needs to be replaced with `glslang-tools`.",
+    "outcome": "Updated both `ci.yml` and `release.yml` workflows to use the correct `glslang-tools` package, committed, and pushed to the `issue-122` branch.",
+    "learnings": {
+      "repo": [
+        "The correct GLSL compiler package on Ubuntu 22.04 (Jammy) is `glslang-tools`, not `glslc` — `glslc` is not available in the Jammy package repositories."
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "Referenced `glslc` package which does not exist on Ubuntu 22.04; replaced with `glslang-tools`."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "Same `glslc` → `glslang-tools` fix applied here as well."
+        }
+      ],
+      "workflow": [
+        "A security hook fires when editing CI workflow files and requires retry/confirmation before changes are accepted.",
+        "PR review comments surfaced a platform-specific package availability issue that wasn't caught locally."
+      ]
+    },
+    "friction": [
+      "A security hook blocked the initial edits to the CI workflow files, requiring the edits to be retried.",
+      "The `glslc` vs `glslang-tools` discrepancy was only discovered via a post-push PR comment, not during initial development."
+    ],
+    "open_items": [
+      "The PR (#408) may still need review/approval after the package name fix.",
+      "Should verify that `glslang-tools` provides the same CLI interface expected by the build scripts (e.g., the binary name may differ from `glslc`)."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T09:59:18.883054Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}
