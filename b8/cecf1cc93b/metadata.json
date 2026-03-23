@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b8cecf1cc93b",
+  "strategy": "manual-commit",
+  "branch": "dark-action",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/discord/src/config.rs",
+    "crates/msteams/src/config.rs",
+    "crates/slack/src/config.rs",
+    "crates/telegram/src/config.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b8/cecf1cc93b/0/metadata.json",
+      "transcript": "/b8/cecf1cc93b/0/full.jsonl",
+      "context": "/b8/cecf1cc93b/0/context.md",
+      "content_hash": "/b8/cecf1cc93b/0/content_hash.txt",
+      "prompt": "/b8/cecf1cc93b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 10671,
+    "cache_read_tokens": 1879877,
+    "output_tokens": 3831,
+    "api_call_count": 16
+  }
+}

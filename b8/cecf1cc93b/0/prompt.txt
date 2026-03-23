@@ -1,0 +1,155 @@
+Implement the following plan:
+
+# Plan: Redacted serialization path for channel config API responses
+
+Issue: https://github.com/moltis-org/moltis/issues/462
+
+## Context
+
+`account_config_json()` on each channel plugin serializes config structs via `serde_json::to_value()`, which uses the storage serialization path (`serialize_secret`) that exposes raw secret values. This means API responses to the frontend leak tokens and keys. PR #449's approach of hand-rolling a `redact_channel_config()` walking raw JSON was rejected as fragile.
+
+The fix uses **Option 1 from the issue**: a `Redacted<T>` wrapper type that serializes `Secret<String>` fields as `"[REDACTED]"`, used only by `account_config_json()`.
+
+## Plan
+
+### Step 1: Add shared secret serde helpers to `moltis-common`
+
+**Files:**
+- `crates/common/Cargo.toml` — add `secrecy = { workspace = true }`
+- `crates/common/src/lib.rs` — add `pub mod secret_serde;`
+- `crates/common/src/secret_serde.rs` — new file
+
+The new module provides four public functions:
+- `serialize_secret` — exposes raw value (for storage)
+- `serialize_option_secret` — exposes raw optional value (for storage)
+- `serialize_secret_redacted` — writes `"[REDACTED]"` (for API)
+- `serialize_option_secret_redacted` — writes `"[REDACTED]"` or `null` (for API)
+
+### Step 2: Create `Redacted<T>` wrapper type
+
+In `crates/common/src/secret_serde.rs`, add:
+
+```rust
+/// Wrapper that serializes `Secret<String>` fields as `"[REDACTED]"`.
+/// Use for API responses where secrets must not leak.
+pub struct Redacted<'a, T>(pub &'a T);
+```
+
+Each channel config struct will get a companion `impl Serialize for Redacted<'_, FooConfig>` that delegates to a shadow struct using `serialize_secret_redacted` instead of `serialize_secret`. This is the cleanest approach because:
+- No cloning of the config struct
+- No runtime string matching on field names
+- Compile-time guarantee that all secret fields are redacted
+- Storage serialization path is unchanged
+
+### Step 3: Add `Redacted` Serialize impls to each channel config
+
+**Files to modify:**
+
+| File | Struct | Secret fields |
+|------|--------|--------------|
+| `crates/discord/src/config.rs` | `DiscordAccountConfig` | `token` |
+| `crates/telegram/src/config.rs` | `TelegramAccountConfig` | `token` |
+| `crates/slack/src/config.rs` | `SlackAccountConfig` | `bot_token`, `app_token`, `signing_secret` |
+| `crates/msteams/src/config.rs` | `MsTeamsAccountConfig` | `app_password`, `webhook_secret` |
+
+WhatsApp has no secret fields — no changes needed.
+
+For each config, implement `Serialize for Redacted<'_, XxxAccountConfig>` that serializes every field identically to the normal `Serialize` impl except secret fields use `serialize_secret_redacted` / `serialize_option_secret_redacted`.
+
+**Approach**: Use a helper macro or manual impl with `SerializeStruct`. Since each config has different fields, manual impl is clearer and avoids macro complexity.
+
+### Step 4: Update `account_config_json()` implementations
+
+**Files:**
+- `crates/discord/src/plugin.rs:242-247`
+- `crates/telegram/src/plugin.rs:216-221`
+- `crates/slack/src/plugin.rs:213-218`
+- `crates/msteams/src/plugin.rs:432-437`
+- `crates/whatsapp/src/plugin.rs:230-235` (no change needed, no secrets)
+
+Change from:
+```rust
+serde_json::to_value(&s.config)
+```
+To:
+```rust
+serde_json::to_value(&Redacted(&s.config))
+```
+
+### Step 5: Deduplicate existing `serialize_secret` helpers
+
+Replace local `serialize_secret` / `serialize_option_secret` definitions in each channel config with imports from `moltis_common::secret_serde`:
+
+- `crates/discord/src/config.rs:221-226` — remove local, use import
+- `crates/telegram/src/config.rs:120-125` — remove local, use import
+- `crates/slack/src/config.rs:221-236` — remove local, use import
+- `crates/msteams/src/config.rs:81-96` — remove local, use import
+
+The `#[serde(serialize_with = "...")]` attributes on each config struct need updating to reference the shared path (e.g., `moltis_common::secret_serde::serialize_secret`).
+
+Note: The config, oauth, voice, and mcp crates also have duplicated helpers. These are out of scope for this issue but can be consolidated in a follow-up.
+
+### Step 6: Update Cargo.toml dependencies
+
+Add `moltis-common` dependency (if not already present) to channel crates that need `Redacted`:
+- `crates/discord/Cargo.toml`
+- `crates/telegram/Cargo.toml`
+- `crates/slack/Cargo.toml`
+- `crates/msteams/Cargo.toml`
+
+These already depend on `secrecy` directly, which is fine — `moltis-common` re-exports the helpers.
+
+### Step 7: Add tests
+
+In `crates/common/src/secret_serde.rs`:
+- Test that `serialize_secret` exposes the value
+- Test that `serialize_secret_redacted` produces `"[REDACTED]"`
+- Test that `Redacted<T>` wrapper serializes correctly
+
+In each channel config module (or a new test):
+- Test that `serde_json::to_value(&config)` exposes secrets (storage path)
+- Test that `serde_json::to_value(&Redacted(&config))` produces `"[REDACTED]"` for secret fields
+- Test that non-secret fields are identical in both paths
+
+## Verification
+
+1. `cargo test` — all existing + new tests pass
+2. `cargo +nightly-2025-11-30 fmt --all -- --check`
+3. `cargo +nightly-2025-11-30 clippy --workspace --all-targets -- -D warnings`
+4. Manual: start the server, hit the channel status API endpoint, verify token fields show `"[REDACTED]"` instead of real values
+5. Manual: verify channel config round-trips correctly (stop/start account, check secrets persist)
+
+## Files changed (summary)
+
+| File | Change |
+|------|--------|
+| `crates/common/Cargo.toml` | Add `secrecy` dep |
+| `crates/common/src/lib.rs` | Export `secret_serde` module |
+| `crates/common/src/secret_serde.rs` | **New**: shared helpers + `Redacted<T>` |
+| `crates/discord/src/config.rs` | Add `Redacted` impl, remove local helpers |
+| `crates/telegram/src/config.rs` | Add `Redacted` impl, remove local helpers |
+| `crates/slack/src/config.rs` | Add `Redacted` impl, remove local helpers |
+| `crates/msteams/src/config.rs` | Add `Redacted` impl, remove local helpers |
+| `crates/discord/src/plugin.rs` | Use `Redacted` in `account_config_json()` |
+| `crates/telegram/src/plugin.rs` | Use `Redacted` in `account_config_json()` |
+| `crates/slack/src/plugin.rs` | Use `Redacted` in `account_config_json()` |
+| `crates/msteams/src/plugin.rs` | Use `Redacted` in `account_config_json()` |
+| `crates/discord/Cargo.toml` | Add `moltis-common` dep (if missing) |
+| `crates/telegram/Cargo.toml` | Add `moltis-common` dep (if missing) |
+| `crates/slack/Cargo.toml` | Add `moltis-common` dep (if missing) |
+| `crates/msteams/Cargo.toml` | Add `moltis-common` dep (if missing) |
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-dark-action/60b3671c-660c-4602-af84-df8871eff14e.jsonl
+
+---
+
+commit and push. create a pr
+
+---
+
+Look at https://github.com/moltis-org/moltis/pull/472 and fix comments then resolve conversations
+
+---
+
+Look again at https://github.com/moltis-org/moltis/pull/472 and fix comments then resolve conversations
