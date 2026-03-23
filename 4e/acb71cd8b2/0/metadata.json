@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4eacb71cd8b2",
+  "session_id": "0b9f24ee-d5e4-44de-b6d4-27967204d58f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T10:22:36.131188Z",
+  "branch": "issue-122",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/local_llm_setup.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c0af8cbec8a4",
+  "checkpoint_transcript_start": 104,
+  "transcript_lines_at_start": 104,
+  "token_usage": {
+    "input_tokens": 115,
+    "cache_creation_tokens": 91283,
+    "cache_read_tokens": 11612218,
+    "output_tokens": 33386,
+    "api_call_count": 113
+  },
+  "summary": {
+    "intent": "Resolve all fixed/actionable PR review comments on a Rust codebase dealing with local LLM (llama.cpp) inference, including backend description fixes, code deduplication, debug logging, and backend concurrency improvements.",
+    "outcome": "Three of four actionable fixes were successfully implemented and committed: unknown GPU backend fallback in description/note functions, deduplication of meminfo helpers into a shared module, and a debug log for BackendAlreadyInitialized. The backend concurrency refactor using a shared static LlamaBackend was attempted and abandoned after a stash accident wiped the work; it was deemed a lower-priority theoretical race condition.",
+    "learnings": {
+      "repo": [
+        "llama-cpp-2 crate's LlamaBackend is an empty struct used only as proof-of-initialization; load_from_file takes \u0026LlamaBackend but never reads from it",
+        "read_proc_meminfo and parse_meminfo_kb were duplicated verbatim between crates/providers/src/local_gguf/system_info.rs and crates/providers/src/local_llm/system_info.rs",
+        "GgufRuntimeDevice is defined in a pub(crate) module (runtime_devices), making it inaccessible for construction in gateway tests — requires making the module pub to write cross-crate tests",
+        "Ubuntu 22.04 (Jammy) ships glslang-tools but not glslc as a standalone package — CI must use glslang-tools",
+        "The project uses git worktrees under /Users/penso/.superset/worktrees/moltis/issue-122/"
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/local_llm_setup.rs",
+          "finding": "gguf_backend_description and gguf_backend_note had no fallback for unknown GPU backends (e.g. ROCm/HIP), causing them to incorrectly report 'CPU inference' even when has_gpu()=true"
+        },
+        {
+          "path": "crates/providers/src/local_gguf/runtime_devices.rs",
+          "finding": "Canonical location for shared read_proc_meminfo and parse_meminfo_kb helpers after deduplication; also contains the BackendAlreadyInitialized debug log"
+        },
+        {
+          "path": "crates/providers/src/local_gguf/mod.rs",
+          "finding": "runtime_devices was pub(crate); had to be changed to pub to allow GgufRuntimeDevice construction in gateway integration tests"
+        }
+      ],
+      "workflow": [
+        "std::sync::OnceLock::get_or_try_init is unstable in stable Rust — must use OnceLock\u003cOption\u003cT\u003e\u003e with get_or_init and handle the error inside the closure",
+        "git stash pop during an investigation can silently drop all uncommitted changes if the stash was created at a clean state — always verify working tree before stashing",
+        "cargo check is fast enough to use as a compile gate before running tests; run cargo test --lib for unit tests and cargo test -p for crate-scoped tests"
+      ]
+    },
+    "friction": [
+      "git stash + pop wiped all in-progress uncommitted changes mid-session, requiring all edits to be redone from scratch",
+      "GgufRuntimeDevice was not constructible from the gateway crate due to pub(crate) module visibility, blocking cross-crate test writing and requiring a module visibility change",
+      "get_or_try_init on OnceLock is unstable, requiring a workaround with OnceLock\u003cOption\u003cT\u003e\u003e which is less ergonomic",
+      "Multiple failed Edit attempts on local_llm_setup.rs left the test section in a garbled state requiring a full rewrite of the affected block",
+      "The backend concurrency fix required deep inspection of the llama-cpp-2 crate internals (cargo registry source) to understand LlamaBackend's actual semantics before implementing"
+    ],
+    "open_items": [
+      "Backend concurrency fix (shared static LlamaBackend via OnceLock to prevent races between detect_runtime_support() and concurrent model loads) was intentionally deferred as a theoretical race with no reported crashes",
+      "The failing test test_register_saved_local_models_registers_custom_gguf_provider_from_saved_config in gateway was observed but not investigated — noted as possibly pre-existing from a merge"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T10:22:08.963491Z",
+    "agent_lines": 0,
+    "human_added": 72,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 72,
+    "agent_percentage": 0
+  }
+}
