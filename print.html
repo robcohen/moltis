@@ -855,10 +855,13 @@ MY_VAR = "value"               # Environment variables for the hook
 <h2 id="mcp-servers"><a class="header" href="#mcp-servers">MCP Servers</a></h2>
 <p>Connect to Model Context Protocol servers:</p>
 <pre><code class="language-toml">[mcp]
+request_timeout_secs = 30
+                                    # Default timeout for MCP requests (seconds)
 
 [mcp.servers.filesystem]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed"]
+request_timeout_secs = 90        # Optional override for this server
 
 [mcp.servers.github]
 command = "npx"
@@ -1447,7 +1450,10 @@ field on <code>OAuthConfig</code>), so adding support would be straightforward.<
 <p>After saving a remote server, Moltis only shows a sanitized URL plus header names/count in the UI and status views. Stored header values stay hidden.</p>
 <h3 id="via-configuration"><a class="header" href="#via-configuration">Via Configuration</a></h3>
 <p>Add servers to <code>moltis.toml</code>:</p>
-<pre><code class="language-toml">[mcp.servers.filesystem]
+<pre><code class="language-toml">[mcp]
+request_timeout_secs = 30
+
+[mcp.servers.filesystem]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/projects"]
 
@@ -1455,6 +1461,7 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/projects"]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
 env = { GITHUB_TOKEN = "ghp_..." }
+request_timeout_secs = 90
 
 [mcp.servers.remote_api]
 transport = "sse"
@@ -1476,18 +1483,40 @@ headers = { Authorization = "Bearer ${REMOTE_MCP_TOKEN}" }
 <h3 id="community-servers"><a class="header" href="#community-servers">Community Servers</a></h3>
 <p>Explore more at <a href="https://mcp.so">mcp.so</a> and <a href="https://github.com/modelcontextprotocol/servers">GitHub MCP Servers</a>.</p>
 <h2 id="configuration-options"><a class="header" href="#configuration-options">Configuration Options</a></h2>
-<pre><code class="language-toml">[mcp.servers.my_server]
+<pre><code class="language-toml">[mcp]
+request_timeout_secs = 30       # Global default timeout for MCP requests
+
+[mcp.servers.my_server]
 command = "node"                # Required for stdio transport
 args = ["server.js"]            # Optional arguments
 
 # Optional environment variables
 env = { API_KEY = "secret", DEBUG = "true" }
 
+# Optional: per-server timeout override
+request_timeout_secs = 90
+
 # Optional: remote transport
 transport = "sse"               # "stdio" (default) or "sse"
 url = "https://mcp.example.com/mcp"  # Required when transport = "sse"
 headers = { "x-api-key" = "$REMOTE_MCP_KEY" }  # Optional request headers
 </code></pre>
+<h2 id="request-timeouts"><a class="header" href="#request-timeouts">Request Timeouts</a></h2>
+<p>Moltis applies MCP request timeouts in two layers:</p>
+<ul>
+<li><code>mcp.request_timeout_secs</code> sets the global default for every MCP server</li>
+<li><code>mcp.servers.&lt;name&gt;.request_timeout_secs</code> optionally overrides that default for a specific server</li>
+</ul>
+<p>This is useful when most local MCP servers respond quickly, but one remote SSE server or one expensive tool server needs a longer timeout.</p>
+<pre><code class="language-toml">[mcp]
+request_timeout_secs = 30
+
+[mcp.servers.remote_api]
+transport = "sse"
+url = "https://mcp.example.com/mcp"
+request_timeout_secs = 120
+</code></pre>
+<p>In the web UI, the MCP settings page lets you edit both the global default timeout and the optional timeout override for each configured server.</p>
 <h2 id="remote-sse-secrets-and-placeholders"><a class="header" href="#remote-sse-secrets-and-placeholders">Remote SSE Secrets and Placeholders</a></h2>
 <p>Remote MCP servers often expect API keys or bearer tokens in the URL query string or request headers. Moltis supports both patterns.</p>
 <pre><code class="language-toml">[mcp.servers.linear_remote]
@@ -9693,6 +9722,15 @@ sessions.can_send = false
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h2 id="unreleased"><a class="header" href="#unreleased">[Unreleased]</a></h2>
 <h3 id="added"><a class="header" href="#added">Added</a></h3>
+<ul>
+<li><strong>Skill Editing &amp; Forking</strong>: Edit personal skills or fork repo skills into personal skills directly from the web UI
+<ul>
+<li>“Edit” button on personal/project skills opens an inline editor for name, description, allowed tools, and body</li>
+<li>“Fork &amp; Edit” button on repo skills copies the skill to personal skills for customization</li>
+<li>Confirmation hint in chat after skill creation/update with link to the skills page</li>
+</ul>
+</li>
+</ul>
 <h3 id="changed"><a class="header" href="#changed">Changed</a></h3>
 <h3 id="deprecated"><a class="header" href="#deprecated">Deprecated</a></h3>
 <h3 id="removed"><a class="header" href="#removed">Removed</a></h3>
