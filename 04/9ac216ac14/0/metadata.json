@@ -1,0 +1,61 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "049ac216ac14",
+  "session_id": "d888550e-e249-442a-808c-e353813ad62b",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T23:40:39.960456Z",
+  "branch": "glimmer-variraptor",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "28c27f2b5c11",
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 34790,
+    "cache_read_tokens": 288138,
+    "output_tokens": 2467,
+    "api_call_count": 10
+  },
+  "summary": {
+    "intent": "Add MiniMax M2.7 model support to Moltis so users can select the latest MiniMax models from the picker without manual config overrides.",
+    "outcome": "Added MiniMax-M2.7, MiniMax-M2.7-highspeed, and the previously missing MiniMax-M2.1-highspeed to the hardcoded static catalog in providers/src/lib.rs, committed and pushed for PR creation.",
+    "learnings": {
+      "repo": [
+        "MiniMax models are hardcoded in a MINIMAX_MODELS constant in crates/providers/src/lib.rs — there is no dynamic discovery because MiniMax's API /models endpoint returns 404, so supports_model_discovery is false.",
+        "Users can override/extend the model list via [providers.minimax] models = [...] in ~/.moltis/moltis.toml; custom entries appear first in the picker, static catalog fills in after.",
+        "Models in the catalog are ordered newest-first so the top entry in the picker is the latest model.",
+        "Provider code lives under a worktree path: /Users/penso/.superset/worktrees/moltis/glimmer-variraptor/"
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "finding": "MINIMAX_MODELS static catalog updated to include MiniMax-M2.7, MiniMax-M2.7-highspeed, and MiniMax-M2.1-highspeed. MiniMax-M2.1-highspeed was previously absent despite the base M2.1 being listed."
+        }
+      ],
+      "workflow": [
+        "Model IDs were verified against MiniMax's official API docs before editing the catalog, avoiding assumptions about naming conventions.",
+        "A compile check was run immediately after editing to confirm no build regressions before committing."
+      ]
+    },
+    "friction": [
+      "MiniMax does not expose a /models discovery endpoint, so every new model release requires a manual catalog update and release cycle — users on older versions are stuck.",
+      "MiniMax-M2.1-highspeed was silently missing from the catalog despite the base variant being present, suggesting no systematic process for keeping highspeed variants in sync."
+    ],
+    "open_items": [
+      "Consider adding a mechanism (e.g., a community-maintained model list or a fetchable remote config) so new MiniMax models can appear without requiring a Moltis release.",
+      "Audit other providers that have supports_model_discovery = false to check for similarly stale or incomplete model lists.",
+      "MiniMax-M2.7 highspeed variant existence was confirmed, but any additional variants (e.g., vision, function-calling-specific) were not investigated."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T23:40:22.390044Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}

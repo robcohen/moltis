@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "049ac216ac14",
+  "strategy": "manual-commit",
+  "branch": "glimmer-variraptor",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/04/9ac216ac14/0/metadata.json",
+      "transcript": "/04/9ac216ac14/0/full.jsonl",
+      "context": "/04/9ac216ac14/0/context.md",
+      "content_hash": "/04/9ac216ac14/0/content_hash.txt",
+      "prompt": "/04/9ac216ac14/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 34790,
+    "cache_read_tokens": 288138,
+    "output_tokens": 2467,
+    "api_call_count": 10
+  }
+}

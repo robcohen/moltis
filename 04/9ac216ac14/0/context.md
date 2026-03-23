@@ -1,0 +1,19 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Someone said: Hi everyone... Minimax has the 2.7 model now. But at the options of moltis, I just had 2.5. How can I put a custom model name?
+(Just installed Moltis 0.10.18) 
+
+How can I enable minimax 2.7, and future models automatically? I know I had model probes for minimax.
+
+### Prompt 2
+
+Please update the hardcoded list, but probe once to check its the right name
+
+### Prompt 3
+
+commit, push, create a PR
+
