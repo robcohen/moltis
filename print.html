@@ -9545,6 +9545,32 @@ let removed_count = registry.unregister_mcp();
 </code></pre>
 <p>The <code>source</code> and <code>mcpServer</code> fields are available to the UI for rendering
 tools grouped by origin.</p>
+<h2 id="lazy-registry-mode"><a class="header" href="#lazy-registry-mode">Lazy Registry Mode</a></h2>
+<p>By default every LLM turn includes full JSON schemas for all registered tools.
+With many MCP servers this can burn 15,000+ tokens per turn. <strong>Lazy mode</strong>
+replaces all tool schemas with a single <code>tool_search</code> meta-tool that the model
+uses to discover and activate tools on demand.</p>
+<h3 id="configuration-16"><a class="header" href="#configuration-16">Configuration</a></h3>
+<pre><code class="language-toml">[tools]
+registry_mode = "lazy"   # default: "full"
+</code></pre>
+<h3 id="how-it-works-15"><a class="header" href="#how-it-works-15">How it works</a></h3>
+<ol>
+<li>The model receives only <code>tool_search</code> in its tool list.</li>
+<li><code>tool_search(query="memory")</code> returns name + description pairs (max 15), no schemas.</li>
+<li><code>tool_search(name="memory_search")</code> returns the full schema and <strong>activates</strong> the tool.</li>
+<li>On the next iteration the model calls <code>memory_search</code> directly — standard pipeline, hooks fire normally.</li>
+</ol>
+<p>The runner re-computes schemas each iteration, so activated tools appear
+immediately. The iteration limit is tripled in lazy mode to account for the
+extra discovery round-trips.</p>
+<h3 id="when-to-use-1"><a class="header" href="#when-to-use-1">When to use</a></h3>
+<ul>
+<li>Many MCP servers connected (50+ tools)</li>
+<li>Long conversations where input token cost matters</li>
+<li>Sub-agent runs that only need a few specific tools</li>
+</ul>
+<p>In <strong>full</strong> mode (default), all schemas are sent every turn — no behavioral change from before this feature.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="agent-presets"><a class="header" href="#agent-presets">Agent Presets</a></h1>
 <p>Agent presets let <code>spawn_agent</code> run sub-agents with role-specific configuration.
 Use them to control model cost, tool access, session visibility, and behavior.</p>
