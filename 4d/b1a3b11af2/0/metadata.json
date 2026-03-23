@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4db1a3b11af2",
+  "session_id": "0b9f24ee-d5e4-44de-b6d4-27967204d58f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-23T09:37:52.302572Z",
+  "branch": "issue-122",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/local_llm_setup.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "acba9cf933b5",
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 31841,
+    "cache_read_tokens": 205009,
+    "output_tokens": 2087,
+    "api_call_count": 8
+  },
+  "summary": {
+    "intent": "Merge the main branch into issue-122, resolve any merge conflicts, then commit and push the result.",
+    "outcome": "Merge completed successfully with two conflicts resolved: kept both sides for local_llm_setup.rs (preserving branch's sample_system_info() alongside main's test guard), and accepted main's deletion of sandbox.rs since it was refactored into a module directory.",
+    "learnings": {
+      "repo": [
+        "sandbox.rs was refactored into a module directory on main — file deletion in merge conflicts may indicate a module restructuring, not a removal.",
+        "The project lives in a worktree at /Users/penso/.superset/worktrees/moltis/issue-122 under crates/gateway/src."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/local_llm_setup.rs",
+          "finding": "Contains sample_system_info() added on issue-122 branch; main added a test guard — both changes are compatible and were merged together."
+        }
+      ],
+      "workflow": [
+        "When a file is deleted on main during a merge conflict, check git history to determine whether it was deleted or restructured before accepting the deletion.",
+        "Verify branch-specific changes to conflicted files before resolving to avoid accidentally discarding work."
+      ]
+    },
+    "friction": [
+      "sandbox.rs conflict required investigation to determine it was a refactor (module dir) rather than an outright deletion, adding diagnostic overhead."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-23T09:37:41.548021Z",
+    "agent_lines": 974,
+    "human_added": 13468,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 14442,
+    "agent_percentage": 6.744218252319624
+  }
+}
