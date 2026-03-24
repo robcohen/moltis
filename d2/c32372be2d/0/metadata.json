@@ -1,0 +1,66 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d2c32372be2d",
+  "session_id": "74861b49-3d12-4cbd-bf5d-e29733883dba",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T14:46:00.348071Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "3827f5565adc",
+  "checkpoint_transcript_start": 135,
+  "transcript_lines_at_start": 135,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 9489,
+    "cache_read_tokens": 548866,
+    "output_tokens": 1342,
+    "api_call_count": 10
+  },
+  "summary": {
+    "intent": "Fix a failing CI pipeline for the moltis project that was encountering build errors related to Vulkan/GLSL shader compilation tools.",
+    "outcome": "Updated both ci.yml and release.yml to install the full LunarG `vulkan-sdk` package instead of piecemeal Ubuntu packages, resolving both the missing `glslc` package and the Vulkan SDK version mismatch issues.",
+    "learnings": {
+      "repo": [
+        "CI uses LunarG's apt repository for Vulkan tooling — must be set up before the main apt-get install block",
+        "llama-cpp-sys-2-0.1.133 requires Vulkan SDK \u003e=1.3.275 (needs LayerSettingsCreateInfoEXT and eMesaDozen) — Ubuntu base repos only ship 1.3.204",
+        "Installing vulkan-sdk from LunarG is the correct approach as it bundles libvulkan-dev, headers, and glslang-tools together, avoiding version mismatches"
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "Had duplicate identical apt install blocks that both needed updating; LunarG repo setup needed to be moved before the main install step"
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "Mirror of ci.yml Vulkan install pattern — required the same fix"
+        }
+      ],
+      "workflow": [
+        "CI failures should be diagnosed iteratively — first fix revealed a second deeper issue (package existed but wrong version)",
+        "When a third-party Rust crate (llama-cpp-sys) pins to a newer SDK API, the CI environment must match — Ubuntu LTS base repos lag significantly behind LunarG releases"
+      ]
+    },
+    "friction": [
+      "Two separate CI runs were required to diagnose the full problem — first run revealed missing glslc, second revealed Vulkan SDK version mismatch",
+      "Ubuntu base repos shipping Vulkan 1.3.204 while llama-cpp-sys requires 1.3.275+ is a silent compatibility trap with no clear error until compile time"
+    ],
+    "open_items": [
+      "Pin the LunarG vulkan-sdk to a specific version in CI to prevent future silent breakage when llama-cpp-sys updates its Vulkan API requirements",
+      "Verify release.yml CI passes end-to-end after these changes — only ci.yml run was referenced in the transcript"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T14:45:45.691171Z",
+    "agent_lines": 6,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "agent_percentage": 100
+  }
+}
