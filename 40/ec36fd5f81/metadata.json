@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "40ec36fd5f81",
+  "strategy": "manual-commit",
+  "branch": "shiny-anise",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/40/ec36fd5f81/0/metadata.json",
+      "transcript": "/40/ec36fd5f81/0/full.jsonl",
+      "context": "/40/ec36fd5f81/0/context.md",
+      "content_hash": "/40/ec36fd5f81/0/content_hash.txt",
+      "prompt": "/40/ec36fd5f81/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 11,
+    "cache_creation_tokens": 155436,
+    "cache_read_tokens": 1205747,
+    "output_tokens": 1469,
+    "api_call_count": 9
+  }
+}
