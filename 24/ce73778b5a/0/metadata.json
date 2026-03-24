@@ -1,0 +1,74 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "24ce73778b5a",
+  "session_id": "f216939b-eefe-49a7-8193-a7403482ab57",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T10:23:45.809907Z",
+  "branch": "uncovered-kip",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/cron_tool.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d04b48f62405",
+  "token_usage": {
+    "input_tokens": 37,
+    "cache_creation_tokens": 63979,
+    "cache_read_tokens": 1533232,
+    "output_tokens": 6690,
+    "api_call_count": 29
+  },
+  "summary": {
+    "intent": "Fix issue #430 in the moltis repo where some LLMs (e.g., Qwen3-Coder) send cron tool parameters as JSON strings instead of objects, or splay nested fields at the top level, causing 'job must be an object' and 'missing job parameter' errors.",
+    "outcome": "Implemented three rescue paths in cron_tool.rs: a try_parse_stringified_object helper, inline string-to-object coercion in normalize_*_value functions, and flat parameter rescue in execute(). Added 5 new tests; all 27 tests pass. Code was committed, pushed, and a PR was created.",
+    "learnings": {
+      "repo": [
+        "The moltis cron tool is in crates/tools/src/cron_tool.rs and has normalize_job_value, normalize_patch_value, normalize_schedule_value, normalize_payload_value, and normalize_sandbox_value functions for input coercion.",
+        "The worktree path for this feature branch is /Users/penso/.superset/worktrees/moltis/uncovered-kip/",
+        "LLM tool-call robustness is an explicit concern: the cron tool must handle malformed but recoverable inputs from weaker models."
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/cron_tool.rs",
+          "line": 561,
+          "end_line": 565,
+          "finding": "normalize_job_value() — added try_parse_stringified_object call before .as_object_mut() check to handle stringified JSON objects sent by LLMs"
+        },
+        {
+          "path": "crates/tools/src/cron_tool.rs",
+          "line": 588,
+          "end_line": 592,
+          "finding": "normalize_patch_value() — same stringified object rescue applied here"
+        },
+        {
+          "path": "crates/tools/src/cron_tool.rs",
+          "line": 756,
+          "end_line": 759,
+          "finding": "execute() 'add' arm — flat parameter rescue: if params.get('job') is None but top-level params contain schedule/payload keys, assemble synthetic job object"
+        }
+      ],
+      "workflow": [
+        "Rust \u0026mut parameter pattern matching in normalize functions required careful handling — initial implementation had a compile error that needed fixing before tests passed.",
+        "Running cargo fmt after edits is necessary; the project enforces formatting."
+      ]
+    },
+    "friction": [
+      "Initial implementation of the normalize function coercions had a \u0026mut pattern matching error that required three separate edit passes to fix.",
+      "Required multiple reads of the same file (6 reads of cron_tool.rs during analysis) due to the file being large and needing different sections."
+    ],
+    "open_items": [
+      "The same LLM parameter coercion problem may exist in other tools beyond cron_tool — no audit was done of other tool implementations.",
+      "The flat parameter rescue only covers the 'add' arm; the 'update' arm may have the same issue but wasn't addressed in this fix.",
+      "No changes were made to the tool schema to better guide LLMs — documentation/description improvements could reduce these errors at the source."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T10:23:28.013522Z",
+    "agent_lines": 156,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 156,
+    "agent_percentage": 100
+  }
+}
