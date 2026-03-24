@@ -1,0 +1,92 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "be761cfd319b",
+  "session_id": "02771477-c7e9-42df-b78d-4b6eb70343ed",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T16:42:02.998752Z",
+  "branch": "cookie-phrase",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/agents/src/prompt.rs",
+    "crates/chat/src/lib.rs",
+    "crates/skills/src/discover.rs",
+    "crates/skills/src/formats.rs",
+    "crates/skills/src/parse.rs",
+    "crates/skills/src/prompt_gen.rs",
+    "crates/skills/src/registry.rs",
+    "crates/skills/src/requirements.rs",
+    "crates/skills/src/types.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f11edc7060f9",
+  "token_usage": {
+    "input_tokens": 11275,
+    "cache_creation_tokens": 79345,
+    "cache_read_tokens": 3861894,
+    "output_tokens": 13953,
+    "api_call_count": 54
+  },
+  "summary": {
+    "intent": "Investigate and fix GitHub issue #452 in the moltis repo where OpenClaw skills with human-readable names (containing spaces/special chars) were being silently excluded from the manifest due to name validation failures.",
+    "outcome": "Implemented a slug fallback mechanism in the skills parsing pipeline, added 7 new tests, updated all SkillMetadata construction sites across 9 files, and committed/pushed the fix with a PR.",
+    "learnings": {
+      "repo": [
+        "SkillMetadata in crates/skills/src/types.rs had no slug or display_name fields, even though _meta.json (SkillMetaJson) already supported both fields — they just weren't wired into parsing",
+        "validate_name() enforces slug-format names (lowercase alphanumeric + hyphens + colons) and was silently excluding skills with human-readable names",
+        "scan_repo_skills in install.rs was logging at debug! level for non-conforming SKILL.md files, making the bug hard to diagnose",
+        "The _meta.json fallback path (read_meta_json) existed but was only used in the gateway service layer, not during manifest parsing",
+        "Skills crate has construction sites spread across: discover.rs, formats.rs, registry.rs, requirements.rs, prompt_gen.rs, agents/src/prompt.rs, chat/src/lib.rs"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/parse.rs",
+          "line": 31,
+          "end_line": 31,
+          "finding": "parse_metadata() validated meta.name with validate_name() with no fallback — root cause of the bug"
+        },
+        {
+          "path": "crates/skills/src/parse.rs",
+          "line": 198,
+          "end_line": 207,
+          "finding": "SkillMetaJson already had slug and display_name fields but they were never consulted during parse_metadata() or scan_repo_skills()"
+        },
+        {
+          "path": "crates/skills/src/types.rs",
+          "line": 129,
+          "end_line": 129,
+          "finding": "SkillMetadata struct had no slug or display_name fields; added both as Option\u003cString\u003e and derived Default"
+        },
+        {
+          "path": "crates/skills/src/install.rs",
+          "line": 306,
+          "end_line": 323,
+          "finding": "scan_repo_skills loop logged at debug! level for non-conforming SKILL.md — should be warn! with actionable detail"
+        }
+      ],
+      "workflow": [
+        "Deriving Default on a struct with all Option/Vec/String fields enables ..Default::default() spread syntax across many construction sites, avoiding tedious field-by-field updates",
+        "Adding optional fields with #[serde(default)] to a widely-constructed struct still requires updating all struct literal sites in Rust — no way around it without Default derive",
+        "Checking downstream crate compilation separately (agents, chat) after fixing the core crate is a necessary step when struct definitions change"
+      ]
+    },
+    "friction": [
+      "Many SkillMetadata struct literal construction sites spread across multiple crates required individual updates — a mechanical but error-prone process",
+      "Missed one construction site in discover.rs on first pass, requiring a second compile-fix cycle",
+      "Had to check whether SkillMetadata could safely derive Default before using ..Default::default() spread syntax"
+    ],
+    "open_items": [
+      "install.rs:306-323 scan_repo_skills loop should be upgraded from debug! to warn! logging for non-conforming SKILL.md files — mentioned in analysis but not implemented",
+      "openclaw-import/src/skills.rs was read but no changes were described — may also need updating to handle slug/display_name fields consistently",
+      "The _meta.json slug fallback path was added as a second fallback in resolve_name_or_slug(), but it's unclear if this path is tested under all edge cases"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T16:41:39.94373Z",
+    "agent_lines": 163,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 163,
+    "agent_percentage": 100
+  }
+}

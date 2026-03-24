@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "be761cfd319b",
+  "strategy": "manual-commit",
+  "branch": "cookie-phrase",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/agents/src/prompt.rs",
+    "crates/chat/src/lib.rs",
+    "crates/skills/src/discover.rs",
+    "crates/skills/src/formats.rs",
+    "crates/skills/src/parse.rs",
+    "crates/skills/src/prompt_gen.rs",
+    "crates/skills/src/registry.rs",
+    "crates/skills/src/requirements.rs",
+    "crates/skills/src/types.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/be/761cfd319b/0/metadata.json",
+      "transcript": "/be/761cfd319b/0/full.jsonl",
+      "context": "/be/761cfd319b/0/context.md",
+      "content_hash": "/be/761cfd319b/0/content_hash.txt",
+      "prompt": "/be/761cfd319b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 11275,
+    "cache_creation_tokens": 79345,
+    "cache_read_tokens": 3861894,
+    "output_tokens": 13953,
+    "api_call_count": 54
+  }
+}
