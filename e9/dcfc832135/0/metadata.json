@@ -1,0 +1,62 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e9dcfc832135",
+  "session_id": "02771477-c7e9-42df-b78d-4b6eb70343ed",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T18:55:20.868181Z",
+  "branch": "cookie-phrase",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/skills/src/parse.rs",
+    "crates/skills/src/types.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6adcf0e88b7a",
+  "checkpoint_transcript_start": 351,
+  "transcript_lines_at_start": 351,
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 101332,
+    "cache_read_tokens": 1169357,
+    "output_tokens": 2199,
+    "api_call_count": 13
+  },
+  "summary": {
+    "intent": "Fix new PR review comments on moltis PR #484 and resolve all open review conversations.",
+    "outcome": "Added a missing slug assertion test for `_meta.json` parsing and a safety comment on the `Default` derive; committed and pushed fixes, resolving all open conversations.",
+    "learnings": {
+      "repo": [
+        "Skills parsing lives in crates/skills/src/parse.rs and crates/skills/src/types.rs",
+        "PR review cycles on moltis follow a pattern of fetching comment IDs and resolving threads via GitHub API after pushing fixes",
+        "Slug field is intentionally dual-populated after promotion to `name` — this is a documented design choice, not a bug"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/parse.rs",
+          "finding": "Missing test: slug assertion was not covered for the `_meta.json` parsing path; added to close the gap"
+        },
+        {
+          "path": "crates/skills/src/types.rs",
+          "finding": "The `Default` derive required a safety comment explaining why it is intentional/safe in this context"
+        }
+      ],
+      "workflow": [
+        "Review rounds are tracked by fetching PR comment thread IDs and resolving them via Bash after each push",
+        "Previously resolved threads can appear in raw API output — need to filter to identify truly new comments"
+      ]
+    },
+    "friction": [
+      "First 3 review comments fetched were already-resolved ones from a prior round, requiring manual filtering to identify the 2 new comments"
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T18:55:09.03135Z",
+    "agent_lines": 9,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 9,
+    "agent_percentage": 100
+  }
+}
