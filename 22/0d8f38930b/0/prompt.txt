@@ -1,0 +1,52 @@
+Look at https://github.com/moltis-org/moltis/discussions/374 and plan a fix
+
+---
+
+Implement 1. and leave documentation to why it's safe.
+
+---
+
+commit, push, create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/477 and resolve conversations
+
+---
+
+Checking moltis-slack v0.1.0 (/Users/penso/.superset/worktrees/moltis/plastic-playground/crates/slack)
+error: used `expect()` on a `Result` value
+   --> crates/browser/src/pool.rs:750:19
+    |
+750 |         let tmp = tempfile::tempdir().expect("failed to create temp dir");
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+    = note: requested on the command line with `-D clippy::expect-used`
+
+error: used `expect()` on a `Result` value
+   --> crates/browser/src/pool.rs:752:9
+    |
+752 |         std::fs::create_dir_all(&dir).expect("failed to create dir");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/browser/src/pool.rs:756:20
+    |
+756 |           let mode = std::fs::metadata(&dir)
+    |  ____________________^
+757 | |             .expect("failed to read metadata")
+    | |______________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: could not compile `moltis-browser` (lib test) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+      Timing report saved to /Users/penso/.superset/worktrees/moltis/plastic-playground/target/cargo-timings/cargo-timing-20260324T003055.784915Z.html
+[local/lint] failed in 98s
+~/.s/w/m/plastic-playground plastic-playground ❯
