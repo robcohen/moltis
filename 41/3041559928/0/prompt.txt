@@ -1,0 +1,83 @@
+merge main to this branch, solve conflicts, then fix all comments from https://github.com/moltis-org/moltis/pull/361 and resolve conversations, commit and push
+
+---
+
+did you push it? https://github.com/moltis-org/moltis/pull/361 still shows conflicts
+
+---
+
+Please discard the change to .github/workflows/release.yml there is no need for that
+
+---
+
+- classic PAT: repo:status (or repo)
+- fine-grained PAT: Commit statuses (Read and write)
+
+If this is an org with SSO enforcement, authorize the token for the org.
+If GH_TOKEN is set in your shell, try unsetting it to use your gh auth token:
+  unset GH_TOKEN
+Disabling further status publication for this run; continuing local checks.
+gh: Not Found (HTTP 404)
+Failed to publish status 'local/i18n' to thomas7725353/moltis@5a5a9cd94944685d893ddf09d566d9a68a700f85.
+Check that your token can write commit statuses for that repository.
+
+Expected token access:
+- classic PAT: repo:status (or repo)
+- fine-grained PAT: Commit statuses (Read and write)
+
+If this is an org with SSO enforcement, authorize the token for the org.
+If GH_TOKEN is set in your shell, try unsetting it to use your gh auth token:
+  unset GH_TOKEN
+Disabling further status publication for this run; continuing local checks.
+cargo +nightly-2025-11-30 fmt --all -- --check
+Checked 133 files in 103ms. No fixes applied.
+[local/biome] passed in 1s
+Diff in /Users/penso/.superset/worktrees/moltis/thomas7725353/feat/issue-275-openai-responses/crates/providers/src/openai.rs:20:
+     super::openai_compat::{
+         ResponsesStreamState, SseLineResult, StreamingToolState, finalize_responses_stream,
+         finalize_stream, parse_openai_compat_usage, parse_openai_compat_usage_from_payload,
+-        parse_tool_calls, process_openai_sse_line,
+-        process_responses_sse_line, responses_output_index,
+-        split_responses_instructions_and_input, strip_think_tags, to_openai_tools,
+-        to_responses_api_tools,
++        parse_tool_calls, process_openai_sse_line, process_responses_sse_line,
++        responses_output_index, split_responses_instructions_and_input, strip_think_tags,
++        to_openai_tools, to_responses_api_tools,
+     },
+     moltis_agents::model::{
+         ChatMessage, CompletionResponse, LlmProvider, ModelMetadata, StreamEvent, Usage,
+Diff in /Users/penso/.superset/worktrees/moltis/thomas7725353/feat/issue-275-openai-responses/crates/providers/src/openai.rs:803:
+             }
+         })
+     }
+-
+
+     #[allow(clippy::collapsible_if)]
+     fn stream_with_tools_sse(
+Diff in /Users/penso/.superset/worktrees/moltis/thomas7725353/feat/issue-275-openai-responses/crates/providers/src/openai_compat.rs:1108:
+     }
+ }
+
+-
+ #[allow(clippy::unwrap_used, clippy::expect_used)]
+ #[cfg(test)]
+ mod tests {
+error: Recipe `format-check` failed on line 14 with exit code 1
+[local/fmt] failed in 2s
+[local/fmt] total 2s
+[local/biome] total 1s
+🌈 zizmor v1.22.0
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+i18n parity OK: 3 locales, 18 namespaces.
+[local/i18n] passed in 3s
+[local/i18n] total 3s
+One or more parallel local checks failed.
+~/.s/w/m/t/f/issue-275-openai-responses thomas7725353/feat/issue-275-openai-responses ❯  INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (14 ignored, 47 suppressed)
+[local/zizmor] passed in 9s
+~/.s/w/m/t/f/issue-275-openai-responses thomas7725353/feat/issue-275-openai-responses ❯

@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "413041559928",
+  "strategy": "manual-commit",
+  "branch": "thomas7725353/feat/issue-275-openai-responses",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/openai.rs",
+    "crates/providers/src/openai_compat.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/41/3041559928/0/metadata.json",
+      "transcript": "/41/3041559928/0/full.jsonl",
+      "context": "/41/3041559928/0/context.md",
+      "content_hash": "/41/3041559928/0/content_hash.txt",
+      "prompt": "/41/3041559928/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 77,
+    "cache_creation_tokens": 125655,
+    "cache_read_tokens": 6953551,
+    "output_tokens": 49873,
+    "api_call_count": 69
+  }
+}
