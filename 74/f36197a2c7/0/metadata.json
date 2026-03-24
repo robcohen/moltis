@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "74f36197a2c7",
+  "session_id": "74861b49-3d12-4cbd-bf5d-e29733883dba",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T15:50:38.411246Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/release.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "91e1267daf82",
+  "token_usage": {
+    "input_tokens": 69,
+    "cache_creation_tokens": 94509,
+    "cache_read_tokens": 2889361,
+    "output_tokens": 8136,
+    "api_call_count": 55
+  },
+  "summary": {
+    "intent": "Fix a CI failure in the moltis repo and add a pre-release workflow dispatch option to allow publishing artifacts for QA without triggering auto-update notifications to users.",
+    "outcome": "Fixed two sequential CI failures (invalid apt package name, then outdated Vulkan SDK version), and added a `pre_release` workflow_dispatch input to release.yml that builds/publishes artifacts but skips Homebrew tap, deploy template, and releases.json updates.",
+    "learnings": {
+      "repo": [
+        "Auto-update notifications are driven by `website/releases.json` being updated via the `update-deploy-template-tags` job — users poll `https://www.moltis.org/releases.json` hourly.",
+        "The LunarG Vulkan SDK repo is added in CI for Ubuntu 22.04 (jammy) — the correct package is `vulkan-sdk` (full SDK) or `glslang-tools`, not `glslc` which doesn't exist in that repo.",
+        "Ubuntu 22.04 base repos only ship libvulkan-dev 1.3.204, which is too old for llama-cpp-sys-2 v0.1.133 which needs LayerSettingsCreateInfoEXT (added in ~1.3.275+).",
+        "The release workflow already had a `dry_run` workflow_dispatch input that skips publishing but builds everything.",
+        "Vulkan shader compilation for llama-cpp-2 with the vulkan feature is a transitive build dependency — no direct references to glslc/glslang in Rust source code."
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "Two jobs install build deps: the main Rust CI job and a scheduled full targets job — both needed the glslc→glslang-tools and libvulkan-dev→vulkan-sdk fixes."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "Added pre_release boolean input to workflow_dispatch; when true, marks GitHub release as prerelease and skips update-homebrew-tap and update-deploy-template-tags jobs via if conditions."
+        },
+        {
+          "path": "crates/gateway/src/update_check.rs",
+          "finding": "Contains the update check logic that polls releases.json from the moltis.org website."
+        }
+      ],
+      "workflow": [
+        "When fixing CI package issues, verify package names against the actual repo package list (e.g. LunarG Packages file) rather than assuming package names match binary names.",
+        "A two-step CI failure pattern: first fix unblocked a second deeper issue (version mismatch) that was masked by the first failure.",
+        "Pre-release workflow pattern: build and publish artifacts but skip notification/distribution channels, then promote manually after QA."
+      ]
+    },
+    "friction": [
+      "A previous commit (681e9f5b) had introduced the broken `glslc` package name — the fix was effectively a revert of that change.",
+      "Had to pull/rebase before pushing on the second fix due to the first push having updated the remote.",
+      "Needed to read release.yml in multiple chunks (large file) to understand the full job dependency graph before making edits.",
+      "Security hook flagged workflow file edits as informational warnings, requiring tool retries."
+    ],
+    "open_items": [
+      "After QA of the pre-release build, user needs to manually edit the GitHub release to unmark prerelease and trigger/run the deploy-tags and Homebrew tap jobs to promote to stable.",
+      "The dry-run triggered at the start (run 23498472801) was superseded — may want to cancel it if still running.",
+      "docs/src/local-validation.md was updated to reference glslang-tools — should verify the documentation accurately reflects the full install steps for local development on Ubuntu 22.04 vs 24.04."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T15:50:14.301854Z",
+    "agent_lines": 9,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 9,
+    "agent_percentage": 100
+  }
+}

@@ -1,0 +1,21 @@
+Fix this CI fail: https://github.com/moltis-org/moltis/actions/runs/23493103239/job/68366675237
+
+---
+
+commit and push it
+
+---
+
+CI failed again: https://github.com/moltis-org/moltis/actions/runs/23494145440/job/68370460989
+
+---
+
+Can you check if I can push a release to see if it builds, without updating remote files for people not to get an auto update message until I QAed this version
+
+---
+
+I might want to publish it, just I don't want people to be aware until I tested the new release
+
+---
+
+Yes add a pre-release workflow_dispatch
