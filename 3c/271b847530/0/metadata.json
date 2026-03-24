@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3c271b847530",
+  "session_id": "37170bcd-b1cc-4fce-8fd0-8656cda5606a",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T10:45:30.275852Z",
+  "branch": "twilight-lychee",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/src/mcp.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "85d5915ad9e0",
+  "checkpoint_transcript_start": 138,
+  "transcript_lines_at_start": 138,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 5355,
+    "cache_read_tokens": 527282,
+    "output_tokens": 1691,
+    "api_call_count": 10
+  },
+  "summary": {
+    "intent": "Fix a PR (#479 on moltis-org/moltis) by addressing reviewer comments, resolving conversation threads, and keeping the PR clean.",
+    "outcome": "Pushed a commit switching to Node 22 LTS via NodeSource with .npm cache volume and updated docs; resolved all review threads including a new one about Docker-in-Docker bind mount path clarification in mcp.md.",
+    "learnings": {
+      "repo": [
+        "Node version is managed via NodeSource in the Dockerfile, targeting Node 22 LTS",
+        ".npm cache is added to VOLUME for persistence",
+        "Docker-in-Docker setups use host paths for bind mounts, not paths inside the Moltis container — this is documented in docs/src/mcp.md"
+      ],
+      "code": [
+        {
+          "path": "docs/src/mcp.md",
+          "finding": "Added clarification that Docker-in-Docker bind mount paths reference the host filesystem, not the Moltis container's paths"
+        }
+      ],
+      "workflow": [
+        "GitHub review threads must be resolved via API (thread IDs), not just by minimizing comments — minimizing is not the same as resolving",
+        "Accidentally minimized comments can be unminimized via the GitHub API"
+      ]
+    },
+    "friction": [
+      "Accidentally minimized a review comment instead of resolving the thread, requiring a follow-up API call to unminimize it",
+      "Resolving review threads required fetching thread IDs first — not directly accessible without a separate API call"
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T10:45:19.638067Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}
