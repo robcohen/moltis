@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "313a9f1e05da",
+  "strategy": "manual-commit",
+  "branch": "abalone-carrot",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/server.rs",
+    "crates/oauth/src/callback_server.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/31/3a9f1e05da/0/metadata.json",
+      "transcript": "/31/3a9f1e05da/0/full.jsonl",
+      "context": "/31/3a9f1e05da/0/context.md",
+      "content_hash": "/31/3a9f1e05da/0/content_hash.txt",
+      "prompt": "/31/3a9f1e05da/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 4283,
+    "cache_read_tokens": 679932,
+    "output_tokens": 2038,
+    "api_call_count": 11
+  }
+}
