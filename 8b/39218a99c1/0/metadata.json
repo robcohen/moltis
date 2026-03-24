@@ -1,0 +1,69 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8b39218a99c1",
+  "session_id": "74861b49-3d12-4cbd-bf5d-e29733883dba",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T14:10:36.074653Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    "docs/src/local-validation.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1b387fcf0086",
+  "token_usage": {
+    "input_tokens": 31,
+    "cache_creation_tokens": 69606,
+    "cache_read_tokens": 999091,
+    "output_tokens": 3234,
+    "api_call_count": 25
+  },
+  "summary": {
+    "intent": "Fix a failing CI job in the moltis repository caused by an invalid apt package name for GLSL shader compilation tools.",
+    "outcome": "Replaced the non-existent `glslc` apt package with the correct `glslang-tools` package in CI workflows and release config, then committed and pushed the fix.",
+    "learnings": {
+      "repo": [
+        "The project uses LunarG Vulkan SDK apt repo for Ubuntu 22.04 (jammy) to install build dependencies for Vulkan/GPU support.",
+        "llama-cpp-2 with the 'vulkan' feature requires GLSL shader compilation tools as a build dependency.",
+        "Commit 681e9f5b introduced the regression by replacing valid 'glslang-tools' with non-existent 'glslc' package.",
+        "glslc is not a standalone apt package in the LunarG jammy repo — glslang-tools is the correct package name."
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "Two occurrences of glslc needed fixing: one in the Rust CI job and one in the scheduled full targets job."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "One occurrence of glslc in release workflow also needed fixing."
+        },
+        {
+          "path": "docs/src/local-validation.md",
+          "finding": "Documentation referenced glslc and was updated to stay consistent with the workflow fix."
+        }
+      ],
+      "workflow": [
+        "LunarG Vulkan SDK package list for jammy can be verified at https://packages.lunarg.com/vulkan/dists/jammy/main/binary-amd64/Packages.",
+        "GitHub Actions API can be used to fetch job logs and check run status before a run completes."
+      ]
+    },
+    "friction": [
+      "A security hook flagged the workflow file edits as informational warnings, requiring edits to be retried.",
+      "The LunarG repo does not have a 'glslc' or 'shaderc' package, which required fetching the package list to confirm the correct name."
+    ],
+    "open_items": [
+      "No Rust source code directly references glslc/glslang/shaderc — the dependency is transitive through llama-cpp-2's vulkan feature; worth documenting this dependency chain explicitly."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T14:10:22.009576Z",
+    "agent_lines": 4,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "agent_percentage": 100
+  }
+}
