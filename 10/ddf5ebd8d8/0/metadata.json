@@ -1,0 +1,115 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "10ddf5ebd8d8",
+  "session_id": "e91ffe16-fa98-4282-a0ba-74c510e0faa5",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T10:51:22.010137Z",
+  "branch": "httpd-crate",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/httpd/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0faa99a2fd80",
+  "token_usage": {
+    "input_tokens": 1557,
+    "cache_creation_tokens": 621719,
+    "cache_read_tokens": 23430062,
+    "output_tokens": 44996,
+    "api_call_count": 248
+  },
+  "summary": {
+    "intent": "Extract HTTP server functionality into a dedicated `httpd` crate from the `gateway` crate, merge main repeatedly to stay current, and address code review feedback on PR #465.",
+    "outcome": "The httpd crate extraction is complete and the PR is ready to merge; all greptile review comments across multiple rounds were fixed and resolved, formatting/test failures were corrected, and logs.txt was purged from git history.",
+    "learnings": {
+      "repo": [
+        "The `moltis-httpd` crate owns HTTP transport (axum, tower-http, rustls, tokio-tungstenite) while `moltis-gateway` owns business logic (sessions, RPC, channels, agents, auth); dependency is strictly one-way: httpd → gateway.",
+        "rustls crypto provider `install_default()` must be called in `prepare_gateway` (not `start_gateway`) so both the direct and swift-bridge/embedded startup paths initialise TLS correctly.",
+        "`browser_tool_for_warmup` was silently dropped by a `..` destructure pattern in `PreparedGatewayCore`; it must be extracted explicitly and threaded through `BannerMeta` to reach `start_browser_warmup_after_listener`.",
+        "`_proxy_shutdown_tx` must be kept alive inside the spawn closure in swift-bridge; dropping it at destructure time kills the trusted-network proxy immediately.",
+        "The metrics collection interval is 30 s (120 ticks × 30 s = 1 h cleanup cycle); accidentally setting it to 10 s shrinks the history window from 6 h to 2 h.",
+        "The `install` feature gate on `moltis-skills/src/lib.rs` was dead code on main (feature never defined in Cargo.toml); main subsequently added unconditional users of the module, so the gate must remain absent.",
+        "The `/ws` route alias must exist alongside `/ws/chat` so node-add generated commands continue to work.",
+        "Session event enrichment (label, model, preview, channel binding) was ported from gateway to httpd; without it clients receive only `kind` + `sessionKey`.",
+        "The `cron_service` field on `PreparedGateway` requires callers to explicitly call `.start()` — this was undocumented and flagged by review.",
+        "4 release jobs each had a redundant pre-version build step (compiled binary before `MOLTIS_VERSION` was set, then compiled again with it), wasting CI time.",
+        "The sandboxes E2E test failures (missing 'Refresh' button) are pre-existing on main and unrelated to this PR — they reflect container runtime unavailability in the test environment.",
+        "A merge conflict resolution incorrectly chose `!(isMain || isCron)` instead of main's `!isMain` in `session-header.js`, hiding the delete button for cron sessions."
+      ],
+      "code": [
+        {
+          "path": "crates/httpd/src/server.rs",
+          "finding": "Central file for the extraction; owns prepare_gateway, start_gateway, BannerMeta, PreparedGateway structs, session event enrichment loop, and metrics collection interval constant."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "start_browser_warmup_after_listener signature was updated to accept the browser tool parameter; PreparedGatewayCore fields that were silently dropped via `..` now need explicit extraction."
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "line": 276,
+          "finding": "Local `MAX_LIFETIME` constant was shadowed by module-level `MAX_BROWSER_INSTANCE_LIFETIME`; the local was unused and should be removed."
+        },
+        {
+          "path": "crates/node-host/src/service.rs",
+          "finding": "Systemd ExecStart arguments (--node-id, --host, --token, display name, working dir) and launchd plist values must be quoted/xml-escaped to handle spaces and special characters."
+        },
+        {
+          "path": "crates/web/src/lib.rs",
+          "finding": "Duplicate /api/sessions route registrations would panic axum at startup; one set must be removed."
+        },
+        {
+          "path": "crates/web/src/assets/js/components/session-header.js",
+          "finding": "Delete button visibility guard should be `!isMain` not `!(isMain || isCron)`; cron sessions are deletable per the test suite."
+        },
+        {
+          "path": "crates/httpd/Cargo.toml",
+          "finding": "moltis-agents must be added as a workspace dependency for httpd to reference the AgentTool type when threading browser_tool_for_warmup through BannerMeta."
+        },
+        {
+          "path": "crates/httpd/tests/heartbeat_cron.rs",
+          "line": 14,
+          "finding": "After moving gateway tests to httpd/tests/, imports must change from `moltis_gateway::{build_gateway_base, finalize_gateway_app}` to `moltis_httpd::server::{...}`; nightly rustfmt also requires grouped use blocks."
+        },
+        {
+          "path": "crates/swift-bridge/src/lib.rs",
+          "finding": "_proxy_shutdown_tx must be moved into the spawn closure, not held in the outer scope where it gets dropped before the async task runs."
+        }
+      ],
+      "workflow": [
+        "git-filter-repo removes the `origin` remote as a safety measure after rewriting history; always re-add it with `git remote add origin \u003curl\u003e` before force-pushing.",
+        "Force-pushing rewritten history closes open GitHub PRs because GitHub sees the branch as entirely new; use `gh pr reopen \u003cid\u003e` or create a new PR.",
+        "When git-filter-repo rewrites the entire repo history (not just branch commits), the rewritten branch shares no ancestor with origin/main; the fix is to create a new branch from origin/main and apply the diff as a squash commit.",
+        "gh CLI requires a default repo set (`gh repo set-default`) when the remote was removed and re-added manually.",
+        "greptile review comments are retrievable via `gh api` on pull request review threads; resolving them requires PATCH requests to mark threads as resolved.",
+        "nightly rustfmt enforces grouped `use` blocks — separate `use moltis_gateway::...` and `use moltis_httpd::...` statements must be merged into a single `use { ... }` block.",
+        "Cargo.lock conflicts should be resolved by taking main's version then running `cargo fetch` rather than attempting manual merge."
+      ]
+    },
+    "friction": [
+      "git-filter-repo silently removed the origin remote, causing the force-push to require manual remote re-add and then unexpectedly closing the PR.",
+      "Rewriting entire repo history (2027 commits) with filter-repo broke the branch's relationship with main, requiring a squash-onto-main workaround instead of a clean rebase.",
+      "Multiple rounds of greptile comments required repeated merge+fix+push cycles, each discovering new issues (4 separate rounds on PR #465).",
+      "The `moltis-agents` dependency was missing from httpd's Cargo.toml, causing a compile error only discovered after threading the browser tool type through multiple structs.",
+      "The `install` feature gate on skills/src/lib.rs caused a false-positive greptile comment; restoring it broke compilation because main had already added unconditional users.",
+      "The metrics interval regression (10s instead of 30s) and cleanup counter mismatch (360 instead of 120) were introduced during merge conflict resolution and only caught by review.",
+      "23 merge conflicts in the first main merge required parallel agent resolution across multiple file groups.",
+      "The session-header.js merge conflict resolution silently chose the wrong condition, only caught by E2E test failure later."
+    ],
+    "open_items": [
+      "The 4 sandbox E2E test failures (missing 'Refresh' button / container runtime unavailability) are pre-existing on main and were not fixed in this PR.",
+      "The `install` feature on moltis-skills has no corresponding Cargo.toml feature entry — the guard was dead code; this inconsistency between the feature gate pattern and actual usage should be cleaned up.",
+      "The release.yml redundant build removal saved CI time but the root cause (why builds were duplicated per-job) was not documented.",
+      "The squash commit approach used to recover from the filter-repo history rewrite means this PR loses granular commit history for the httpd extraction work."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T10:50:27.975357Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}

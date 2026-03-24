@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "10ddf5ebd8d8",
+  "strategy": "manual-commit",
+  "branch": "httpd-crate",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/httpd/src/server.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/10/ddf5ebd8d8/0/metadata.json",
+      "transcript": "/10/ddf5ebd8d8/0/full.jsonl",
+      "context": "/10/ddf5ebd8d8/0/context.md",
+      "content_hash": "/10/ddf5ebd8d8/0/content_hash.txt",
+      "prompt": "/10/ddf5ebd8d8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1557,
+    "cache_creation_tokens": 621719,
+    "cache_read_tokens": 23430062,
+    "output_tokens": 44996,
+    "api_call_count": 248
+  }
+}
