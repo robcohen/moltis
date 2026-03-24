@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5014c25a0f4d",
+  "strategy": "manual-commit",
+  "branch": "uncovered-kip",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/cron_tool.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/50/14c25a0f4d/0/metadata.json",
+      "transcript": "/50/14c25a0f4d/0/full.jsonl",
+      "context": "/50/14c25a0f4d/0/context.md",
+      "content_hash": "/50/14c25a0f4d/0/content_hash.txt",
+      "prompt": "/50/14c25a0f4d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 5100,
+    "cache_read_tokens": 1273047,
+    "output_tokens": 2624,
+    "api_call_count": 15
+  }
+}
