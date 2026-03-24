@@ -411,6 +411,48 @@ scopes = ["mcp:read", "mcp:write"]
 </code></pre>
 <h3 id="re-authentication"><a class="header" href="#re-authentication">Re-authentication</a></h3>
 <p>If your session expires or tokens are revoked, Moltis automatically re-authenticates on the next <code>401</code> response. You can also trigger re-authentication manually via the <code>mcp.reauth</code> RPC method.</p>
+<h2 id="running-mcp-servers-in-docker"><a class="header" href="#running-mcp-servers-in-docker">Running MCP Servers in Docker</a></h2>
+<p>When running Moltis in Docker, you have two options for stdio-based MCP servers:</p>
+<h3 id="using-the-built-in-nodejs"><a class="header" href="#using-the-built-in-nodejs">Using the built-in Node.js</a></h3>
+<p>The Moltis Docker image includes Node.js and npm, so most MCP servers work out of the box:</p>
+<pre><code class="language-toml">[mcp.servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+</code></pre>
+<blockquote>
+<p><strong>Tip:</strong> Mount <code>/home/moltis/.npm</code> as a named volume so packages are only
+downloaded once, and bind-mount any directories the MCP server needs to
+access:</p>
+<pre><code class="language-sh">docker run \
+  -v moltis-npm-cache:/home/moltis/.npm \
+  -v /host/path/to/data:/data \
+  ...
+</code></pre>
+</blockquote>
+<h3 id="using-docker-containers"><a class="header" href="#using-docker-containers">Using Docker containers</a></h3>
+<p>Since the Moltis image ships the Docker CLI (<code>docker-ce-cli</code>), and given a Docker daemon is reachable via the mounted socket, you can also run MCP servers as isolated containers. This is useful when you need a specific Node version, want stronger isolation, or prefer official MCP Docker images:</p>
+<pre><code class="language-toml"># Run an npm-based MCP server in a container
+[mcp.servers.filesystem]
+command = "docker"
+args = [
+  "run", "--rm", "-i",
+  # NOTE: bind-mount paths resolve against the HOST filesystem, not the
+  # Moltis container. Use the same host path you mounted into Moltis.
+  "-v", "/data:/data",
+  # Cache npm downloads across container restarts
+  "-v", "moltis-npx-cache:/root/.npm",
+  "--entrypoint", "npx",
+  "node:22-alpine",
+  "-y", "@modelcontextprotocol/server-filesystem", "/data",
+]
+
+# Use an official MCP Docker image
+[mcp.servers.memory]
+command = "docker"
+args = ["run", "--rm", "-i", "mcp/memory"]
+</code></pre>
+<p>The named volume <code>moltis-npx-cache</code> persists the npm cache across container restarts, avoiding re-downloads on every MCP server restart. For air-gapped environments, consider pre-building a custom image with the MCP package installed.</p>
+<p>When using containerized MCP servers, remember to mount any directories the server needs access to with <code>-v</code>. Because Moltis talks to the Docker daemon via the mounted socket, bind-mount paths (<code>-v</code>) always reference the <strong>host</strong> filesystem — not the Moltis container’s filesystem.</p>
 <h2 id="security-considerations"><a class="header" href="#security-considerations">Security Considerations</a></h2>
 <div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
 <div class="admonition-title">
