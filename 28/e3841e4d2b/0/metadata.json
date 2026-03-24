@@ -1,0 +1,78 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "28e3841e4d2b",
+  "session_id": "625aa372-f873-4243-b39c-f13a81d37a1e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T00:04:34.2134Z",
+  "branch": "shiny-anise",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "crates/agents/src/prompt.rs",
+    "crates/chat/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9390cdcbc376",
+  "token_usage": {
+    "input_tokens": 137,
+    "cache_creation_tokens": 248440,
+    "cache_read_tokens": 11492067,
+    "output_tokens": 28546,
+    "api_call_count": 119
+  },
+  "summary": {
+    "intent": "Stabilize the system prompt for local LLM KV cache reuse by eliminating per-second datetime changes and volatile node telemetry from the prompt prefix.",
+    "outcome": "System prompt is now fully stable between turns: datetime moved to a trailing system message injected after conversation history, volatile node telemetry (cpu/mem/disk) removed from the prompt since the existing nodes_list tool already serves it on-demand.",
+    "learnings": {
+      "repo": [
+        "The existing nodes_list tool already returns full telemetry (cpu_usage, mem_available, disk_available), so volatile fields in the system prompt were redundant.",
+        "run_agent_loop_streaming is called from many places, so adding a new parameter would be invasive — injecting the datetime message into the history slice in the chat handler was cleaner.",
+        "apply_voice_reply_suffix previously needed runtime_context to reposition the datetime tail; removing datetime from the system prompt simplified this to a no-arg call.",
+        "serialize_messages_for_request() in openai.rs iterates all messages without filtering by position, so trailing system messages are preserved correctly for all OpenAI-compatible providers."
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/prompt.rs",
+          "line": 439,
+          "end_line": 474,
+          "finding": "format_node_runtime_line() previously included cpu_usage, mem_available, disk_available, telemetry_stale — all volatile fields now removed, only stable fields remain."
+        },
+        {
+          "path": "crates/agents/src/prompt.rs",
+          "finding": "New public runtime_datetime_message() function returns datetime string for injection as a separate trailing ChatMessage::system, replacing append_runtime_datetime_tail()."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "finding": "Datetime system message is injected after conversation history and before the user message in both streaming and non-streaming chat handler paths."
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "finding": "to_openai_value() serializes system messages to {role: system, content: ...} regardless of position in the message list."
+        }
+      ],
+      "workflow": [
+        "When a function has many call sites, prefer injecting new behavior at a higher level (e.g., the chat handler) rather than modifying the function signature.",
+        "The beads issue tracker had database initialization problems in worktrees — fell back to tracking work through commits instead.",
+        "Tailwind CSS build is a required step for compilation; a missing CSS file blocks cargo build even for backend-only changes."
+      ]
+    },
+    "friction": [
+      "Beads database failed to initialize in the worktree, blocking issue creation — had to skip and track work through commits.",
+      "Tailwind CSS build was required before cargo compilation would succeed, adding an unexpected build dependency for backend-only changes.",
+      "The runtime_context parameter double-wrapping (Option\u003c\u0026T\u003e passed as .as_ref()) caused a compilation error that needed a fix after the initial implementation."
+    ],
+    "open_items": [
+      "Phase 4 (Ollama native API support) explicitly parked as future work — only needed if prompt caching via message injection proves insufficient.",
+      "Manual validation with a running Ollama + Qwen instance to verify prompt eval time stays small across turns (per the original plan's Validation section) — not yet done.",
+      "The plan's original Phase 1 (coarsen datetime to date-only for local providers) was superseded by the end-of-messages approach but could still be a fallback if some local models handle trailing system messages poorly."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T00:04:06.369338Z",
+    "agent_lines": 91,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 91,
+    "agent_percentage": 100
+  }
+}
