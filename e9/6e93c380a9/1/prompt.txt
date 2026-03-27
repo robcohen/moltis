@@ -1,0 +1,9 @@
+Push a new release but make sure it will not trigger an update, I want to build it but only to try myself
+
+---
+
+can you look at warnings in https://github.com/moltis-org/moltis/actions/runs/23645684224 and fix those
+
+---
+
+commit and push this

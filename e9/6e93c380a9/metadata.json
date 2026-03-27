@@ -3,9 +3,14 @@
   "checkpoint_id": "e96e93c380a9",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
-    ".github/workflows/ci.yml"
+    ".github/workflows/ci.yml",
+    ".github/workflows/codspeed.yml",
+    ".github/workflows/docs.yml",
+    ".github/workflows/e2e.yml",
+    ".github/workflows/homebrew.yml",
+    ".github/workflows/release.yml"
   ],
   "sessions": [
     {
@@ -14,13 +19,20 @@
       "context": "/e9/6e93c380a9/0/context.md",
       "content_hash": "/e9/6e93c380a9/0/content_hash.txt",
       "prompt": "/e9/6e93c380a9/0/prompt.txt"
+    },
+    {
+      "metadata": "/e9/6e93c380a9/1/metadata.json",
+      "transcript": "/e9/6e93c380a9/1/full.jsonl",
+      "context": "/e9/6e93c380a9/1/context.md",
+      "content_hash": "/e9/6e93c380a9/1/content_hash.txt",
+      "prompt": "/e9/6e93c380a9/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 75,
-    "cache_creation_tokens": 95409,
-    "cache_read_tokens": 3192167,
-    "output_tokens": 8384,
-    "api_call_count": 59
+    "input_tokens": 114,
+    "cache_creation_tokens": 192873,
+    "cache_read_tokens": 4667473,
+    "output_tokens": 18917,
+    "api_call_count": 92
   }
 }
