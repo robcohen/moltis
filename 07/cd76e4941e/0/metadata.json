@@ -1,0 +1,79 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "07cd76e4941e",
+  "session_id": "eb35d8bf-ebc6-4c6c-8eb9-acfcee60f19c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T18:36:34.219593Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "install.sh",
+    ".github/workflows/release.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2a7a44116adf",
+  "checkpoint_transcript_start": 418,
+  "transcript_lines_at_start": 418,
+  "token_usage": {
+    "input_tokens": 55,
+    "cache_creation_tokens": 178873,
+    "cache_read_tokens": 3457963,
+    "output_tokens": 7376,
+    "api_call_count": 44
+  },
+  "summary": {
+    "intent": "Cut release tag 20260327.01 for moltis and fix post-release bugs reported in issue #493 related to install script version parsing and package naming.",
+    "outcome": "Release 20260327.01 was successfully published after manually recovering cancelled Docker arm64 build jobs. Two bugs were fixed: install.sh version parsing/URL prefix logic for non-v-prefixed tags, and cargo deb/rpm packaging using wrong version from Cargo.toml instead of the release tag.",
+    "learnings": {
+      "repo": [
+        "Release tags use date-based format (YYYYMMDD.NN, e.g. 20260327.01) without a 'v' prefix, unlike older semver tags (v0.10.18).",
+        "cargo deb and cargo generate-rpm both read version from Cargo.toml (0.1.0) by default — release.yml must pass --deb-version and --set-metadata flags to override with the actual release version.",
+        "Homebrew and Arch package builds already used the tag-derived VERSION correctly; only deb and rpm builds had the version mismatch bug.",
+        "website/releases.json is updated as part of the release workflow to trigger auto-updates for users on the current stable version."
+      ],
+      "code": [
+        {
+          "path": "install.sh",
+          "line": 162,
+          "end_line": 162,
+          "finding": "get_latest_version() used sed regex 's/.*\"v([^\"]+)\".*/\\1/' which requires a 'v' prefix in the tag — fails silently for date-based tags, returning raw JSON instead of the version string."
+        },
+        {
+          "path": "install.sh",
+          "line": 285,
+          "end_line": 386,
+          "finding": "All download URLs used 'v${version}' prefix. Fixed by adding a release_tag() helper that conditionally applies the 'v' prefix based on tag format."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "cargo deb invocation lacked --deb-version flag; cargo generate-rpm lacked --set-metadata version override. Both caused packages to ship with Cargo.toml version (0.1.0) instead of release tag."
+        }
+      ],
+      "workflow": [
+        "GitHub Actions re-run only applies to explicitly selected jobs — re-running amd64 Docker build does not automatically re-trigger the cancelled arm64 job.",
+        "Re-running a job while another job in the same run is still in progress is blocked by the API; must wait for dependent jobs to complete first.",
+        "Background task polling was used to wait for amd64 completion before triggering arm64 re-run."
+      ]
+    },
+    "friction": [
+      "arm64 Docker build was cancelled mid-release for an unclear reason (timeout or runner issue), requiring manual intervention.",
+      "GitHub API blocked re-run of arm64 job while amd64 was still running, requiring polling and delayed retry.",
+      "Version format change (semver with 'v' prefix → date-based without prefix) silently broke install.sh parsing with no immediate test coverage to catch it.",
+      "The deb/rpm version mismatch was only discovered post-release via a user-filed bug report."
+    ],
+    "open_items": [
+      "No automated test or CI check validates that install.sh correctly parses the current release tag format — a format change can silently break it again.",
+      "The Cargo.toml version (0.1.0) is permanently out of sync with release tags — consider whether Cargo.toml version should track releases or remain a placeholder.",
+      "Root cause of arm64 Docker job cancellation was not identified — could recur in future releases."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T18:36:13.680874Z",
+    "agent_lines": 29,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 29,
+    "agent_percentage": 100
+  }
+}
