@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "febc62849051",
+  "session_id": "1ef98655-3d83-48da-a4af-7d7ec25c1e54",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T23:30:05.095071Z",
+  "branch": "butter-astronaut",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "crates/config/src/lib.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/providers/src/anthropic.rs",
+    "crates/providers/src/lib.rs",
+    "crates/providers/src/openai.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ec091e3bd971",
+  "token_usage": {
+    "input_tokens": 160,
+    "cache_creation_tokens": 156446,
+    "cache_read_tokens": 16850152,
+    "output_tokens": 48562,
+    "api_call_count": 150
+  },
+  "summary": {
+    "intent": "Implement Anthropic prompt caching for Moltis, then extend it to match all caching features offered by OpenClaw (the reference implementation), including a configurable cache_retention setting.",
+    "outcome": "Full prompt caching implemented for Anthropic direct and OpenRouter Anthropic models, with a CacheRetention enum (none/short/long) wired through config → provider registration → request serialization. 404 tests pass, clean build and clippy across the workspace. PR created and pushed.",
+    "learnings": {
+      "repo": [
+        "Anthropic provider is in crates/providers/src/anthropic.rs; OpenAI-compat provider (used for OpenRouter, DeepSeek, etc.) is in crates/providers/src/openai.rs; provider registration with config injection is in crates/providers/src/lib.rs.",
+        "Config schema lives in crates/config/src/schema.rs with serde skip-if-default helpers; validate.rs has build_schema_map for TOML key validation; template.rs holds the default config file template.",
+        "Provider structs use builder-pattern methods (e.g., with_reasoning_effort, with_cache_retention) rather than direct struct construction, and with_reasoning_effort must propagate new fields to the cloned struct.",
+        "OpenRouter Anthropic models are served via OpenAiProvider (not AnthropicProvider); detection is via base_url containing 'openrouter.ai' and model starting with 'anthropic/'.",
+        "The prompt-caching-2024-07-31 beta header is no longer required — prompt caching is GA on Anthropic. OpenClaw's pi-ai library confirmed this by not including it.",
+        "DeepSeek and OpenAI cache automatically server-side; Ollama/vLLM use KV prefix cache; local GGUF uses llama-cpp-2 Rust bindings with internal KV reuse — none require client-side cache_control markers.",
+        "CacheRetention 'long' vs 'short' in OpenClaw maps to TTL hints at the SDK level, not a different cache_control type — both use { type: 'ephemeral' } in the JSON.",
+        "Config enum variants use serde rename_all = 'lowercase' pattern; a matching is_default_* helper gates serde skip_serializing_if."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 123,
+          "end_line": 123,
+          "finding": "to_anthropic_messages() originally returned (Option\u003cString\u003e, Vec\u003cValue\u003e); changed to (Option\u003cVec\u003cValue\u003e\u003e, Vec\u003cValue\u003e) so system prompt can be sent as a content-block array with cache_control."
+        },
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 252,
+          "end_line": 252,
+          "finding": "complete() sets body['system'] — must handle both Vec\u003cValue\u003e (caching on) and plain String (caching off) branches."
+        },
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 354,
+          "end_line": 354,
+          "finding": "stream_with_tools() mirrors complete() for the system prompt and beta header treatment."
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "finding": "apply_openrouter_cache_control() injects cache_control on system message and last user message; must be called on the prepared messages Vec before it is inserted into the request body, in both complete() and stream_with_tools_sse()."
+        },
+        {
+          "path": "crates/config/src/lib.rs",
+          "finding": "New public types (CacheRetention) must be explicitly re-exported here; they are not auto-exported from schema.rs."
+        },
+        {
+          "path": "crates/config/src/validate.rs",
+          "finding": "build_schema_map() must be updated with every new ProviderEntry field, otherwise TOML validation rejects the key as unknown."
+        }
+      ],
+      "workflow": [
+        "OpenClaw source at ~/code/openclaw is the canonical reference; pi-ai compiled output at node_modules/@mariozechner/pi-ai/dist/ reveals exact wire-level behavior that TypeScript source may not make obvious.",
+        "Running cargo clippy --package providers after editing only that crate is faster than workspace clippy and avoids unrelated CUDA/cmake failures on macOS.",
+        "cargo fmt --check before committing catches blank-line artifacts left by Edit operations; rustfmt --edition 2021 fixes them.",
+        "Tracing spans should include config-derived flags (e.g., caching = caching) so behavior is observable without adding separate log statements."
+      ]
+    },
+    "friction": [
+      "Multiple rounds of partial reads of large files (openai.rs, anthropic.rs) were needed to find exact insertion points — the file is large enough that a single read misses context.",
+      "Removing the anthropic-beta header left stray blank lines that required a follow-up edit and re-format cycle.",
+      "Workspace-level clippy fails due to an unrelated CUDA/cmake build issue on macOS, forcing per-crate clippy invocations.",
+      "with_reasoning_effort clones the provider struct, so every new field must be explicitly propagated there — easy to miss and not caught until compile time."
+    ],
+    "open_items": [
+      "CacheRetention 'long' variant is accepted in config but behaves identically to 'short' at runtime — TTL-hint behavior (longer cache lifetime) is not yet implemented.",
+      "Bedrock Anthropic caching is not implemented because Moltis has no Bedrock provider; when Bedrock is added, cache_control injection should be wired the same way as direct Anthropic.",
+      "Cache diagnostics are debug-log only; a structured cache trace (JSONL per-turn cache hit/miss log like OpenClaw's diagnostics.cacheTrace) could be added later.",
+      "Context pruning ('cache-ttl' mode — pruning stale tool results after cache TTL expires) is an advanced OpenClaw optimization that was explicitly deferred.",
+      "Heartbeat keep-warm (periodic pings to prevent cache eviction on long-idle sessions) was noted as a future enhancement.",
+      "No UI surface for cache_retention config — users must edit TOML directly; a settings panel toggle could be added later."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T23:29:25.449576Z",
+    "agent_lines": 501,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 501,
+    "agent_percentage": 100
+  }
+}

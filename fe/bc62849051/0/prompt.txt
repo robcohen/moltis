@@ -1,0 +1,132 @@
+Implement the following plan:
+
+# Prompt Caching for Moltis
+
+## Context
+
+Moltis users are requesting prompt caching. Moltis already **tracks** cache tokens in `Usage` (`cache_read_tokens`, `cache_write_tokens`) and parses them from API responses, but never **requests** caching — no cache markers are sent in requests.
+
+After researching OpenClaw's implementation and all providers Moltis supports, here's the landscape:
+
+### Provider Cache Support Matrix
+
+| Provider | Caching? | Client action needed? |
+|---|---|---|
+| **Anthropic (direct)** | Yes | Must send `cache_control` breakpoints + beta header |
+| **OpenRouter (Anthropic models)** | Yes | Same `cache_control` blocks, passed through |
+| **Bedrock (Anthropic models)** | Yes | Same `cache_control` blocks |
+| **OpenAI** | Automatic | No — server-side, just works |
+| **DeepSeek** | Automatic | No — server-side, reports hits in usage |
+| **Ollama** | Automatic | No — KV cache reused on prefix match |
+| **vLLM** | Automatic | No — APC enabled by default |
+| **Local GGUF** (llama-cpp-2 bindings) | Engine-level | Already managed by llama-cpp-2 KV cache reuse |
+| **Groq / Together / Gemini** | No/internal | No API control |
+
+**Key finding:** The only provider requiring client opt-in is **Anthropic** (direct, OpenRouter, and Bedrock). Everything else either caches automatically or doesn't support it. The local GGUF backend uses Rust `llama-cpp-2` bindings (not HTTP to llama-server), so `cache_prompt` doesn't apply — KV cache reuse is handled internally by the library.
+
+## How Anthropic Prompt Caching Works
+
+Anthropic requires `cache_control` markers on content blocks. The API caches everything up to and including a marked block. Optimal placement:
+
+1. **System prompt** — largest, most stable content (tools, persona, instructions)
+2. **Last user turn** — the conversation prefix before the model responds
+
+The `system` field must be sent as an **array of content blocks** (not a plain string) to attach `cache_control`. A beta header is also required: `anthropic-beta: prompt-caching-2024-07-31`.
+
+## Plan
+
+### Step 1: Anthropic system prompt as content-block array
+
+**File:** `crates/providers/src/anthropic.rs` — `to_anthropic_messages()` (line 123)
+
+Currently returns `(Option<String>, Vec<Value>)` where the system is a plain string set via `body["system"] = Value::String(sys)`.
+
+Change to return `(Option<Vec<Value>>, Vec<Value>)`. The system text becomes a content-block array with `cache_control` on the last block:
+
+```json
+[{ "type": "text", "text": "...", "cache_control": { "type": "ephemeral" } }]
+```
+
+Update `complete()` (line 252) and `stream_with_tools()` (line 354) to set `body["system"]` as this array.
+
+### Step 2: Add cache_control to last user turn
+
+In the same `to_anthropic_messages()`, after building all messages, find the **last user message** and inject `cache_control: { type: "ephemeral" }` on its final content block. For simple string content, convert to content-block array:
+
+```json
+// Before: { "role": "user", "content": "hello" }
+// After:  { "role": "user", "content": [{ "type": "text", "text": "hello", "cache_control": { "type": "ephemeral" } }] }
+```
+
+For multimodal content (already an array), add `cache_control` to the last block.
+
+### Step 3: Add the beta header
+
+In both `complete()` and `stream_with_tools()`, add:
+```rust
+.header("anthropic-beta", "prompt-caching-2024-07-31")
+```
+
+### Step 4: OpenRouter Anthropic models
+
+OpenRouter Anthropic models (model ID starts with `anthropic/`) are created via `OpenAiProvider` in `crates/providers/src/lib.rs`. These use the OpenAI-compatible message format but OpenRouter passes `cache_control` through to Anthropic.
+
+Approach: In `OpenAiProvider`'s message serialization, detect when the base URL is OpenRouter and the model starts with `anthropic/`, then inject `cache_control` blocks on system and last-user messages.
+
+**File:** `crates/providers/src/openai.rs` — `serialize_messages_for_request()` / `prepare_request_messages()`
+
+### Step 5: Always-on, no config toggle
+
+OpenClaw defaults to `cacheRetention: "short"` and most users never change it. We'll always enable caching for Anthropic — it's strictly beneficial (cache misses just behave like normal requests). A config toggle can be added later if needed.
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `crates/providers/src/anthropic.rs` | Steps 1-3: content-block system, cache_control on last user turn, beta header |
+| `crates/providers/src/openai.rs` | Step 4: cache_control for OpenRouter Anthropic models |
+
+## What We Do NOT Need
+
+- **OpenAI/Gemini/DeepSeek changes**: These cache automatically server-side
+- **Ollama/vLLM changes**: Automatic KV cache reuse, no client action
+- **Local GGUF changes**: `llama-cpp-2` handles KV cache internally
+- **llama-server `cache_prompt`**: Moltis uses Rust bindings, not HTTP to llama-server
+- **New ChatMessage variants**: Cache control is provider-specific serialization, not a domain concept
+- **Config schema changes**: No toggle needed for MVP
+- **Context pruning / heartbeat**: Advanced OpenClaw optimizations, not needed initially
+- **Cache diagnostics/tracing**: Nice-to-have later
+
+## Verification
+
+1. `cargo test` — all existing tests pass
+2. New unit tests in `anthropic.rs`:
+   - System prompt serializes as content-block array with `cache_control`
+   - Last user message gets `cache_control` on final block
+   - Multimodal user messages get cache_control on last block
+   - Beta header is present in requests
+3. Manual QA: multi-turn conversation via Anthropic, verify `cache_read_input_tokens > 0` after second turn
+4. Web UI session info shows cache token counts (already wired up)
+
+## Estimated Scope
+
+~200-300 lines of code changes, primarily in `anthropic.rs`. This is a focused change — cache control is a serialization concern that stays in the provider layer.
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-butter-astronaut/5d71e2c9-1850-4bcd-8b39-a4f680c75f65.jsonl
+
+---
+
+Anything you can improve for caching on other providers/llms?
+
+---
+
+And look deeply into openclaw to make sure it does not offer caching we don't offer
+
+---
+
+Add all missing features compared to openclaw
+
+---
+
+Please add a nice git commit, push, create a PR.

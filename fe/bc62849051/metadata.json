@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "febc62849051",
+  "strategy": "manual-commit",
+  "branch": "butter-astronaut",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "crates/config/src/lib.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/providers/src/anthropic.rs",
+    "crates/providers/src/lib.rs",
+    "crates/providers/src/openai.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fe/bc62849051/0/metadata.json",
+      "transcript": "/fe/bc62849051/0/full.jsonl",
+      "context": "/fe/bc62849051/0/context.md",
+      "content_hash": "/fe/bc62849051/0/content_hash.txt",
+      "prompt": "/fe/bc62849051/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 160,
+    "cache_creation_tokens": 156446,
+    "cache_read_tokens": 16850152,
+    "output_tokens": 48562,
+    "api_call_count": 150
+  }
+}
