@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e96e93c380a9",
+  "session_id": "74861b49-3d12-4cbd-bf5d-e29733883dba",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T14:37:19.031022Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "55651a94359a",
+  "token_usage": {
+    "input_tokens": 75,
+    "cache_creation_tokens": 95409,
+    "cache_read_tokens": 3192167,
+    "output_tokens": 8384,
+    "api_call_count": 59
+  },
+  "summary": {
+    "intent": "Fix a failing CI pipeline for the moltis project, then add a pre-release workflow capability to allow publishing builds for QA without triggering auto-update notifications for end users.",
+    "outcome": "Fixed two sequential CI failures (invalid apt package name, then outdated Vulkan SDK version), and added a `pre_release` workflow_dispatch input to release.yml that builds and publishes artifacts as a GitHub prerelease while skipping Homebrew tap updates, deploy template tags, and releases.json updates.",
+    "learnings": {
+      "repo": [
+        "Auto-update notifications are driven by website/releases.json being updated via the `update-deploy-template-tags` job — users poll https://www.moltis.org/releases.json hourly.",
+        "The release workflow has three notification-path jobs to skip for silent releases: `update-homebrew-tap`, `update-deploy-template-tags`, and the releases.json deploy step.",
+        "LunarG's Ubuntu 22.04 (jammy) apt repo does not have a standalone `glslc` or `shaderc` package — `glslang-tools` is the correct package name, and `vulkan-sdk` is the meta-package for the full SDK.",
+        "llama-cpp-sys-2 v0.1.133 uses Vulkan C++ API features (LayerSettingsCreateInfoEXT, eMesaDozen) requiring Vulkan SDK \u003e= ~1.3.275; Ubuntu 22.04's base repos only provide libvulkan-dev 1.3.204.",
+        "Commit 681e9f5b introduced the broken `glslc` package name that caused the initial CI failure."
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "finding": "LunarG repo setup must occur before libvulkan-dev install; replaced `libvulkan-dev` (Ubuntu base, v1.3.204) + `glslang-tools` with `vulkan-sdk` from LunarG to get up-to-date Vulkan headers."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "Added `pre_release` boolean workflow_dispatch input; when true, GitHub release is marked prerelease and `update-homebrew-tap` + `update-deploy-template-tags` jobs are skipped via `if` conditions."
+        },
+        {
+          "path": "crates/gateway/src/update_check.rs",
+          "finding": "Update check logic lives here — polls releases.json from the website to determine if a newer version is available."
+        },
+        {
+          "path": "website/.well-known/moltis-install/channels/stable.json",
+          "finding": "Stable channel install manifest — separate from releases.json used for update notifications."
+        }
+      ],
+      "workflow": [
+        "When CI fails with a package-not-found error, verify the exact package name against the actual repo's package index (e.g., fetching the Packages file directly) rather than assuming the package name.",
+        "Sequential CI failures on the same PR are common when fixing one issue exposes a deeper pre-existing one — always check if the new failure is related to the same change.",
+        "GitHub workflow_dispatch with a `dry_run` vs `pre_release` distinction is a useful pattern: dry_run skips everything including builds, pre_release builds and publishes but suppresses user-facing notifications."
+      ]
+    },
+    "friction": [
+      "Two separate CI failures required two separate fix-commit-push cycles, with the second failure only revealed after the first fix landed.",
+      "A git push conflict required a pull-rebase before pushing on both fix commits.",
+      "The user initially triggered a dry_run workflow instead of the new pre_release workflow, causing confusion about why Docker builds were skipped — the pre_release feature didn't exist yet at that point.",
+      "GitHub security hook flagged workflow file edits, requiring retries."
+    ],
+    "open_items": [
+      "Once QA passes on the pre-release build, the user needs to manually unmark the GitHub release as prerelease and trigger or run the deploy-tags/homebrew update steps to notify users.",
+      "The dry run workflow (run 23498472801) is still open/in-progress from before the pre_release feature — the user should verify it can be ignored.",
+      "docs/src/local-validation.md was updated to match the glslang-tools change but should be reviewed to ensure accuracy for local dev setup instructions."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T14:36:51.7398Z",
+    "agent_lines": 0,
+    "human_added": 243,
+    "human_modified": 11,
+    "human_removed": 0,
+    "total_committed": 243,
+    "agent_percentage": 0
+  }
+}
