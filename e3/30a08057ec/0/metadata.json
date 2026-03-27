@@ -1,0 +1,71 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e330a08057ec",
+  "session_id": "eb35d8bf-ebc6-4c6c-8eb9-acfcee60f19c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T18:40:57.481714Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CHANGELOG.md",
+    "website/install.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2e4310fb5194",
+  "checkpoint_transcript_start": 647,
+  "transcript_lines_at_start": 647,
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 3722,
+    "cache_read_tokens": 1061400,
+    "output_tokens": 1575,
+    "api_call_count": 11
+  },
+  "summary": {
+    "intent": "Fix asset naming for date-based release versions (e.g. 20260327.01) in install.sh and release.yml, then cut a new release to validate the fix.",
+    "outcome": "Released 20260327.02 with corrected deb/rpm naming via cargo flags and updated URL construction in both root and website install.sh copies.",
+    "learnings": {
+      "repo": [
+        "Release tags use bare date strings (e.g. 20260327.01) rather than semver v-prefixed tags; install.sh needed a release_tag() helper to handle both formats.",
+        "website/install.sh is a separate file (not a symlink) that serves https://www.moltis.org/install.sh and must be manually synced with the root install.sh.",
+        "cargo deb requires --deb-version flag and cargo generate-rpm requires --set-metadata='version=...' to override the Cargo.toml version for artifact naming."
+      ],
+      "code": [
+        {
+          "path": "install.sh",
+          "finding": "get_latest_version() sed regex updated to handle both semver (v0.10.18) and date-based (20260327.01) tag formats; release_tag() helper added to conditionally prefix v for semver tags."
+        },
+        {
+          "path": "website/install.sh",
+          "finding": "Stale copy of install.sh that was out of sync; must be updated in lockstep with root install.sh on every change."
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "finding": "cargo deb and cargo generate-rpm invocations needed explicit version flags to produce correctly named artifacts when MOLTIS_VERSION differs from Cargo.toml version."
+        }
+      ],
+      "workflow": [
+        "YubiKey confirmation is required for authenticated git push operations, causing push to block until tapped.",
+        "After fixing release tooling, cutting an immediate follow-up release (patch .02) is necessary to validate the fix since the prior release (.01) shipped with the broken naming."
+      ]
+    },
+    "friction": [
+      "YubiKey tap requirement interrupted the push flow and required a manual retry.",
+      "website/install.sh being a non-symlink duplicate is a latent sync hazard — nearly shipped a release with a stale install script.",
+      "The 20260327.01 release shipped with incorrect deb/rpm artifact names because the fix wasn't in place yet, requiring an immediate patch release."
+    ],
+    "open_items": [
+      "Consider making website/install.sh a symlink or CI-enforced copy to prevent future drift.",
+      "The 20260327.01 release has permanently incorrect deb/rpm naming and may confuse users who try to install it manually."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T18:40:40.869398Z",
+    "agent_lines": 29,
+    "human_added": 5,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 34,
+    "agent_percentage": 85.29411764705883
+  }
+}
