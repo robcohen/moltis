@@ -1,0 +1,17 @@
+Push a new release but make sure it will not trigger an update, I want to build it but only to try myself
+
+---
+
+can you look at warnings in https://github.com/moltis-org/moltis/actions/runs/23645684224 and fix those
+
+---
+
+commit and push this
+
+---
+
+When running the version from main locally, I see the banner "An update is available v0.10.18" but I should not, how to prevent that? And how to make sure the next release YYYYMMDD.XX will trigger an update for existing users?
+
+---
+
+push a new release now, real one

@@ -1,0 +1,62 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5c0ae9808875",
+  "session_id": "eb35d8bf-ebc6-4c6c-8eb9-acfcee60f19c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-27T14:59:35.267859Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CHANGELOG.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d21ec19d62d2",
+  "checkpoint_transcript_start": 392,
+  "transcript_lines_at_start": 392,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 2404,
+    "cache_read_tokens": 455145,
+    "output_tokens": 734,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Push a new production release using the new date-based versioning scheme (YYYYMMDD.XX format).",
+    "outcome": "Release preparation script was run and CHANGELOG.md was updated and committed, initiating the first date-based release (20260327.01).",
+    "learnings": {
+      "repo": [
+        "Project uses a date-based versioning scheme (YYYYMMDD.XX) replacing semver, with CI updating releases.json on tag.",
+        "IS_DEV_BUILD const in version.rs gates update checks — dev builds skip update availability entirely.",
+        "is_newer_version() has special logic treating any date-based version as newer than any semver version, enabling smooth migration."
+      ],
+      "code": [
+        {
+          "path": "src/version.rs",
+          "finding": "IS_DEV_BUILD is true when MOLTIS_VERSION env var is not set at compile time; fetch_update_availability() returns early for dev builds."
+        },
+        {
+          "path": "src/version.rs",
+          "finding": "is_newer_version() treats date-based versions (YYYYMMDD.XX) as always newer than semver versions (e.g. 0.10.18)."
+        }
+      ],
+      "workflow": [
+        "Release flow: run prepare-release script, review CHANGELOG.md, commit, tag, push — CI handles releases.json update.",
+        "A dedicated prepare-release script automates changelog and version bump steps before tagging."
+      ]
+    },
+    "friction": [],
+    "open_items": [
+      "Verify CI correctly updates releases.json when the new date-based tag (20260327.01) is pushed.",
+      "Confirm existing users on semver versions (e.g. 0.10.18) successfully receive the update notification after release."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-27T14:59:24.644381Z",
+    "agent_lines": 1330,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1330,
+    "agent_percentage": 100
+  }
+}
