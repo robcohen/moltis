@@ -1,0 +1,9 @@
+Look at https://github.com/moltis-org/moltis/issues/502 and plan for a fix, check if main still has that issue. Add test for regression
+
+---
+
+proceed with adding tests
+
+---
+
+commit push and create a PR, and solve issue #502

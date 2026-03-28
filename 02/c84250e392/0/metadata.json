@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "02c84250e392",
+  "session_id": "126a2300-1fc3-41db-86da-67f22d9aba9d",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T14:16:46.90101Z",
+  "branch": "ionian-canidae",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/provider-setup/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "309a4b02ffc7",
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 83841,
+    "cache_read_tokens": 1085275,
+    "output_tokens": 7231,
+    "api_call_count": 26
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #502 where adding an OpenAI-compatible provider without specifying a model caused a timeout error, and add regression tests to prevent recurrence.",
+    "outcome": "Discovered the fix was already on main (commits 67d6af6a and da754584). Added two regression tests: one proving the discovery path never falls through to the slow probing loop, and one for connection-refused scenarios. Committed, pushed, and opened a PR closing issue #502.",
+    "learnings": {
+      "repo": [
+        "Custom providers follow the Ollama pattern: when no model is specified, query /models directly (8s timeout) and return the list to UI for selection, rather than probing via /chat/completions.",
+        "The probing path could cause up to 80s worst-case latency (8 probes × 10s timeout each) for custom providers with no models in the hardcoded registry.",
+        "Provider setup lives in crates/provider-setup/src/lib.rs; OpenAI-specific logic in crates/providers/src/openai.rs.",
+        "parse_models_payload filters non-chat models (e.g., dall-e-3 is excluded from the discovered model list)."
+      ],
+      "code": [
+        {
+          "path": "crates/provider-setup/src/lib.rs",
+          "finding": "Added two regression tests: validate_key_custom_provider_does_not_probe_when_model_unset (mock server with instrumented /chat/completions that fails if called) and validate_key_custom_provider_connection_refused_returns_error."
+        }
+      ],
+      "workflow": [
+        "Before writing a fix, always check git log to see if the issue was already addressed on main.",
+        "Strong regression tests for timeout/performance bugs use atomic flags on mock endpoints to assert code paths are never reached, not just that the result is correct.",
+        "rustfmt was run after editing the test file to keep formatting clean before committing."
+      ]
+    },
+    "friction": [
+      "The fix for issue #502 was already on main but not linked to the issue, requiring investigation of recent commits to discover this — the issue was apparently not closed when the fix landed."
+    ],
+    "open_items": [
+      "No test for the slow /models response case (near timeout threshold) — the current regression test only covers fast success and connection refused, not latency edge cases.",
+      "Issue #502 was open despite the fix already being on main; process gap around closing issues when fixes land."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T14:16:30.224426Z",
+    "agent_lines": 113,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 113,
+    "agent_percentage": 100
+  }
+}
