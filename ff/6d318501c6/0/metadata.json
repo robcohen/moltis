@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ff6d318501c6",
+  "session_id": "cc63f1c5-01b1-4a1f-b715-a8252908b396",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T13:29:47.599271Z",
+  "branch": "broken-daphne",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "373e4310b759",
+  "checkpoint_transcript_start": 363,
+  "transcript_lines_at_start": 363,
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 8588,
+    "cache_read_tokens": 899560,
+    "output_tokens": 3944,
+    "api_call_count": 13
+  },
+  "summary": {
+    "intent": "Fix review comments from PR #506 on the moltis repo, specifically improving a test that was passing both before and after the fix (and thus not actually pinning the new behavior).",
+    "outcome": "Replaced the ineffective third test with one that verifies the realistic post-fix scenario: explicit models get registered correctly with an empty prefetched map, confirming discovery is not fired. Changes committed and pushed.",
+    "learnings": {
+      "repo": [
+        "register_custom_providers merges prefetched discovery results even when explicit models exist, because fetch_models defaults to true — but in practice the prefetched map is empty because fire_discoveries skips providers with explicit models.",
+        "merge_preferred_and_discovered_models puts preferred models first and deduplicates, so merging an empty prefetched map is a no-op.",
+        "The real behavioral fix is that fire_discoveries skips providers with explicit models (no HTTP call); the first existing test already covers this path."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "finding": "from_config_with_prefetched accepts a HashMap of DiscoveredModel and is the entry point for testing prefetch/discovery integration without making HTTP calls."
+        }
+      ],
+      "workflow": [
+        "A test that passes both before and after a fix provides no value — tests should be written to fail on the old behavior and pass only with the fix.",
+        "When a guard controls whether an HTTP call is made (fire_discoveries) but not whether cached/passed results are merged (register_custom_providers), tests must target the right layer to be meaningful."
+      ]
+    },
+    "friction": [
+      "Initial third test was semantically incorrect — it passed pre-fix, making it useless as a regression guard, requiring a redesign of the test approach mid-PR.",
+      "Had to carefully reason through two separate code paths (fire_discoveries vs register_custom_providers) to understand where the real fix was applied before writing a valid test."
+    ],
+    "open_items": [
+      "register_custom_providers still merges prefetched results even when explicit models are present — this is currently benign but could be an unexpected behavior if a non-empty prefetched map is passed for a provider that has explicit models."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T13:29:33.588866Z",
+    "agent_lines": 12,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 12,
+    "agent_percentage": 100
+  }
+}

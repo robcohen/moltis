@@ -1,0 +1,13 @@
+Look at https://github.com/moltis-org/moltis/issues/504 and plan for a fix including a test to prevent regression
+
+---
+
+proceed
+
+---
+
+commit and push, create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/506 and resolve conversations
