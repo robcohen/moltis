@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9c4dfa91784f",
+  "session_id": "cc2f5605-56a6-46db-a2b5-fa94d7e620fb",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T22:29:48.179862Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CHANGELOG.md",
+    "website/changelog/index.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "8b75bcaff045",
+  "checkpoint_transcript_start": 61,
+  "transcript_lines_at_start": 61,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 1761,
+    "cache_read_tokens": 202725,
+    "output_tokens": 699,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Push a formatting fix for providers.js and cut a new versioned release (20260328.03).",
+    "outcome": "Commit 880a6686 was pushed to main and a new release was prepared by running the prepare script, updating CHANGELOG.md and website/changelog/index.html.",
+    "learnings": {
+      "repo": [
+        "Releases follow a date-based versioning scheme: YYYYMMDD.NN (e.g. 20260328.02, 20260328.03).",
+        "A prepare/release script handles auto-versioning and updates CHANGELOG.md and website/changelog/index.html automatically."
+      ],
+      "code": [
+        {
+          "path": "providers.js",
+          "finding": "Had a formatting issue that was fixed and pushed in commit 880a6686."
+        },
+        {
+          "path": "CHANGELOG.md",
+          "finding": "Updated as part of the release prep script, not manually."
+        },
+        {
+          "path": "website/changelog/index.html",
+          "finding": "Kept in sync with CHANGELOG.md via the release prepare script."
+        }
+      ],
+      "workflow": [
+        "Release preparation is automated via a prepare script that handles versioning, changelog updates, and commit.",
+        "Checking existing release tags before cutting a new release is part of the standard workflow."
+      ]
+    },
+    "friction": [],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T22:29:39.497449Z",
+    "agent_lines": 18,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 18,
+    "agent_percentage": 100
+  }
+}
