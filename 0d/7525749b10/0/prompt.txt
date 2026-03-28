@@ -1,0 +1,77 @@
+Implement the following plan:
+
+# Fix: OpenAI-compatible provider timeout when no model specified (#502)
+
+## Context
+
+When adding an OpenAI-compatible provider via the UI without specifying a model ID, the user gets "Connection timed out" instead of the expected behavior: discovering models from `/v1/models` and presenting them for selection.
+
+**Root cause**: In `validate_key`, custom OpenAI-compatible providers without a model always go through the full probe flow: `build_registry` → fire discovery → probe each discovered model with a "ping" chat completion. If the server is slow to respond to chat completions (common for local LLM servers loading models on demand), 3 probes timeout at 10s each → "Connection timed out" error.
+
+Ollama already has a dedicated early-return path (lines 2289-2368 in `provider-setup/src/lib.rs`) that queries its model list endpoint, returns discovered models to the UI, and skips probing entirely when no model is specified. Custom OpenAI-compatible providers lack this path.
+
+## Plan
+
+### 1. Expose async model discovery for OpenAI-compatible endpoints
+
+**File**: `crates/providers/src/openai.rs`
+
+- Make `fetch_models_from_api` public (rename to `pub async fn discover_models`)
+- This already exists as a private async fn (line 340) that fetches `/v1/models` with an 8s timeout and parses the response into `Vec<DiscoveredModel>`
+
+### 2. Add early-return discovery path for custom providers in `validate_key`
+
+**File**: `crates/provider-setup/src/lib.rs`
+
+After the Ollama early-return block (line 2369) and before building the temp config (line 2377), add a similar early-return path for custom OpenAI-compatible providers when `selected_model` is None:
+
+```
+if is_custom(provider_name) && selected_model.is_none() {
+    // Query /v1/models directly (async, no blocking thread)
+    let discovered = openai::discover_models(api_key, base_url).await;
+    // On success: return { valid: true, models: [...] } like Ollama does
+    // On error: return { valid: false, error: "..." }
+}
+```
+
+This mirrors the Ollama pattern: discover models → return them to the UI → let the user pick → re-validate with the chosen model.
+
+When `selected_model` IS provided, the existing probe flow runs unchanged (user explicitly chose a model, so probing it is appropriate).
+
+### 3. Filter discovered models for chat capability
+
+Use `moltis_providers::is_chat_capable_model()` to filter the discovered models before returning, matching what the probe-succeeded path does at line 2599.
+
+### 4. Add regression test
+
+**File**: `crates/provider-setup/src/lib.rs` (test module)
+
+Add a test that:
+- Sets up a mock HTTP server serving `/v1/models` with a JSON model list
+- Calls `validate_key` with a custom provider pointing at the mock, no model specified
+- Asserts the response is `{ valid: true, models: [...] }` (discovery succeeded, no probe needed)
+- Also test the error case: mock returns 500 → `{ valid: false, error: "..." }`
+
+## Key files
+
+- `crates/providers/src/openai.rs` — `fetch_models_from_api` (make public)
+- `crates/provider-setup/src/lib.rs` — `validate_key` (add discovery early-return for custom providers)
+- `crates/web/src/assets/js/providers.js` — no changes needed (already handles `valResult.models` at line 428)
+
+## Verification
+
+1. `cargo test` — all existing tests pass
+2. New test: custom provider discovery without model returns models
+3. `cargo +nightly-2025-11-30 fmt --all -- --check`
+4. `just lint`
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-honey-tachometer/796f9654-3d91-4e97-9fd4-bf47a081526c.jsonl
+
+---
+
+commit and push, create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/507 and resolve conversations
