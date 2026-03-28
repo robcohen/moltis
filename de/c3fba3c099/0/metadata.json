@@ -1,0 +1,81 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "dec3fba3c099",
+  "session_id": "d8cd7d44-6c62-4c44-bbd5-ba07a8a8b4b1",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T10:35:10.879602Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".gitignore"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "506f61c9e59d",
+  "token_usage": {
+    "input_tokens": 96,
+    "cache_creation_tokens": 343526,
+    "cache_read_tokens": 7484336,
+    "output_tokens": 15063,
+    "api_call_count": 76
+  },
+  "summary": {
+    "intent": "Fix a clippy lint error (manual_div_ceil) in the Telegram crate, then investigate and fix a recurring install script bug where .deb package filenames had a spurious '-1' revision suffix causing installation failures (GitHub issue #496). Add tests to prevent regression. Then cut a new public release.",
+    "outcome": "All three goals accomplished: clippy fix committed and validated, .deb filename bug fixed in both install.sh and website/install.sh with 13-check regression test added to CI and local-validate.sh, release 20260328.01 tagged and pushed, and .claude/worktrees/ added to .gitignore.",
+    "learnings": {
+      "repo": [
+        "cargo-deb with --deb-version produces filenames WITHOUT a revision suffix (e.g. moltis_20260327.05_arm64.deb), while cargo-generate-rpm and the Arch packaging DO include '-1' revision (moltis-VERSION-1.ARCH.rpm and moltis-VERSION-1-ARCH.pkg.tar.zst).",
+        "install.sh and website/install.sh are kept in sync and must be identical — a script check-website-install-sync.sh already enforced this in CI.",
+        "The release workflow uses date-based versioning (YYYYMMDD.NN format, e.g. 20260328.01) and a prepare-release.sh script auto-computes the next version.",
+        "Architecture mappings in install.sh: x86_64→amd64, aarch64→arm64 for .deb; different mappings apply for .rpm and .pkg.tar.zst.",
+        "Previous fix (#493) corrected the tag URL 'v' prefix but missed the '-1' suffix bug, showing that partial fixes on install scripts can leave related bugs.",
+        ".claude/worktrees/ directory is used locally but should not be tracked in git."
+      ],
+      "code": [
+        {
+          "path": "crates/telegram/src/handlers.rs",
+          "line": 2307,
+          "end_line": 2307,
+          "finding": "Manual div_ceil pattern (MAX_INLINE_DOCUMENT_BYTES + 2) / 3 replaced with MAX_INLINE_DOCUMENT_BYTES.div_ceil(3) to satisfy clippy::manual_div_ceil lint."
+        },
+        {
+          "path": "install.sh",
+          "line": 347,
+          "end_line": 347,
+          "finding": "deb_file construction had spurious '-1' revision suffix. Was: moltis_${version}-1_${deb_arch}.deb, should be: moltis_${version}_${deb_arch}.deb to match cargo-deb output."
+        },
+        {
+          "path": "website/install.sh",
+          "line": 347,
+          "end_line": 347,
+          "finding": "Same '-1' suffix bug as install.sh — both files are kept in sync and both needed the same fix."
+        }
+      ],
+      "workflow": [
+        "macOS grep does not support -P (PCRE), so test scripts must use POSIX ERE (-E) or avoid extended regex features for cross-platform compatibility.",
+        "E2E tests (clearChatAndWait, shiki highlighter) are flaky due to timing — local-validate.sh may require multiple retries to get a clean pass; this is known and unrelated to code changes.",
+        "The local-validate.sh uses parallel fast checks; new lint/validation scripts should be added alongside fmt/biome/i18n/zizmor checks.",
+        "Release tagging triggers CI to build and publish all package types automatically via the release workflow."
+      ]
+    },
+    "friction": [
+      "macOS grep lacks PCRE support (-P flag), requiring a rewrite of the new test script from a grep-based approach to a simpler pattern after the first version failed.",
+      "First attempt at check-install-package-names.sh used source/intercept approach that was fragile across platforms — had to pivot to direct grep-based pattern validation.",
+      "E2E tests are flaky (clearChatAndWait timeout, shiki highlighter timeout), requiring 3 runs of local-validate.sh before getting a clean pass.",
+      "Push required a rebase due to remote changes between the commit and push steps."
+    ],
+    "open_items": [
+      "Monitor the release workflow run for 20260328.01 to confirm all package builds (deb, rpm, arch, binary tarballs, macOS app) succeed with the corrected .deb filename.",
+      "Consider whether the shiki highlighter timeout and clearChatAndWait E2E flakiness should be investigated and fixed to improve CI reliability.",
+      "GitHub issue #496 was not explicitly closed in the transcript — should be closed referencing the fix commit."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T10:34:41.303488Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}
