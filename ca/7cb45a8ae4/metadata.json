@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ca7cb45a8ae4",
+  "strategy": "manual-commit",
+  "branch": "oasis-cattle",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/channels/src/plugin.rs",
+    "crates/chat/src/lib.rs",
+    "crates/discord/src/commands.rs",
+    "crates/discord/src/handler.rs",
+    "crates/gateway/src/channel_events.rs",
+    "crates/gateway/src/server.rs",
+    "crates/gateway/src/session.rs",
+    "crates/httpd/src/server.rs",
+    "crates/msteams/src/plugin.rs",
+    "crates/sessions/migrations/20260328100000_channel_sessions_thread_id.sql",
+    "crates/sessions/src/metadata.rs",
+    "crates/slack/src/socket.rs",
+    "crates/slack/src/webhook.rs",
+    "crates/telegram/src/handlers.rs",
+    "crates/telegram/src/outbound.rs",
+    "crates/web/src/templates.rs",
+    "crates/whatsapp/src/handlers.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ca/7cb45a8ae4/0/metadata.json",
+      "transcript": "/ca/7cb45a8ae4/0/full.jsonl",
+      "context": "/ca/7cb45a8ae4/0/context.md",
+      "content_hash": "/ca/7cb45a8ae4/0/content_hash.txt",
+      "prompt": "/ca/7cb45a8ae4/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 314,
+    "cache_creation_tokens": 233117,
+    "cache_read_tokens": 36642547,
+    "output_tokens": 71617,
+    "api_call_count": 304
+  }
+}
