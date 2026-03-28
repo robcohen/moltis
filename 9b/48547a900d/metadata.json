@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9b48547a900d",
+  "strategy": "manual-commit",
+  "branch": "happy-scarf",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9b/48547a900d/0/metadata.json",
+      "transcript": "/9b/48547a900d/0/full.jsonl",
+      "context": "/9b/48547a900d/0/context.md",
+      "content_hash": "/9b/48547a900d/0/content_hash.txt",
+      "prompt": "/9b/48547a900d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 28,
+    "cache_creation_tokens": 17973,
+    "cache_read_tokens": 1734438,
+    "output_tokens": 7054,
+    "api_call_count": 26
+  }
+}
