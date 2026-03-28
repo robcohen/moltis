@@ -1,0 +1,100 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "51ce5c4e5420",
+  "session_id": "1ef98655-3d83-48da-a4af-7d7ec25c1e54",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T00:17:21.709643Z",
+  "branch": "butter-astronaut",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/anthropic.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "62fef562b474",
+  "token_usage": {
+    "input_tokens": 179,
+    "cache_creation_tokens": 317343,
+    "cache_read_tokens": 19315819,
+    "output_tokens": 51462,
+    "api_call_count": 165
+  },
+  "summary": {
+    "intent": "Implement Anthropic prompt caching for Moltis by adding cache_control breakpoints to system prompts and last user messages, then extend it with a configurable CacheRetention enum matching OpenClaw's feature set.",
+    "outcome": "Full prompt caching implementation shipped: Anthropic direct + OpenRouter Anthropic models get cache_control blocks, CacheRetention config enum (none/short/long) added with default 'short', cache diagnostics logging added, 404 tests passing, PR #495 created and review comment fixed.",
+    "learnings": {
+      "repo": [
+        "Anthropic prompt caching requires cache_control blocks on system (as content-block array) and last user message — the beta header 'prompt-caching-2024-07-31' is no longer needed as caching is now GA",
+        "OpenRouter passes cache_control through to Anthropic when model ID starts with 'anthropic/' — detected via base URL containing 'openrouter.ai'",
+        "All other providers (OpenAI, DeepSeek, Ollama, vLLM, local GGUF) cache automatically with no client action needed",
+        "Provider config flows through ProviderEntry in crates/config/src/schema.rs → registered in crates/providers/src/lib.rs → passed into provider structs via builder pattern",
+        "AnthropicProvider uses a builder pattern with with_reasoning_effort() and now with_cache_retention() — cloned fields must be propagated through all builder methods",
+        "OpenClaw's pi-ai library only adds cache_control to the last user/assistant message at OpenRouter level; system-level caching is handled by a separate wrapper — Moltis handles both in one place",
+        "The genai crate wraps Gemini/other providers but doesn't expose Gemini's cached content API (which requires a separate two-step mechanism)"
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 123,
+          "end_line": 180,
+          "finding": "to_anthropic_messages() signature changed from returning Option\u003cString\u003e to Option\u003cVec\u003cValue\u003e\u003e for system, now accepts caching: bool parameter to conditionally inject cache_control blocks"
+        },
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 252,
+          "end_line": 280,
+          "finding": "complete() passes caching_enabled() to to_anthropic_messages and sets body[\"system\"] as array"
+        },
+        {
+          "path": "crates/providers/src/anthropic.rs",
+          "line": 354,
+          "end_line": 390,
+          "finding": "stream_with_tools() mirrors complete() for cache_control injection"
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "finding": "apply_openrouter_cache_control() injects cache_control on system message and last user message, skips when cache_retention is None"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "CacheRetention enum (None/Short/Long) added to ProviderEntry with serde skip-if-default, default is Short"
+        },
+        {
+          "path": "crates/config/src/lib.rs",
+          "finding": "CacheRetention must be explicitly re-exported from the config crate lib.rs"
+        },
+        {
+          "path": "crates/providers/src/lib.rs",
+          "finding": "register_builtin_providers reads cache_retention from ProviderEntry config and passes to both AnthropicProvider and OpenAiProvider via with_cache_retention()"
+        }
+      ],
+      "workflow": [
+        "Deep-diving the upstream reference implementation (OpenClaw/pi-ai) directly on disk revealed that the Anthropic beta header was unnecessary — saved a stale header being sent in production",
+        "Running cargo fmt after every edit batch prevents formatting drift from accumulating",
+        "PR review comments should be resolved via gh CLI by resolving the conversation thread after pushing the fix commit"
+      ]
+    },
+    "friction": [
+      "Multiple rounds of reading openai.rs were needed to understand the full structure before finding the right insertion points for apply_openrouter_cache_control",
+      "The with_reasoning_effort() builder method in both AnthropicProvider and OpenAiProvider required updating to carry the new cache_retention field — easy to miss",
+      "Xcode build failure due to pre-existing IDESimulatorFoundation/DVTDownloads symbol mismatch in the CI/build environment (unrelated to changes)",
+      "Indentation misalignment in debug! macro (12 spaces vs 16) required a post-PR-creation fix — rustfmt didn't catch it"
+    ],
+    "open_items": [
+      "Bedrock Anthropic caching — no Bedrock provider exists yet; when added it should support cache_control the same way as direct Anthropic",
+      "Gemini context caching — requires a separate two-step API (pre-create CachedContent resource, then reference by ID); fundamentally different design, deferred",
+      "CacheRetention 'long' variant — currently parsed and stored but behaves identically to 'short' (both use ephemeral); long TTL hint support requires provider-level differentiation",
+      "Cache diagnostics JSONL tracing (like OpenClaw's diagnostics.cacheTrace) — deferred as nice-to-have",
+      "Heartbeat keep-warm to prevent cache eviction — deferred as advanced optimization",
+      "Context pruning in cache-ttl mode (prune stale tool results after cache TTL) — separate feature, out of scope for this PR"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T00:16:45.815001Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}
