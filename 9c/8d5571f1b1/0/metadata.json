@@ -1,0 +1,74 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9c8d5571f1b1",
+  "session_id": "f19890ec-e532-44d0-8593-a45150095bcf",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T14:22:05.575161Z",
+  "branch": "foam-asiago",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/openai.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "179a4e976440",
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 48327,
+    "cache_read_tokens": 1470127,
+    "output_tokens": 9871,
+    "api_call_count": 33
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #508 where MiniMax provider was incorrectly sending system messages inline in the messages array, causing API error 2013.",
+    "outcome": "Restored `requires_top_level_system_prompt()` to return true for MiniMax, updated 2 existing tests, added a regression test, and all 240 provider tests pass.",
+    "learnings": {
+      "repo": [
+        "MiniMax's API at api.minimax.io/v1 does not accept role:system entries in the messages array — system messages must be sent as a top-level body['system'] field.",
+        "Commit 004ac1fa introduced the regression by changing requires_top_level_system_prompt() to always return false.",
+        "MiniMax detection uses three signals: model prefix 'MiniMax-', provider name 'minimax' (case-insensitive), or base URL containing 'minimax'."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/openai.rs",
+          "line": 526,
+          "end_line": 528,
+          "finding": "requires_top_level_system_prompt() must return true for MiniMax to extract system messages into body['system'] instead of leaving them in the messages array."
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "line": 1769,
+          "end_line": 1769,
+          "finding": "Test minimax_serialization_extracts_system_messages verifies system messages are removed from array and concatenated into top-level prompt."
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "line": 1884,
+          "end_line": 1884,
+          "finding": "Test minimax_stream_request_uses_top_level_system_prompt verifies SSE stream request body has body['system'] and no system role in messages."
+        }
+      ],
+      "workflow": [
+        "Mock URL query parameters can cause route matching failures in tests — prefer provider name or model name for detection in unit tests rather than base URL.",
+        "Running rustfmt after edits is necessary; the file required formatting fixes before the suite was clean."
+      ]
+    },
+    "friction": [
+      "Dolt/beads issue tracker was down, blocking the attempt to create a tracking issue before starting the fix.",
+      "Initial regression test used base URL detection which failed due to query parameter mismatch in mock routing, requiring a rewrite to use model/provider name detection instead.",
+      "Required multiple reads of the same openai.rs file to piece together context across different sections."
+    ],
+    "open_items": [
+      "Beads/Dolt issue was never created due to the service being down — needs to be filed when the tracker is back up.",
+      "PR was committed and pushed but the transcript ends before confirming the PR was successfully created."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T14:21:50.049917Z",
+    "agent_lines": 67,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 67,
+    "agent_percentage": 100
+  }
+}

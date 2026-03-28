@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9c8d5571f1b1",
+  "strategy": "manual-commit",
+  "branch": "foam-asiago",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/openai.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9c/8d5571f1b1/0/metadata.json",
+      "transcript": "/9c/8d5571f1b1/0/full.jsonl",
+      "context": "/9c/8d5571f1b1/0/context.md",
+      "content_hash": "/9c/8d5571f1b1/0/content_hash.txt",
+      "prompt": "/9c/8d5571f1b1/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 48327,
+    "cache_read_tokens": 1470127,
+    "output_tokens": 9871,
+    "api_call_count": 33
+  }
+}
