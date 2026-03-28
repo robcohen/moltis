@@ -1,0 +1,84 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "de38f3dd9d8a",
+  "session_id": "9012fff1-c38a-4c78-a06e-53146b13d9c4",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T13:07:24.437626Z",
+  "branch": "happy-scarf",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0aadf41568c5",
+  "token_usage": {
+    "input_tokens": 41,
+    "cache_creation_tokens": 58361,
+    "cache_read_tokens": 1316695,
+    "output_tokens": 7540,
+    "api_call_count": 31
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #501 where manual context compaction breaks chat on strict LLM servers (llama.cpp with Qwen template) by producing an orphan assistant message with no preceding user message.",
+    "outcome": "Fixed both compaction sites to store summaries as PersistedMessage::System instead of PersistedMessage::Assistant, updated an existing test assertion, added a regression test, and all 151 tests pass.",
+    "learnings": {
+      "repo": [
+        "Compaction has two separate code paths: compact() for manual /compact command and compact_session() for auto-compact on context overflow — both needed the same fix.",
+        "Strict LLM servers like llama.cpp require every assistant message to be preceded by a user message — violating this causes 'No user query found in messages' errors.",
+        "values_to_chat_messages() in crates/agents/src/model.rs converts persisted messages to chat messages; 'notice' role messages are skipped.",
+        "The moltis-chat crate has 151 tests total."
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 4391,
+          "end_line": 4391,
+          "finding": "compact() method (manual /compact) stores summary as PersistedMessage — changed from Assistant to System"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 6907,
+          "end_line": 6907,
+          "finding": "compact_session() function (auto-compact on overflow) stores summary as PersistedMessage — changed from Assistant to System"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 10019,
+          "end_line": 10029,
+          "finding": "Existing auto_compact test asserted role: 'assistant' — updated to 'system' to match fix"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 10047,
+          "end_line": 10047,
+          "finding": "New regression test compact_session_produces_system_role added near auto_compact tests"
+        },
+        {
+          "path": "crates/agents/src/model.rs",
+          "finding": "values_to_chat_messages() handles system role correctly, passing System messages through; notice role is skipped"
+        }
+      ],
+      "workflow": [
+        "The fix required updating an existing test assertion that was asserting the wrong (pre-fix) behavior — a hidden form of test debt.",
+        "Running the specific new test first, then the full crate suite, is a good verification sequence."
+      ]
+    },
+    "friction": [
+      "The new regression test had a compile error on first attempt, requiring an edit before the test run succeeded.",
+      "Two separate compaction sites (compact and compact_session) had the same bug independently — the duplication created risk of missing one."
+    ],
+    "open_items": [
+      "PR creation was requested at the end of the transcript but not shown as completed — may still be in progress.",
+      "No cross-provider testing shown — fix correctness was only verified via unit tests, not against a live llama.cpp or other strict server."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T13:07:06.250598Z",
+    "agent_lines": 74,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 74,
+    "agent_percentage": 100
+  }
+}
