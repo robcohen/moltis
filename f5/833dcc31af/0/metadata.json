@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f5833dcc31af",
+  "session_id": "cc63f1c5-01b1-4a1f-b715-a8252908b396",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T13:17:26.204627Z",
+  "branch": "broken-daphne",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2529905efa6b",
+  "token_usage": {
+    "input_tokens": 55,
+    "cache_creation_tokens": 69692,
+    "cache_read_tokens": 2338092,
+    "output_tokens": 10426,
+    "api_call_count": 47
+  },
+  "summary": {
+    "intent": "Fix a bug in the moltis project where custom OpenAI-compatible providers with explicit models configured still fire unnecessary /v1/models HTTP discovery requests (GitHub issue #504).",
+    "outcome": "Fixed the bug by adding an explicit model check before firing discovery in `fire_discoveries()`, added 3 regression tests, all 239 tests pass, code formatted and linted clean, committed and pushed with a PR created.",
+    "learnings": {
+      "repo": [
+        "Custom providers are identified by the 'custom-' name prefix in the providers config map.",
+        "Built-in OpenAI-compat providers have a `skip_discovery` guard that custom providers lacked — this was the root asymmetry causing the bug.",
+        "`configured_models_for_provider(config, name)` is the canonical way to check if a provider has explicit models set.",
+        "`merge_preferred_and_discovered_models` already handles the case of empty discovery results correctly — the fix only needed to touch the discovery-firing logic.",
+        "Model IDs include the provider prefix in the format `custom-\u003cname\u003e::\u003cmodel-id\u003e` when registered in the registry.",
+        "The crate has 238 pre-existing tests; the worktree path is `/Users/penso/.superset/worktrees/moltis/broken-daphne/`."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "line": 1566,
+          "end_line": 1572,
+          "finding": "The custom providers loop in `fire_discoveries()` lacked a guard for explicit models; fix adds `!configured_models_for_provider(config, name).is_empty()` check before calling `should_fetch_models`."
+        },
+        {
+          "path": "crates/providers/src/lib.rs",
+          "line": 1530,
+          "end_line": 1533,
+          "finding": "Built-in OpenAI-compat providers already have a `skip_discovery` guard — the pattern to replicate for custom providers."
+        }
+      ],
+      "workflow": [
+        "When adding imports inside a test module that uses `use super::*`, prefer using full paths to avoid `unused qualification` lint errors on pre-existing code.",
+        "Editing around existing `#[test]` attributes requires care — it's easy to accidentally remove an attribute from the function immediately following the insertion point.",
+        "Clippy failures from CUDA/platform-specific features (not available on macOS) can be safely isolated by running clippy scoped to the changed crate only."
+      ]
+    },
+    "friction": [
+      "Accidentally introduced a duplicate `#[test]` attribute when inserting the new test adjacent to an existing test, requiring multiple edits to fix.",
+      "Adding a `use` import for `ProviderEntry` inside the test module triggered `unused qualification` lint errors on pre-existing code that already used full paths — had to remove the import and switch to full paths in test code.",
+      "During duplicate `#[test]` cleanup, accidentally removed the `#[test]` attribute from the pre-existing `supports_reasoning_for_known_models` test, caught only via clippy.",
+      "Model ID assertion in the test initially failed because the registered ID includes the provider prefix (`custom-mylocal::my-model`) which wasn't obvious upfront."
+    ],
+    "open_items": [
+      "Clippy reports a pre-existing CUDA build failure unrelated to this change — that underlying issue is unresolved.",
+      "The fix only addresses the discovery-firing path; no audit was done of whether other built-in provider guards (beyond `skip_discovery`) are also missing from the custom provider code path."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T13:17:06.900735Z",
+    "agent_lines": 70,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 70,
+    "agent_percentage": 100
+  }
+}

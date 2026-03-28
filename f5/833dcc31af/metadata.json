@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f5833dcc31af",
+  "strategy": "manual-commit",
+  "branch": "broken-daphne",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f5/833dcc31af/0/metadata.json",
+      "transcript": "/f5/833dcc31af/0/full.jsonl",
+      "context": "/f5/833dcc31af/0/context.md",
+      "content_hash": "/f5/833dcc31af/0/content_hash.txt",
+      "prompt": "/f5/833dcc31af/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 55,
+    "cache_creation_tokens": 69692,
+    "cache_read_tokens": 2338092,
+    "output_tokens": 10426,
+    "api_call_count": 47
+  }
+}
