@@ -1,0 +1,111 @@
+Implement the following plan:
+
+# Plan: Add Z.AI Coding Plan Provider (`zai-code`)
+
+## Context
+
+GitHub issue #414: Z.AI users on the **Coding plan** get "insufficient balance" errors because Moltis only targets the general API endpoint (`https://api.z.ai/api/paas/v4`). Z.AI has a separate **Coding plan endpoint** (`https://api.z.ai/api/coding/paas/v4`) with different billing. OpenClaw handles this by detecting the plan type during setup. The fix is to add a second, non-breaking `zai-code` provider alongside the existing `zai` provider.
+
+## Changes
+
+### 1. `crates/providers/src/lib.rs`
+
+**Add `OpenAiCompatDef` for `zai-code`** (after the existing `zai` entry, ~line 1014):
+
+```rust
+OpenAiCompatDef {
+    config_name: "zai-code",
+    env_key: "Z_CODE_API_KEY",
+    env_base_url_key: "Z_CODE_BASE_URL",
+    default_base_url: "https://api.z.ai/api/coding/paas/v4",
+    models: ZAI_MODELS,
+    supports_model_discovery: true,
+    requires_api_key: true,
+    local_only: false,
+},
+```
+
+**Add test** (after `zai_registers_with_api_key`, ~line 3092):
+
+```rust
+#[test]
+fn zai_code_registers_with_api_key() {
+    // ... same pattern as zai test but with "zai-code" / "sk-test-zai-code"
+}
+```
+
+**Update `context_window_for_model`** — existing GLM match already covers all `glm-*` models, no change needed.
+
+**Update `supports_vision`** — existing GLM match already covers all `glm-*` models, no change needed.
+
+### 2. `crates/provider-setup/src/lib.rs`
+
+**Add `KnownProvider` for `zai-code`** (after the `zai` entry, ~line 855):
+
+```rust
+KnownProvider {
+    name: "zai-code",
+    display_name: "Z.AI (Coding Plan)",
+    auth_type: AuthType::ApiKey,
+    env_key: Some("Z_CODE_API_KEY"),
+    default_base_url: Some("https://api.z.ai/api/coding/paas/v4"),
+    requires_model: false,
+    key_optional: false,
+},
+```
+
+**Add env key mapping** (~line 4062, where `("zai", "Z_API_KEY")` exists):
+
+```rust
+("zai-code", "Z_CODE_API_KEY"),
+```
+
+### 3. `crates/config/src/provider_env.rs`
+
+**Add normalization alias** (~line 93):
+
+```rust
+"zai-code" | "zai-coding" | "zhipu-code" => "zai-code",
+```
+
+### 4. `crates/config/src/template.rs`
+
+**Add `zai-code` to the commented provider list** (~line 99) so users discover it.
+
+### 5. Documentation
+
+**Update `docs/src/` pages** that list providers to include `zai-code` with a note about when to use it (Coding plan subscribers).
+
+## What NOT to change
+
+- The existing `zai` provider stays untouched (non-breaking).
+- No smart auto-detection of plan type (keeps the flat provider pattern per Cstewart-HC's recommendation in the issue comments).
+
+## Verification
+
+1. `cargo test zai` — both `zai_registers_with_api_key` and `zai_code_registers_with_api_key` pass
+2. `just lint` — no clippy warnings
+3. `cargo +nightly-2025-11-30 fmt --all -- --check` — formatting clean
+4. Manual: configure `zai-code` provider with a Coding plan API key, verify it hits the correct endpoint
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-meowing-musician/c86b6e6f-b8cc-4831-bb3c-4de9ff16a48f.jsonl
+
+---
+
+<task-notification>
+<task-id>b60hdg4sk</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-meowing-musician/c86b6e6f-b8cc-4831-bb3c-4de9ff16a48f/tasks/b60hdg4sk.output</output-file>
+<status>completed</status>
+<summary>Background command "Run zai-related tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-meowing-musician/c86b6e6f-b8cc-4831-bb3c-4de9ff16a48f/tasks/b60hdg4sk.output
+
+---
+
+commit and push, create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/517 and resolve conversations
