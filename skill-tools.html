@@ -203,6 +203,9 @@ available:</p>
 <p>Skills created this way are personal and stored in the configured data
 directory’s <code>skills/</code> folder. They become available on the next message
 automatically thanks to the skill watcher.</p>
+<p>Before any built-in skill mutation runs, Moltis creates an automatic
+checkpoint. Tool results include a <code>checkpointId</code> you can later restore with
+<code>checkpoint_restore</code>.</p>
 <h2 id="skill-watcher"><a class="header" href="#skill-watcher">Skill Watcher</a></h2>
 <p>The skill watcher (<code>crates/skills/src/watcher.rs</code>) monitors skill directories
 for filesystem changes using debounced notifications. When a <code>SKILL.md</code> file is
@@ -270,18 +273,8 @@ files such as shell scripts, templates, <code>_meta.json</code>, or <code>Docker
 </code></pre>
 <p>This removes the entire <code>&lt;data_dir&gt;/skills/summarize-pr/</code> directory, including
 any supplementary files written alongside <code>SKILL.md</code>.</p>
-<div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
-<div class="admonition-title">
-<div id="admonition-warning-title">
-<p>Warning</p>
-</div>
-<a class="admonition-anchor-link" href="#admonition-warning"></a>
-</div>
-<div>
-<p>Deleted skills cannot be recovered. The agent should confirm with the user
-before deleting a skill.</p>
-</div>
-</div>
+<p>Deleted skills can be restored from the returned <code>checkpointId</code> with
+<code>checkpoint_restore</code>, as long as the checkpoint still exists.</p>
 
                     </main>
 

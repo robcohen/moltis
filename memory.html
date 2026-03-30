@@ -332,6 +332,8 @@ decides certain information is worth persisting.</p>
   "append": true
 }
 </code></pre>
+<p>Successful writes also return a <code>checkpointId</code>, so the change can be rolled
+back with <code>checkpoint_restore</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>content</code></td><td>string</td><td><em>(required)</em></td><td>The content to save</td></tr>

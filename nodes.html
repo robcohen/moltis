@@ -270,7 +270,10 @@ tail -f $(moltis node logs)
 <ul>
 <li><strong>UI dropdown</strong>: The chat toolbar shows a node selector next to the model
 picker. Select a node to route all <code>exec</code> commands to it. Select “Local” to
-revert to local execution.</li>
+revert to local execution. When <code>tools.exec.host = "ssh"</code>, Moltis also shows
+either the legacy configured SSH target from <code>tools.exec.ssh_target</code> or any
+managed SSH targets you created in <strong>Settings → SSH</strong> as first-class
+execution options.</li>
 <li><strong>Agent tools</strong>: The agent can call <code>nodes_list</code>, <code>nodes_describe</code>, and
 <code>nodes_select</code> to programmatically pick a node based on capabilities or
 telemetry.</li>
@@ -288,6 +291,41 @@ telemetry.</li>
 </ul>
 <p>This data is visible on the Nodes page and available to the agent via the
 <code>nodes_describe</code> tool.</p>
+<p>If you configure <code>tools.exec.host = "ssh"</code>, the Nodes page also shows SSH
+targets even though they are not WebSocket-paired nodes. This makes the active
+remote execution route visible instead of hiding it in config. The UI renders
+these separately from paired nodes so it is clear that SSH targets do not
+report telemetry or presence.</p>
+<p>Managed SSH targets now support:</p>
+<ul>
+<li>named labels, so session routing is readable instead of <code>deploy@box</code></li>
+<li>a default target, used when a chat session does not pin a specific route</li>
+<li>connectivity tests from the web UI</li>
+<li>either <strong>System OpenSSH</strong> auth or a <strong>managed deploy key</strong></li>
+<li>optional host-key pinning via a pasted <code>known_hosts</code> line</li>
+<li>one-click scan, refresh, and clear actions for saved host pins in Settings</li>
+<li>passphrase-protected private-key imports during setup</li>
+</ul>
+<p>The Nodes page also includes a <strong>Remote Exec Status</strong> panel that acts like a
+lightweight doctor:</p>
+<ul>
+<li>shows whether Moltis is currently configured for <code>local</code>, <code>node</code>, or <code>ssh</code></li>
+<li>reports paired-node inventory and managed SSH inventory</li>
+<li>flags obvious misconfigurations, such as <code>tools.exec.host = "ssh"</code> with no
+active target or a managed key that cannot be decrypted because the vault is
+locked</li>
+<li>warns when the active managed SSH route is not host-pinned</li>
+<li>lets you pin, refresh, or clear the active managed route directly from the
+doctor panel</li>
+<li>lets you test the active SSH route without leaving the page</li>
+</ul>
+<p>The CLI now mirrors the basic setup view with <code>moltis doctor</code>, including:</p>
+<ul>
+<li>active remote-exec backend (<code>local</code>, <code>node</code>, or <code>ssh</code>)</li>
+<li>SSH client discovery and version</li>
+<li>managed SSH key / target / host-pin inventory</li>
+<li>warnings for legacy <code>tools.exec.ssh_target</code> config and unpinned active routes</li>
+</ul>
 <h2 id="cli-reference"><a class="header" href="#cli-reference">CLI Reference</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moltis node generate-token</code></td><td>Generate a device token and print the <code>add</code> command</td></tr>

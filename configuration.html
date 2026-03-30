@@ -231,6 +231,37 @@ models = ["qwen2.5-coder-7b-q4_k_m"]
 priority_models = ["gpt-5.2"]
 </code></pre>
 <p>See <a href="providers.html">Providers</a> for the full list of supported providers and configuration options.</p>
+<h2 id="remote-execution"><a class="header" href="#remote-execution">Remote Execution</a></h2>
+<p>Command execution can stay local, route to a paired node, or use SSH:</p>
+<pre><code class="language-toml">[tools.exec]
+host = "local"                 # "local", "node", or "ssh"
+# node = "mac-mini"            # default paired node when host = "node"
+# ssh_target = "deploy@box"    # default SSH target when host = "ssh"
+</code></pre>
+<p>When <code>host = "ssh"</code>, Moltis can work in two modes:</p>
+<ul>
+<li><strong>System OpenSSH</strong>: reuse your existing host aliases, agent forwarding policy,
+and <code>~/.ssh/config</code>.</li>
+<li><strong>Managed targets</strong>: create or import a deploy key in <strong>Settings → SSH</strong>,
+then bind that key to a named target. Moltis stores the private key in its
+credential store and encrypts it with the vault whenever the vault is
+unsealed. Imported keys may be passphrase-protected, Moltis strips the
+passphrase during import so runtime execution can stay non-interactive.</li>
+</ul>
+<p>For stricter SSH verification, managed targets also accept a pasted
+<code>known_hosts</code> line from <code>ssh-keyscan -H host</code>. The SSH settings page can scan
+that for you, and saved targets can refresh or clear their stored pin later.
+When present, Moltis uses that pin instead of your global OpenSSH known-host
+policy for that target.</p>
+<p>Managed targets appear in the Nodes page and chat node picker, so users can see
+where <code>exec</code> will run without digging through config. If multiple managed
+targets exist, the default one is used when <code>tools.exec.host = "ssh"</code> and no
+session-specific route is selected. <code>moltis doctor</code> also reports remote-exec
+inventory, active backend mode, and obvious SSH setup problems from the CLI.</p>
+<p><code>Settings -&gt; Tools</code> shows the effective tool inventory for the active session
+and model, including tool-calling support, MCP server state, skills/plugins,
+and available execution routes. It is session-aware by design, switching the
+model or disabling MCP for a session changes what appears there.</p>
 <h2 id="sandbox-configuration"><a class="header" href="#sandbox-configuration">Sandbox Configuration</a></h2>
 <p>Commands run inside isolated containers for security:</p>
 <pre><code class="language-toml">[tools.exec.sandbox]

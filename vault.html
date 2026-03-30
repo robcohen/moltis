@@ -297,12 +297,18 @@ password:</p>
 <p>Currently encrypted:</p>
 <div class="table-wrapper"><table><thead><tr><th>Data</th><th>Storage</th><th>AAD</th></tr></thead><tbody>
 <tr><td>Environment variables (<code>env_variables</code> table)</td><td>SQLite</td><td><code>env:{key}</code></td></tr>
+<tr><td>Managed SSH private keys (<code>ssh_keys</code> table)</td><td>SQLite</td><td><code>ssh-key:{name}</code></td></tr>
 </tbody></table>
 </div>
-<p>The <code>encrypted</code> column in <code>env_variables</code> tracks whether each row is
-encrypted (1) or plaintext (0). When the vault is unsealed, new env vars
-are written encrypted. When sealed or uninitialized, they are written as
-plaintext.</p>
+<p>The <code>encrypted</code> column in <code>env_variables</code> and <code>ssh_keys</code> tracks whether each
+row is encrypted (1) or plaintext (0). When the vault is unsealed, new env vars
+and managed SSH private keys are written encrypted. Imported passphrase-protected
+SSH keys are decrypted during import and then stored under the vault-managed
+key hierarchy. When sealed or
+uninitialized, they are written as plaintext.</p>
+<p>On the first successful vault unseal after enabling the feature, Moltis also
+migrates any previously stored plaintext env vars and managed SSH private keys
+to encrypted storage in-place.</p>
 <div id="admonition-planned" class="admonition admonish-info" role="note" aria-labelledby="admonition-planned-title">
 <div class="admonition-title">
 <div id="admonition-planned-title">

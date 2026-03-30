@@ -194,7 +194,7 @@
 </div>
 </div>
 <div style="text-align: center; margin: 2em 0;">
-<strong style="font-size: 1.2em;">A personal AI gateway written in Rust.<br>One binary, no runtime, no npm.</strong>
+<strong style="font-size: 1.2em;">A secure persistent personal agent server written in Rust.<br>One binary, no runtime, no npm.</strong>
 </div>
 <p>Moltis compiles your entire AI gateway — web UI, LLM providers, tools, and all assets — into a single self-contained executable. There’s no Node.js to babysit, no <code>node_modules</code> to sync, no V8 garbage collector introducing latency spikes.</p>
 <pre><code class="language-bash"># Quick install (macOS / Linux)
@@ -218,6 +218,10 @@ curl -fsSL https://www.moltis.org/install.sh | sh
 <li><strong>Multi-Channel</strong> — Web UI, Telegram, Discord, API access with synchronized responses</li>
 <li><strong>Built-in Throttling</strong> — Per-IP endpoint limits with strict login protection</li>
 <li><strong>Long-Term Memory</strong> — Embeddings-powered knowledge base with hybrid search</li>
+<li><strong>Cross-Session Recall</strong> — Search earlier sessions for relevant snippets and prior decisions</li>
+<li><strong>Automatic Checkpoints</strong> — Restore built-in skill and memory mutations without touching git history</li>
+<li><strong>Remote Exec Targets</strong> — Route command execution locally, through a paired node, or over SSH</li>
+<li><strong>Context Hardening</strong> — Load <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, and rule directories with safety scanning</li>
 <li><strong>Hook System</strong> — Observe, modify, or block actions at any lifecycle point</li>
 <li><strong>Compile-Time Safety</strong> — Misconfigurations caught by <code>cargo check</code>, not runtime crashes</li>
 </ul>
@@ -615,8 +619,8 @@ Node.js as a runtime dependency and a smaller feature surface.</p>
 startup. It uses trait-driven architecture with 22+ provider implementations
 and 9+ channel integrations. Memory is backed by SQLite with hybrid vector +
 FTS search. The focus is on minimal footprint and broad platform support.</p>
-<h3 id="moltis--auditable-rust-gateway"><a class="header" href="#moltis--auditable-rust-gateway">Moltis — Auditable Rust gateway</a></h3>
-<p>Moltis prioritizes auditability and defense in depth. The core agent engine
+<h3 id="moltis--auditable-persistent-agent-server"><a class="header" href="#moltis--auditable-persistent-agent-server">Moltis — Auditable persistent agent server</a></h3>
+<p>Moltis prioritizes auditability, durable agent workflows, and defense in depth. The core agent engine
 (runner + provider model) is ~5K lines; the core (excluding the optional web UI)
 is ~196K lines across 46 modular crates, each independently auditable. Key
 differences from ZeroClaw:</p>
@@ -625,6 +629,8 @@ differences from ZeroClaw:</p>
 automation, web UI, and MCP support</li>
 <li><strong>Apple Container support</strong> in addition to Docker</li>
 <li><strong>WebAuthn passkey authentication</strong> — not just tokens</li>
+<li><strong>Cross-session recall tools</strong> for finding earlier work without dumping raw history</li>
+<li><strong>Automatic checkpoints</strong> before built-in skill and memory mutations</li>
 <li><strong>15 lifecycle hook events</strong> with circuit breaker and dry-run mode</li>
 <li><strong>Built-in web UI</strong> with real-time streaming, settings management, and
 session branching</li>
@@ -664,6 +670,7 @@ startup, and broad channel support without a web UI.</p>
 <p><strong>Choose Moltis if</strong> you want:</p>
 <ul>
 <li>A single auditable Rust binary with built-in web UI</li>
+<li>A persistent agent with cross-session recall and restoreable built-in edits</li>
 <li>Voice I/O with 15+ providers (8 TTS + 7 STT)</li>
 <li>MCP server support (stdio + HTTP/SSE)</li>
 <li>WebAuthn passkey authentication</li>
@@ -728,6 +735,37 @@ models = ["qwen2.5-coder-7b-q4_k_m"]
 priority_models = ["gpt-5.2"]
 </code></pre>
 <p>See <a href="providers.html">Providers</a> for the full list of supported providers and configuration options.</p>
+<h2 id="remote-execution"><a class="header" href="#remote-execution">Remote Execution</a></h2>
+<p>Command execution can stay local, route to a paired node, or use SSH:</p>
+<pre><code class="language-toml">[tools.exec]
+host = "local"                 # "local", "node", or "ssh"
+# node = "mac-mini"            # default paired node when host = "node"
+# ssh_target = "deploy@box"    # default SSH target when host = "ssh"
+</code></pre>
+<p>When <code>host = "ssh"</code>, Moltis can work in two modes:</p>
+<ul>
+<li><strong>System OpenSSH</strong>: reuse your existing host aliases, agent forwarding policy,
+and <code>~/.ssh/config</code>.</li>
+<li><strong>Managed targets</strong>: create or import a deploy key in <strong>Settings → SSH</strong>,
+then bind that key to a named target. Moltis stores the private key in its
+credential store and encrypts it with the vault whenever the vault is
+unsealed. Imported keys may be passphrase-protected, Moltis strips the
+passphrase during import so runtime execution can stay non-interactive.</li>
+</ul>
+<p>For stricter SSH verification, managed targets also accept a pasted
+<code>known_hosts</code> line from <code>ssh-keyscan -H host</code>. The SSH settings page can scan
+that for you, and saved targets can refresh or clear their stored pin later.
+When present, Moltis uses that pin instead of your global OpenSSH known-host
+policy for that target.</p>
+<p>Managed targets appear in the Nodes page and chat node picker, so users can see
+where <code>exec</code> will run without digging through config. If multiple managed
+targets exist, the default one is used when <code>tools.exec.host = "ssh"</code> and no
+session-specific route is selected. <code>moltis doctor</code> also reports remote-exec
+inventory, active backend mode, and obvious SSH setup problems from the CLI.</p>
+<p><code>Settings -&gt; Tools</code> shows the effective tool inventory for the active session
+and model, including tool-calling support, MCP server state, skills/plugins,
+and available execution routes. It is session-aware by design, switching the
+model or disabling MCP for a session changes what appears there.</p>
 <h2 id="sandbox-configuration"><a class="header" href="#sandbox-configuration">Sandbox Configuration</a></h2>
 <p>Commands run inside isolated containers for security:</p>
 <pre><code class="language-toml">[tools.exec.sandbox]
@@ -1886,6 +1924,8 @@ decides certain information is worth persisting.</p>
   "append": true
 }
 </code></pre>
+<p>Successful writes also return a <code>checkpointId</code>, so the change can be rolled
+back with <code>checkpoint_restore</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>content</code></td><td>string</td><td><em>(required)</em></td><td>The content to save</td></tr>
@@ -5999,6 +6039,47 @@ back to the next sibling or <code>main</code>.</p>
 do not propagate to the fork, and vice versa.</p>
 </div>
 </div>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="checkpoints"><a class="header" href="#checkpoints">Checkpoints</a></h1>
+<p>Moltis now creates automatic checkpoints before built-in file mutations that
+change personal skills or agent memory files.</p>
+<h2 id="what-gets-checkpointed"><a class="header" href="#what-gets-checkpointed">What Gets Checkpointed</a></h2>
+<p>Current built-in checkpoint coverage includes:</p>
+<ul>
+<li><code>create_skill</code></li>
+<li><code>update_skill</code></li>
+<li><code>delete_skill</code></li>
+<li><code>write_skill_files</code></li>
+<li><code>memory_save</code></li>
+<li>the silent pre-compaction memory flush</li>
+</ul>
+<p>Each mutation creates a manifest-backed snapshot in <code>~/.moltis/checkpoints/</code>
+before the write or delete happens.</p>
+<h2 id="tool-surface"><a class="header" href="#tool-surface">Tool Surface</a></h2>
+<h3 id="checkpoints_list"><a class="header" href="#checkpoints_list"><code>checkpoints_list</code></a></h3>
+<p>List recent automatic checkpoints.</p>
+<pre><code class="language-json">{
+  "limit": 20,
+  "path_contains": "skills/my-skill"
+}
+</code></pre>
+<h3 id="checkpoint_restore"><a class="header" href="#checkpoint_restore"><code>checkpoint_restore</code></a></h3>
+<p>Restore a checkpoint by ID.</p>
+<pre><code class="language-json">{
+  "id": "3c7c6f2f8b7c4d8c8b8cdb91d9161f59"
+}
+</code></pre>
+<h2 id="mutation-results"><a class="header" href="#mutation-results">Mutation Results</a></h2>
+<p>Checkpointed tools return a <code>checkpointId</code> field in their result payload. That
+gives agents and users a direct restore handle without first listing every
+checkpoint.</p>
+<h2 id="behavior"><a class="header" href="#behavior">Behavior</a></h2>
+<ul>
+<li>If the target existed, Moltis snapshots the file or directory first.</li>
+<li>If the target did not exist yet, restore removes the later-created path.</li>
+<li>Restore replaces the current target state with the checkpoint snapshot.</li>
+<li>Checkpoints are internal safety artifacts, they do not touch the user’s git
+history.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="scheduling-cron-jobs"><a class="header" href="#scheduling-cron-jobs">Scheduling (Cron Jobs)</a></h1>
 <p>Moltis includes a built-in cron system that lets the agent schedule and manage
 recurring tasks. Jobs can fire agent turns, send system events, or trigger
@@ -6150,6 +6231,9 @@ available:</p>
 <p>Skills created this way are personal and stored in the configured data
 directory’s <code>skills/</code> folder. They become available on the next message
 automatically thanks to the skill watcher.</p>
+<p>Before any built-in skill mutation runs, Moltis creates an automatic
+checkpoint. Tool results include a <code>checkpointId</code> you can later restore with
+<code>checkpoint_restore</code>.</p>
 <h2 id="skill-watcher"><a class="header" href="#skill-watcher">Skill Watcher</a></h2>
 <p>The skill watcher (<code>crates/skills/src/watcher.rs</code>) monitors skill directories
 for filesystem changes using debounced notifications. When a <code>SKILL.md</code> file is
@@ -6217,18 +6301,8 @@ files such as shell scripts, templates, <code>_meta.json</code>, or <code>Docker
 </code></pre>
 <p>This removes the entire <code>&lt;data_dir&gt;/skills/summarize-pr/</code> directory, including
 any supplementary files written alongside <code>SKILL.md</code>.</p>
-<div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
-<div class="admonition-title">
-<div id="admonition-warning-title">
-<p>Warning</p>
-</div>
-<a class="admonition-anchor-link" href="skill-tools.html#admonition-warning"></a>
-</div>
-<div>
-<p>Deleted skills cannot be recovered. The agent should confirm with the user
-before deleting a skill.</p>
-</div>
-</div>
+<p>Deleted skills can be restored from the returned <code>checkpointId</code> with
+<code>checkpoint_restore</code>, as long as the checkpoint still exists.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="mobile-pwa-and-push-notifications"><a class="header" href="#mobile-pwa-and-push-notifications">Mobile PWA and Push Notifications</a></h1>
 <p>Moltis can be installed as a Progressive Web App (PWA) on mobile devices, providing a native app-like experience with push notifications.</p>
 <h2 id="installing-on-mobile"><a class="header" href="#installing-on-mobile">Installing on Mobile</a></h2>
@@ -6909,7 +6983,10 @@ tail -f $(moltis node logs)
 <ul>
 <li><strong>UI dropdown</strong>: The chat toolbar shows a node selector next to the model
 picker. Select a node to route all <code>exec</code> commands to it. Select “Local” to
-revert to local execution.</li>
+revert to local execution. When <code>tools.exec.host = "ssh"</code>, Moltis also shows
+either the legacy configured SSH target from <code>tools.exec.ssh_target</code> or any
+managed SSH targets you created in <strong>Settings → SSH</strong> as first-class
+execution options.</li>
 <li><strong>Agent tools</strong>: The agent can call <code>nodes_list</code>, <code>nodes_describe</code>, and
 <code>nodes_select</code> to programmatically pick a node based on capabilities or
 telemetry.</li>
@@ -6927,6 +7004,41 @@ telemetry.</li>
 </ul>
 <p>This data is visible on the Nodes page and available to the agent via the
 <code>nodes_describe</code> tool.</p>
+<p>If you configure <code>tools.exec.host = "ssh"</code>, the Nodes page also shows SSH
+targets even though they are not WebSocket-paired nodes. This makes the active
+remote execution route visible instead of hiding it in config. The UI renders
+these separately from paired nodes so it is clear that SSH targets do not
+report telemetry or presence.</p>
+<p>Managed SSH targets now support:</p>
+<ul>
+<li>named labels, so session routing is readable instead of <code>deploy@box</code></li>
+<li>a default target, used when a chat session does not pin a specific route</li>
+<li>connectivity tests from the web UI</li>
+<li>either <strong>System OpenSSH</strong> auth or a <strong>managed deploy key</strong></li>
+<li>optional host-key pinning via a pasted <code>known_hosts</code> line</li>
+<li>one-click scan, refresh, and clear actions for saved host pins in Settings</li>
+<li>passphrase-protected private-key imports during setup</li>
+</ul>
+<p>The Nodes page also includes a <strong>Remote Exec Status</strong> panel that acts like a
+lightweight doctor:</p>
+<ul>
+<li>shows whether Moltis is currently configured for <code>local</code>, <code>node</code>, or <code>ssh</code></li>
+<li>reports paired-node inventory and managed SSH inventory</li>
+<li>flags obvious misconfigurations, such as <code>tools.exec.host = "ssh"</code> with no
+active target or a managed key that cannot be decrypted because the vault is
+locked</li>
+<li>warns when the active managed SSH route is not host-pinned</li>
+<li>lets you pin, refresh, or clear the active managed route directly from the
+doctor panel</li>
+<li>lets you test the active SSH route without leaving the page</li>
+</ul>
+<p>The CLI now mirrors the basic setup view with <code>moltis doctor</code>, including:</p>
+<ul>
+<li>active remote-exec backend (<code>local</code>, <code>node</code>, or <code>ssh</code>)</li>
+<li>SSH client discovery and version</li>
+<li>managed SSH key / target / host-pin inventory</li>
+<li>warnings for legacy <code>tools.exec.ssh_target</code> config and unpinned active routes</li>
+</ul>
 <h2 id="cli-reference"><a class="header" href="#cli-reference">CLI Reference</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moltis node generate-token</code></td><td>Generate a device token and print the <code>add</code> command</td></tr>
@@ -7402,12 +7514,18 @@ password:</p>
 <p>Currently encrypted:</p>
 <div class="table-wrapper"><table><thead><tr><th>Data</th><th>Storage</th><th>AAD</th></tr></thead><tbody>
 <tr><td>Environment variables (<code>env_variables</code> table)</td><td>SQLite</td><td><code>env:{key}</code></td></tr>
+<tr><td>Managed SSH private keys (<code>ssh_keys</code> table)</td><td>SQLite</td><td><code>ssh-key:{name}</code></td></tr>
 </tbody></table>
 </div>
-<p>The <code>encrypted</code> column in <code>env_variables</code> tracks whether each row is
-encrypted (1) or plaintext (0). When the vault is unsealed, new env vars
-are written encrypted. When sealed or uninitialized, they are written as
-plaintext.</p>
+<p>The <code>encrypted</code> column in <code>env_variables</code> and <code>ssh_keys</code> tracks whether each
+row is encrypted (1) or plaintext (0). When the vault is unsealed, new env vars
+and managed SSH private keys are written encrypted. Imported passphrase-protected
+SSH keys are decrypted during import and then stored under the vault-managed
+key hierarchy. When sealed or
+uninitialized, they are written as plaintext.</p>
+<p>On the first successful vault unseal after enabling the feature, Moltis also
+migrates any previously stored plaintext env vars and managed SSH private keys
+to encrypted storage in-place.</p>
 <div id="admonition-planned" class="admonition admonish-info" role="note" aria-labelledby="admonition-planned-title">
 <div class="admonition-title">
 <div id="admonition-planned-title">
@@ -8017,6 +8135,19 @@ untrusted code until reviewed.</p>
 <li><code>enabled</code> - skill is active for agent use</li>
 </ul>
 <p>You cannot enable untrusted skills.</p>
+<p>Portable bundle imports add one more step:</p>
+<ul>
+<li><code>quarantined</code> - imported from a portable bundle and blocked from enable until explicitly cleared</li>
+</ul>
+<p>Imported bundles keep provenance metadata (original source, commit SHA when
+available, bundle path, export time) so you can review where they came from
+before clearing quarantine.</p>
+<p>The Skills page exposes these bundle flows directly:</p>
+<ul>
+<li>import a <code>.tar.gz</code> bundle from disk</li>
+<li>export an installed repo back to a portable bundle</li>
+<li>clear quarantine after reviewing provenance and contents</li>
+</ul>
 <h2 id="provenance-pinning"><a class="header" href="#provenance-pinning">Provenance Pinning</a></h2>
 <p>Moltis records a pinned <code>commit_sha</code> for installed repos:</p>
 <ul>
@@ -8061,6 +8192,7 @@ dependency install attempts, and source drift detection.</p>
 <li>Review SKILL.md and linked scripts before trust.</li>
 <li>Prefer pinned, known repos over ad-hoc installs.</li>
 <li>Monitor <code>security-audit.jsonl</code> for unusual events.</li>
+<li>Keep imported bundles quarantined until you review their contents locally.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="running-moltis-in-docker"><a class="header" href="#running-moltis-in-docker">Running Moltis in Docker</a></h1>
 <p>Moltis is available as a multi-architecture Docker image supporting both
@@ -8595,7 +8727,7 @@ prompt compact while adapting to the current session context.</p>
 <li><strong>Agent identity</strong> — name, emoji, creature, vibe from <code>IDENTITY.md</code></li>
 <li><strong>Soul</strong> — personality directives from <code>SOUL.md</code> (or built-in default)</li>
 <li><strong>User profile</strong> — user’s name from <code>USER.md</code></li>
-<li><strong>Project context</strong> — <code>CLAUDE.md</code> / <code>CLAUDE.local.md</code> / <code>.claude/rules/*.md</code>
+<li><strong>Project context</strong> — <code>CLAUDE.md</code> / <code>CLAUDE.local.md</code> / <code>AGENTS.md</code> / <code>.cursorrules</code> / <code>.claude/rules/*.md</code> / <code>.cursor/rules/*.{md,mdc}</code>
 walked up the directory tree</li>
 <li><strong>Runtime context</strong> — host info, sandbox config, execution routing hints</li>
 <li><strong>Skills listing</strong> — available skills as XML block</li>
@@ -8670,8 +8802,11 @@ from the project directory upward to the filesystem root, collecting:</p>
 <ul>
 <li><code>CLAUDE.md</code></li>
 <li><code>CLAUDE.local.md</code></li>
-<li><code>.claude/rules/*.md</code></li>
 <li><code>AGENTS.md</code></li>
+<li><code>.cursorrules</code></li>
+<li><code>.claude/rules/*.md</code></li>
+<li><code>.cursor/rules/*.md</code></li>
+<li><code>.cursor/rules/*.mdc</code></li>
 </ul>
 <p>Files are merged outermost-first (root before project directory), so
 project-specific instructions override workspace-level ones.</p>
@@ -8716,6 +8851,17 @@ Create git commits
 </ul>
 <p>Each is rendered under <code>## Workspace Files</code> with its own <code>###</code> subheading.
 Leading HTML comments (<code>&lt;!-- ... --&gt;</code>) are stripped before injection.</p>
+<h3 id="project-context-safety"><a class="header" href="#project-context-safety">Project Context Safety</a></h3>
+<p>Project context ingestion now performs a lightweight safety pass before prompt
+injection:</p>
+<ul>
+<li>leading HTML comments are stripped</li>
+<li>suspicious instruction-override phrases are flagged</li>
+<li>obvious prompt/secret exfiltration text is flagged</li>
+<li>obvious approval/sandbox bypass text is flagged</li>
+</ul>
+<p>Warnings are surfaced in the rendered project context so the model sees that
+the file should be treated cautiously instead of as operator intent.</p>
 <h3 id="tool-schemas"><a class="header" href="#tool-schemas">Tool Schemas</a></h3>
 <p>How tools are described depends on whether the provider supports native
 tool calling:</p>
@@ -8768,6 +8914,9 @@ concern.</p>
 
 &lt;project&gt;/
 ├── CLAUDE.md            # Project instructions
+├── AGENTS.md            # Project-local agent instructions
+├── .cursorrules         # Cursor compatibility file
+├── .cursor/rules/*.mdc  # Cursor rule files
 ├── CLAUDE.local.md      # Local overrides (gitignored)
 └── .claude/rules/*.md   # Additional rule files
 </code></pre>
@@ -9691,7 +9840,7 @@ system_prompt_suffix = "Gather facts and report clearly."
 [agents.presets.coordinator]
 identity.name = "orchestrator"
 delegate_only = true
-tools.allow = ["spawn_agent", "sessions_list", "sessions_history", "sessions_send", "task_list"]
+tools.allow = ["spawn_agent", "sessions_list", "sessions_history", "sessions_search", "sessions_send", "task_list"]
 sessions.can_send = true
 </code></pre>
 <p>Then call <code>spawn_agent</code> with a preset:</p>
@@ -9724,7 +9873,8 @@ sessions.can_send = true
 <li><code>tools.deny</code> is applied after allow-list filtering.</li>
 <li>For normal sub-agents, <code>spawn_agent</code> is always removed to avoid recursive runaway spawning.</li>
 <li>For <code>delegate_only = true</code>, the registry is restricted to delegation/session tools:
-<code>spawn_agent</code>, <code>sessions_list</code>, <code>sessions_history</code>, <code>sessions_send</code>, <code>task_list</code>.</li>
+<code>spawn_agent</code>, <code>sessions_list</code>, <code>sessions_history</code>, <code>sessions_search</code>, <code>sessions_send</code>,
+<code>task_list</code>.</li>
 </ul>
 <h2 id="session-access-policy"><a class="header" href="#session-access-policy">Session Access Policy</a></h2>
 <p><code>sessions</code> policy controls what a preset can see/send across sessions:</p>
@@ -9803,6 +9953,15 @@ The markdown body becomes <code>system_prompt_suffix</code>.</p>
   "offset": 0
 }
 </code></pre>
+<h3 id="sessions_search"><a class="header" href="#sessions_search"><code>sessions_search</code></a></h3>
+<p>Search prior session history for relevant snippets. By default the current
+session is excluded when <code>_session_key</code> is available in tool context.</p>
+<pre><code class="language-json">{
+  "query": "checkpoint rollback",
+  "limit": 5,
+  "exclude_current": true
+}
+</code></pre>
 <h3 id="sessions_send"><a class="header" href="#sessions_send"><code>sessions_send</code></a></h3>
 <p>Send a message to another session, optionally waiting for reply.</p>
 <pre><code class="language-json">{
@@ -9815,11 +9974,11 @@ The markdown body becomes <code>system_prompt_suffix</code>.</p>
 <h2 id="session-access-policy-1"><a class="header" href="#session-access-policy-1">Session Access Policy</a></h2>
 <p>Configure policy in a preset to control what sessions a sub-agent can access:</p>
 <pre><code class="language-toml">[agents.presets.coordinator]
-tools.allow = ["sessions_list", "sessions_history", "sessions_send", "task_list", "spawn_agent"]
+tools.allow = ["sessions_list", "sessions_history", "sessions_search", "sessions_send", "task_list", "spawn_agent"]
 sessions.can_send = true
 
 [agents.presets.observer]
-tools.allow = ["sessions_list", "sessions_history"]
+tools.allow = ["sessions_list", "sessions_history", "sessions_search"]
 sessions.key_prefix = "agent:research:"
 sessions.can_send = false
 </code></pre>
@@ -9842,6 +10001,7 @@ sessions.can_send = false
 <p>Common coordinator flow:</p>
 <ol>
 <li><code>sessions_list</code> to discover workers</li>
+<li><code>sessions_search</code> to find prior related work</li>
 <li><code>sessions_history</code> to inspect progress</li>
 <li><code>sessions_send</code> to dispatch next tasks</li>
 <li><code>task_list</code> to track cross-session work items</li>

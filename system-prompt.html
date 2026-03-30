@@ -195,7 +195,7 @@ prompt compact while adapting to the current session context.</p>
 <li><strong>Agent identity</strong> — name, emoji, creature, vibe from <code>IDENTITY.md</code></li>
 <li><strong>Soul</strong> — personality directives from <code>SOUL.md</code> (or built-in default)</li>
 <li><strong>User profile</strong> — user’s name from <code>USER.md</code></li>
-<li><strong>Project context</strong> — <code>CLAUDE.md</code> / <code>CLAUDE.local.md</code> / <code>.claude/rules/*.md</code>
+<li><strong>Project context</strong> — <code>CLAUDE.md</code> / <code>CLAUDE.local.md</code> / <code>AGENTS.md</code> / <code>.cursorrules</code> / <code>.claude/rules/*.md</code> / <code>.cursor/rules/*.{md,mdc}</code>
 walked up the directory tree</li>
 <li><strong>Runtime context</strong> — host info, sandbox config, execution routing hints</li>
 <li><strong>Skills listing</strong> — available skills as XML block</li>
@@ -270,8 +270,11 @@ from the project directory upward to the filesystem root, collecting:</p>
 <ul>
 <li><code>CLAUDE.md</code></li>
 <li><code>CLAUDE.local.md</code></li>
-<li><code>.claude/rules/*.md</code></li>
 <li><code>AGENTS.md</code></li>
+<li><code>.cursorrules</code></li>
+<li><code>.claude/rules/*.md</code></li>
+<li><code>.cursor/rules/*.md</code></li>
+<li><code>.cursor/rules/*.mdc</code></li>
 </ul>
 <p>Files are merged outermost-first (root before project directory), so
 project-specific instructions override workspace-level ones.</p>
@@ -316,6 +319,17 @@ Create git commits
 </ul>
 <p>Each is rendered under <code>## Workspace Files</code> with its own <code>###</code> subheading.
 Leading HTML comments (<code>&lt;!-- ... --&gt;</code>) are stripped before injection.</p>
+<h3 id="project-context-safety"><a class="header" href="#project-context-safety">Project Context Safety</a></h3>
+<p>Project context ingestion now performs a lightweight safety pass before prompt
+injection:</p>
+<ul>
+<li>leading HTML comments are stripped</li>
+<li>suspicious instruction-override phrases are flagged</li>
+<li>obvious prompt/secret exfiltration text is flagged</li>
+<li>obvious approval/sandbox bypass text is flagged</li>
+</ul>
+<p>Warnings are surfaced in the rendered project context so the model sees that
+the file should be treated cautiously instead of as operator intent.</p>
 <h3 id="tool-schemas"><a class="header" href="#tool-schemas">Tool Schemas</a></h3>
 <p>How tools are described depends on whether the provider supports native
 tool calling:</p>
@@ -368,6 +382,9 @@ concern.</p>
 
 &lt;project&gt;/
 ├── CLAUDE.md            # Project instructions
+├── AGENTS.md            # Project-local agent instructions
+├── .cursorrules         # Cursor compatibility file
+├── .cursor/rules/*.mdc  # Cursor rule files
 ├── CLAUDE.local.md      # Local overrides (gitignored)
 └── .claude/rules/*.md   # Additional rule files
 </code></pre>

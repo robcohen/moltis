@@ -199,7 +199,7 @@ system_prompt_suffix = "Gather facts and report clearly."
 [agents.presets.coordinator]
 identity.name = "orchestrator"
 delegate_only = true
-tools.allow = ["spawn_agent", "sessions_list", "sessions_history", "sessions_send", "task_list"]
+tools.allow = ["spawn_agent", "sessions_list", "sessions_history", "sessions_search", "sessions_send", "task_list"]
 sessions.can_send = true
 </code></pre>
 <p>Then call <code>spawn_agent</code> with a preset:</p>
@@ -232,7 +232,8 @@ sessions.can_send = true
 <li><code>tools.deny</code> is applied after allow-list filtering.</li>
 <li>For normal sub-agents, <code>spawn_agent</code> is always removed to avoid recursive runaway spawning.</li>
 <li>For <code>delegate_only = true</code>, the registry is restricted to delegation/session tools:
-<code>spawn_agent</code>, <code>sessions_list</code>, <code>sessions_history</code>, <code>sessions_send</code>, <code>task_list</code>.</li>
+<code>spawn_agent</code>, <code>sessions_list</code>, <code>sessions_history</code>, <code>sessions_search</code>, <code>sessions_send</code>,
+<code>task_list</code>.</li>
 </ul>
 <h2 id="session-access-policy"><a class="header" href="#session-access-policy">Session Access Policy</a></h2>
 <p><code>sessions</code> policy controls what a preset can see/send across sessions:</p>
