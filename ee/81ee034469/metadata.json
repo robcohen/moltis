@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ee81ee034469",
+  "strategy": "manual-commit",
+  "branch": "shrouded-technician",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/page-nodes.js",
+    "crates/web/ui/e2e/specs/settings-nav.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ee/81ee034469/0/metadata.json",
+      "transcript": "/ee/81ee034469/0/full.jsonl",
+      "context": "/ee/81ee034469/0/context.md",
+      "content_hash": "/ee/81ee034469/0/content_hash.txt",
+      "prompt": "/ee/81ee034469/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1262,
+    "cache_creation_tokens": 60487,
+    "cache_read_tokens": 1119042,
+    "output_tokens": 6214,
+    "api_call_count": 27
+  }
+}
