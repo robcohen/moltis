@@ -3921,6 +3921,7 @@ dm_policy = "open"
 main outbound patterns:</p>
 <ul>
 <li><strong><code>send_message</code> tool</strong> for direct proactive messages to any configured channel account/chat</li>
+<li><strong><code>update_channel_settings</code> tool</strong> for safe in-chat edits to channel access rules, allowlists, and model routing</li>
 <li><strong>Cron job delivery</strong> for background jobs that should post their final output to a channel</li>
 <li><strong>Heartbeat delivery</strong> for periodic heartbeat acknowledgements sent to a chosen chat</li>
 </ul>
@@ -3933,6 +3934,19 @@ main outbound patterns:</p>
 </code></pre>
 <p><code>account_id</code> is the configured channel account name from <code>moltis.toml</code>, and
 <code>to</code> is the destination chat, peer, or room identifier for that platform.</p>
+<p>Example <code>update_channel_settings</code> tool call:</p>
+<pre><code class="language-json">{
+  "account_id": "my-telegram-bot",
+  "settings": {
+    "dm_policy": "allowlist",
+    "allowlist_add": ["alice"],
+    "model": "openai/gpt-5"
+  }
+}
+</code></pre>
+<p><code>update_channel_settings</code> intentionally supports a narrow patch surface. It is
+for non-secret channel settings only, not raw <code>moltis.toml</code> editing, token
+rotation, or arbitrary config mutation.</p>
 <h2 id="access-control"><a class="header" href="#access-control">Access Control</a></h2>
 <p>All channels share the same access control model with three settings:</p>
 <h3 id="dm-policy"><a class="header" href="#dm-policy">DM Policy</a></h3>
