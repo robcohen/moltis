@@ -1,0 +1,17 @@
+Fix comments from https://github.com/moltis-org/moltis/pull/525 and resolve conversations
+
+---
+
+Fix new comments from https://github.com/moltis-org/moltis/pull/525 and resolve conversations
+
+---
+
+Maybe the releases should include a script to verify gpg signatures, fetching my key from my website at https://pen.so/gpg.asc ?
+
+---
+
+Fix new comments from https://github.com/moltis-org/moltis/pull/525 and resolve conversations
+
+---
+
+Fix new comments from https://github.com/moltis-org/moltis/pull/525 and resolve conversations
