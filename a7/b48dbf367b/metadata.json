@@ -3,7 +3,7 @@
   "checkpoint_id": "a7b48dbf367b",
   "strategy": "manual-commit",
   "branch": "succinct-pyroraptor",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "crates/web/src/assets/js/helpers.js",
     "crates/web/src/assets/js/onboarding-view.js"
@@ -15,13 +15,20 @@
       "context": "/a7/b48dbf367b/0/context.md",
       "content_hash": "/a7/b48dbf367b/0/content_hash.txt",
       "prompt": "/a7/b48dbf367b/0/prompt.txt"
+    },
+    {
+      "metadata": "/a7/b48dbf367b/1/metadata.json",
+      "transcript": "/a7/b48dbf367b/1/full.jsonl",
+      "context": "/a7/b48dbf367b/1/context.md",
+      "content_hash": "/a7/b48dbf367b/1/content_hash.txt",
+      "prompt": "/a7/b48dbf367b/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 14,
-    "cache_creation_tokens": 33396,
-    "cache_read_tokens": 278819,
-    "output_tokens": 2411,
-    "api_call_count": 10
+    "input_tokens": 425,
+    "cache_creation_tokens": 315584,
+    "cache_read_tokens": 69717595,
+    "output_tokens": 88340,
+    "api_call_count": 372
   }
 }

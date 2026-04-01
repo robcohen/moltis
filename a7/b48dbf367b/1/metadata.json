@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a7b48dbf367b",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T20:27:11.2576Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/helpers.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2b8fde34e02b",
+  "token_usage": {
+    "input_tokens": 411,
+    "cache_creation_tokens": 282188,
+    "cache_read_tokens": 69438776,
+    "output_tokens": 85929,
+    "api_call_count": 362
+  },
+  "summary": {
+    "intent": "Reduce the overwhelming number of models shown in the LLM provider settings and onboarding UI, and improve the visibility of probe errors when a model fails validation.",
+    "outcome": "Implemented collapsible model lists (top 3 visible by default with expand toggle), added recommended/preferred model sorting, added a `recommended` field to `ModelInfo` with smart flagging, hid legacy models (\u003e1 year old) from chat selector, fixed probe error messages showing generic text instead of actual server errors, and added version-number-based sorting for models without dates.",
+    "learnings": {
+      "repo": [
+        "Two separate biome versions are in use: `npx biome` (0.3.3) vs system `biome` via mise (2.4.6). The validation script uses the system version which has stricter ternary formatting rules — always use system biome for pre-commit checks.",
+        "The WS connect handler in ws-connect.js line 96 calls `localizeRpcError` on ALL error responses, replacing server error messages with locale strings keyed by error code. This meant 'You do not have permission to access X' was replaced by 'Service temporarily unavailable'.",
+        "All non-Forbidden `ServiceError`s get serialized with code `UNAVAILABLE` in service-traits/src/lib.rs, which triggers the generic locale message replacement.",
+        "There are three separate model card rendering code paths: page-providers.js (settings), onboarding-view.js (onboarding), and providers.js (Preferred Models modal — imperative DOM, not Preact).",
+        "The `models.list_all` RPC (used by settings) previously did not include the `preferred` field, only `models.list` did.",
+        "Static model catalogs use a tuple format `(model_id, display_name, created_at)` — the `catalog_to_discovered` helper marks the first N entries as recommended.",
+        "OpenAI API-discovered models go through `parse_model_entry` in openai.rs where flagship patterns can be matched for the `recommended` flag.",
+        "The local-validate.sh script checks i18n parity across 3 locales and 18 namespaces automatically."
+      ],
+      "code": [
+        {
+          "path": "crates/service-traits/src/lib.rs",
+          "line": 51,
+          "end_line": 53,
+          "finding": "All ServiceError::Message variants serialize to error code UNAVAILABLE, causing frontend locale to overwrite the actual error message"
+        },
+        {
+          "path": "crates/web/src/assets/js/ws-connect.js",
+          "line": 96,
+          "end_line": 96,
+          "finding": "frame.error = localizeRpcError(frame.error) runs on every WS response, replacing server messages with locale strings before resolving promises"
+        },
+        {
+          "path": "crates/web/src/assets/js/helpers.js",
+          "line": 196,
+          "end_line": 201,
+          "finding": "localizedRpcErrorMessage returns locale string by code, ignoring server-provided message — fixed to preserve serverMessage on error object"
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "finding": "parse_model_entry builds DiscoveredModel from OpenAI API response — good place to pattern-match flagship model IDs for recommended flag"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "finding": "Legacy model hiding (\u003e1 year) implemented in list() but not list_all() — preferred models and models without timestamps are always exempt"
+        }
+      ],
+      "workflow": [
+        "Run `biome` (system, from mise) not `npx biome` for formatting — the versions have incompatible ternary formatting rules.",
+        "After adding a new field to a Rust struct, a bulk sed approach to add default values to test blocks is faster than fixing one by one, but requires care to avoid modifying non-target structs.",
+        "The local-validate.sh script is the authoritative check before merging — catches biome version mismatches that local `cargo fmt` and `npx biome` won't."
+      ]
+    },
+    "friction": [
+      "Three separate model card rendering code paths (settings, onboarding, preferred models modal) meant the same fix had to be applied three times — the third was missed initially.",
+      "Biome version mismatch (npx 0.3.3 vs system 2.4.6) caused formatting failures in CI that passed local lint checks, requiring a separate fix commit.",
+      "Adding `recommended: bool` to ModelInfo required touching ~15 construction sites across multiple files plus test blocks — bulk sed was used but incorrectly modified a non-ModelInfo struct (PendingInvoke) in server.rs.",
+      "The catalog_to_discovered helper existed but was private — had to be made pub to use from provider submodules.",
+      "The probe error message being overwritten by locale strings was a three-layer problem: ServiceError code → localizeRpcError → locale lookup, requiring changes in both Rust (to preserve detail) and JS (to expose serverMessage)."
+    ],
+    "open_items": [
+      "Popularity-based model sorting before first use was deferred — suggested approach is adding a `recommended` tier/field to ModelInfo in the Rust provider code (done), but crowdsourced or cross-instance popularity data is not implemented.",
+      "The `humanizeProbeError` function in provider-validation.js still has some generic patterns that may be too broad — the 'permission' pattern was partially fixed but full audit was not done.",
+      "The `providers.show_legacy_models` config option was added but there is no UI toggle — users must edit moltis.toml directly.",
+      "GitHub Copilot and OpenAI-compatible providers have top-N recommended flagging but no pattern-based flagship detection like OpenAI's `parse_model_entry` approach.",
+      "The collapse/expand state in the settings page resets on page navigation — no persistence of expanded state was implemented."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T20:26:09.492641Z",
+    "agent_lines": 0,
+    "human_added": 2434,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 2434,
+    "agent_percentage": 0
+  }
+}
