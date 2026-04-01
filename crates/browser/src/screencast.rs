@@ -233,11 +233,11 @@ async fn relay_screencast_frames(
             sequence,
         };
 
-        // Send to all subscribers (ignore lagged receivers).
-        if tx.send(frame).is_err() {
-            debug!(session_id = %session_id, "no screencast subscribers, stopping relay");
-            break;
-        }
+        // Send to all subscribers. If no one is listening yet (e.g. the
+        // UI relay subscribes slightly after the screencast starts), just
+        // drop the frame — the relay task is aborted via its abort_handle
+        // when the screencast is stopped, so we won't spin forever.
+        let _ = tx.send(frame);
     }
 
     debug!(session_id = %session_id, "screencast frame relay ended");
