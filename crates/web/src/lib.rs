@@ -121,7 +121,7 @@ fn build_api_routes() -> Router<AppState> {
             get(api::api_browser_history_handler),
         )
         .route(
-            "/api/browser/actions/:session_id",
+            "/api/browser/actions/{session_id}",
             get(api::api_browser_actions_handler),
         )
         .route(
