@@ -84,10 +84,7 @@ function prefetchScreenshots(sessionList) {
 		browserAction({ session_id: sess.session_id, action: "screenshot" })
 			.then((snap) => {
 				if (snap.screenshot) {
-					screenshotCache[sess.session_id] = {
-						data: snap.screenshot,
-						scale: snap.screenshot_scale || 1,
-					};
+					screenshotCache[sess.session_id] = { data: snap.screenshot };
 				}
 			})
 			.catch(() => {});
@@ -255,14 +252,14 @@ async function selectSession(sessionId) {
 	// Show cached screenshot instantly, or fetch one
 	var cached = screenshotCache[sessionId];
 	if (cached) {
-		applyScreenshot(cached.data, cached.scale);
+		applyScreenshot(cached.data);
 		fetching.value = false;
 	} else {
 		try {
 			var snap = await browserAction({ session_id: sessionId, action: "screenshot" });
 			if (snap.screenshot && activeSession.value === sessionId) {
-				applyScreenshot(snap.screenshot, snap.screenshot_scale || 1);
-				screenshotCache[sessionId] = { data: snap.screenshot, scale: snap.screenshot_scale || 1 };
+				applyScreenshot(snap.screenshot);
+				screenshotCache[sessionId] = { data: snap.screenshot };
 			}
 		} catch {
 			// Session might have died — refresh list
@@ -277,13 +274,20 @@ async function selectSession(sessionId) {
 	await sendStartScreencast(sessionId);
 }
 
-function applyScreenshot(data, scale) {
+function applyScreenshot(data) {
 	frameData.value = data;
 	frameMime.value = "image/png";
-	frameMeta.value = {
-		device_width: 1280 * scale,
-		device_height: 800 * scale,
+	// Derive dimensions from the actual image to get correct coordinate mapping.
+	// The screenshot is at viewport resolution, so naturalWidth/Height = viewport size.
+	var img = new Image();
+	img.onload = () => {
+		frameMeta.value = {
+			device_width: img.naturalWidth,
+			device_height: img.naturalHeight,
+			offset_top: 0,
+		};
 	};
+	img.src = `data:image/png;base64,${data}`;
 }
 
 // ── Mouse/keyboard/scroll input relay ────────────────────────
@@ -663,22 +667,44 @@ function BrowserCanvas() {
 	var imgRef = useRef(null);
 	var cleanupRef = useRef(null);
 
+	// rAF-gated rendering: store latest frame, draw at display refresh rate.
+	// Avoids wasted draws when frames arrive faster than the monitor refreshes.
+	var pendingFrameRef = useRef(null);
+	var rafRef = useRef(null);
+
 	useEffect(() => {
-		if (!(frameData.value && canvasRef.current)) return;
-		var img = imgRef.current;
-		if (!img) {
-			img = new Image();
-			imgRef.current = img;
+		if (!frameData.value) return;
+		pendingFrameRef.current = { data: frameData.value, mime: frameMime.value };
+
+		if (!rafRef.current) {
+			rafRef.current = requestAnimationFrame(() => {
+				rafRef.current = null;
+				var pending = pendingFrameRef.current;
+				if (!(pending && canvasRef.current)) return;
+
+				var img = imgRef.current;
+				if (!img) {
+					img = new Image();
+					imgRef.current = img;
+				}
+				img.onload = () => {
+					var canvas = canvasRef.current;
+					if (!canvas) return;
+					canvas.width = img.naturalWidth;
+					canvas.height = img.naturalHeight;
+					var ctx = canvas.getContext("2d");
+					ctx.drawImage(img, 0, 0);
+				};
+				img.src = `data:${pending.mime};base64,${pending.data}`;
+			});
 		}
-		img.onload = () => {
-			var canvas = canvasRef.current;
-			if (!canvas) return;
-			canvas.width = img.naturalWidth;
-			canvas.height = img.naturalHeight;
-			var ctx = canvas.getContext("2d");
-			ctx.drawImage(img, 0, 0);
+
+		return () => {
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
 		};
-		img.src = `data:${frameMime.value};base64,${frameData.value}`;
 	}, [frameData.value]);
 
 	function canvasRefCallback(canvas) {

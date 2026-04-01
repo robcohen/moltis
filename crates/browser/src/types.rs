@@ -640,9 +640,9 @@ impl Default for BrowserConfig {
             enabled: true,
             chrome_path: None,
             headless: true,
-            viewport_width: 2560,
-            viewport_height: 1440,
-            device_scale_factor: 2.0,
+            viewport_width: 1440,
+            viewport_height: 900,
+            device_scale_factor: 1.0,
             max_instances: 0, // 0 = unlimited, limited by memory
             memory_limit_percent: 90,
             idle_timeout_secs: 300,
