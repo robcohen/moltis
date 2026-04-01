@@ -103,6 +103,12 @@ pub enum BrowserAction {
         /// Click count (default: 1).
         #[serde(default = "default_click_count")]
         click_count: u32,
+        /// Horizontal scroll delta (for mouseWheel).
+        #[serde(default)]
+        delta_x: f64,
+        /// Vertical scroll delta (for mouseWheel).
+        #[serde(default)]
+        delta_y: f64,
     },
 
     /// Send a keyboard event directly to the browser page.

@@ -245,9 +245,21 @@ impl BrowserManager {
                 event_type,
                 button,
                 click_count,
+                delta_x,
+                delta_y,
             } => {
-                self.mouse_input(session_id, x, y, event_type, button, click_count, sandbox)
-                    .await
+                self.mouse_input(
+                    session_id,
+                    x,
+                    y,
+                    event_type,
+                    button,
+                    click_count,
+                    delta_x,
+                    delta_y,
+                    sandbox,
+                )
+                .await
             },
             BrowserAction::KeyboardInput {
                 event_type,
@@ -825,6 +837,7 @@ impl BrowserManager {
     }
 
     /// Send a mouse input event to the page.
+    #[allow(clippy::too_many_arguments)]
     async fn mouse_input(
         &self,
         session_id: Option<&str>,
@@ -833,6 +846,8 @@ impl BrowserManager {
         event_type: MouseInputType,
         button: MouseInputButton,
         click_count: u32,
+        delta_x: f64,
+        delta_y: f64,
         sandbox: bool,
     ) -> Result<(String, BrowserResponse), Error> {
         let sid = require_session(session_id, "mouse_input")?;
@@ -851,14 +866,22 @@ impl BrowserManager {
             MouseInputButton::Middle => MouseButton::Middle,
         };
 
-        let cmd = DispatchMouseEventParams::builder()
+        let mut builder = DispatchMouseEventParams::builder()
             .r#type(cdp_type)
             .x(x)
             .y(y)
             .button(cdp_button)
-            .click_count(click_count as i64)
-            .build()
-            .map_err(|e| Error::Cdp(e.to_string()))?;
+            .click_count(click_count as i64);
+
+        // Scroll deltas for mouseWheel events
+        if delta_x != 0.0 {
+            builder = builder.delta_x(delta_x);
+        }
+        if delta_y != 0.0 {
+            builder = builder.delta_y(delta_y);
+        }
+
+        let cmd = builder.build().map_err(|e| Error::Cdp(e.to_string()))?;
         page.execute(cmd)
             .await
             .map_err(|e| Error::Cdp(e.to_string()))?;

@@ -229,24 +229,33 @@ async function createSession() {
 	}
 }
 
-// ── Mouse/keyboard input relay ──────────────────────────────
+// ── Mouse/keyboard/scroll input relay ────────────────────────
+
+function canvasCoords(e, canvas) {
+	var rect = canvas.getBoundingClientRect();
+	var meta = frameMeta.value;
+	if (!meta) return null;
+	var scaleX = meta.device_width / rect.width;
+	var scaleY = meta.device_height / rect.height;
+	return {
+		x: (e.clientX - rect.left) * scaleX,
+		y: (e.clientY - rect.top) * scaleY,
+	};
+}
 
 function relayMouseEvent(e, canvas) {
 	if (!(activeSession.value && screencasting.value)) return;
-	var rect = canvas.getBoundingClientRect();
-	var meta = frameMeta.value;
-	if (!meta) return;
+	// Prevent text selection, drag, and context menu on the canvas
+	e.preventDefault();
 
-	// Translate canvas coordinates to browser viewport coordinates
-	var scaleX = meta.device_width / rect.width;
-	var scaleY = meta.device_height / rect.height;
-	var x = (e.clientX - rect.left) * scaleX;
-	var y = (e.clientY - rect.top) * scaleY;
+	var coords = canvasCoords(e, canvas);
+	if (!coords) return;
 
 	var eventType;
 	switch (e.type) {
 		case "mousedown":
 			eventType = "mousePressed";
+			canvas.focus();
 			break;
 		case "mouseup":
 			eventType = "mouseReleased";
@@ -260,15 +269,34 @@ function relayMouseEvent(e, canvas) {
 
 	var button = ["left", "middle", "right"][e.button] || "left";
 
-	// Fire and forget — don't await for mouse events
 	browserAction({
 		session_id: activeSession.value,
 		action: "mouse_input",
-		x: x,
-		y: y,
+		x: coords.x,
+		y: coords.y,
 		event_type: eventType,
 		button: button,
 		click_count: e.type === "mousedown" ? e.detail || 1 : 1,
+	}).catch(() => {});
+}
+
+function relayWheelEvent(e, canvas) {
+	if (!(activeSession.value && screencasting.value)) return;
+	e.preventDefault();
+
+	var coords = canvasCoords(e, canvas);
+	if (!coords) return;
+
+	browserAction({
+		session_id: activeSession.value,
+		action: "mouse_input",
+		x: coords.x,
+		y: coords.y,
+		event_type: "mouseWheel",
+		button: "left",
+		click_count: 0,
+		delta_x: e.deltaX,
+		delta_y: e.deltaY,
 	}).catch(() => {});
 }
 
@@ -314,12 +342,25 @@ function SessionList() {
 		</div>`;
 	}
 
+	function selectSession(sessionId) {
+		if (activeSession.value === sessionId) return;
+		// Stop current screencast if switching sessions
+		if (screencasting.value && activeSession.value) {
+			stopScreencast(activeSession.value);
+		}
+		activeSession.value = sessionId;
+		startScreencast(sessionId);
+	}
+
 	return html`<div class="flex flex-col gap-2">
 		${s.map(
-			(sess) => html`
+			(sess) => {
+				var isActive = activeSession.value === sess.session_id;
+				return html`
 				<div
 					key=${sess.session_id}
-					class="rounded-lg border border-[var(--border)] p-3 bg-[var(--surface)] flex flex-col gap-2"
+					class="rounded-lg border p-3 flex flex-col gap-2 cursor-pointer transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50'}"
+					onClick=${() => selectSession(sess.session_id)}
 				>
 					<div class="flex items-center justify-between gap-2">
 						<div class="flex-1 min-w-0">
@@ -332,23 +373,14 @@ function SessionList() {
 						</div>
 						<div class="flex items-center gap-1 shrink-0">
 							${sess.sandboxed ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">sandbox</span>` : null}
-							${sess.screencasting ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>` : null}
+							${isActive && screencasting.value ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>` : null}
 						</div>
 					</div>
 					<div class="flex items-center gap-1.5 text-xs">
 						<span class="text-[var(--muted)]">Age: ${formatDuration(sess.age_secs)}</span>
 						<span class="text-[var(--muted)]">Idle: ${formatDuration(sess.idle_secs)}</span>
 					</div>
-					<div class="flex items-center gap-1.5 flex-wrap">
-						${
-							activeSession.value === sess.session_id && screencasting.value
-								? html`<button class="provider-btn provider-btn-danger provider-btn-sm" onClick=${() => stopScreencast(sess.session_id)}>
-										Stop Viewing
-									</button>`
-								: html`<button class="provider-btn provider-btn-sm" onClick=${() => startScreencast(sess.session_id)}>
-										View
-									</button>`
-						}
+					<div class="flex items-center gap-1.5 flex-wrap" onClick=${(e) => e.stopPropagation()}>
 						<button
 							class="provider-btn provider-btn-secondary provider-btn-sm"
 							onClick=${() => exportCookies(sess.session_id)}
@@ -363,7 +395,7 @@ function SessionList() {
 						</button>
 					</div>
 				</div>
-			`,
+			`; },
 		)}
 	</div>`;
 }
@@ -577,9 +609,17 @@ function BrowserCanvas() {
 		function onMouse(e) {
 			relayMouseEvent(e, canvas);
 		}
+		function onWheel(e) {
+			relayWheelEvent(e, canvas);
+		}
+		function onContextMenu(e) {
+			e.preventDefault();
+		}
 		canvas.addEventListener("mousedown", onMouse);
 		canvas.addEventListener("mouseup", onMouse);
 		canvas.addEventListener("mousemove", onMouse);
+		canvas.addEventListener("wheel", onWheel, { passive: false });
+		canvas.addEventListener("contextmenu", onContextMenu);
 
 		// Keyboard: focus the canvas to receive key events
 		canvas.setAttribute("tabindex", "0");
@@ -590,6 +630,8 @@ function BrowserCanvas() {
 			canvas.removeEventListener("mousedown", onMouse);
 			canvas.removeEventListener("mouseup", onMouse);
 			canvas.removeEventListener("mousemove", onMouse);
+			canvas.removeEventListener("wheel", onWheel);
+			canvas.removeEventListener("contextmenu", onContextMenu);
 			canvas.removeEventListener("keydown", relayKeyEvent);
 			canvas.removeEventListener("keyup", relayKeyEvent);
 		};
