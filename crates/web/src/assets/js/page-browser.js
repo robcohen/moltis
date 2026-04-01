@@ -446,7 +446,7 @@ function SessionList() {
 					<div class="flex items-center justify-between gap-2">
 						<div class="flex-1 min-w-0">
 							<div class="text-xs font-mono text-[var(--text-strong)] truncate" title=${sess.session_id}>
-								${sess.creating ? "New session" : sess.session_id.slice(0, 12) + "..."}
+								${sess.creating ? "New session" : sess.session_id}
 							</div>
 							<div class="text-xs text-[var(--muted)] truncate mt-0.5" title=${sess.url}>
 								${sess.creating ? "Starting browser\u2026" : sess.url || "(no page loaded)"}
@@ -765,7 +765,7 @@ function BrowserCanvas() {
 
 	return html`<div class="flex-1 flex flex-col min-h-0">
 		<div class="flex items-center justify-between mb-1 text-[10px] text-[var(--muted)]">
-			<span>Session: ${activeSession.value?.slice(0, 12)}...</span>
+			<span>Session: ${activeSession.value}</span>
 			<span>Frame #${frameSeq.value}</span>
 			${frameMeta.value ? html`<span>${frameMeta.value.device_width}x${frameMeta.value.device_height}</span>` : null}
 		</div>
