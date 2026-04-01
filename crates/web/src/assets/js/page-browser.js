@@ -20,6 +20,22 @@ var frameSeq = signal(0);
 var creating = signal(false);
 var containerEl = null;
 
+// ── URL helpers ─────────────────────────────────────────────
+
+/** Return true if text looks like a navigable URL or domain. */
+function looksLikeUrl(text) {
+	return /^https?:\/\//i.test(text) || /^[a-z0-9]([a-z0-9-]*\.)+[a-z]{2,}/i.test(text);
+}
+
+/** Ensure URL has a scheme — prepend https:// for bare domains. */
+function normalizeUrl(input) {
+	var text = input.trim();
+	if (/^https?:\/\//i.test(text)) return text;
+	if (looksLikeUrl(text)) return `https://${text}`;
+	// Treat as Google search
+	return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+}
+
 // ── API helpers ─────────────────────────────────────────────
 
 async function browserAction(params) {
@@ -47,6 +63,27 @@ async function fetchSessions() {
 		console.error("Failed to fetch browser sessions:", e);
 	} finally {
 		loading.value = false;
+	}
+}
+
+// ── Google suggestions ──────────────────────────────────────
+
+var suggestAbort = null;
+
+async function fetchSuggestions(query) {
+	if (suggestAbort) suggestAbort.abort();
+	if (!query || query.length < 2) return [];
+	var ctrl = new AbortController();
+	suggestAbort = ctrl;
+	try {
+		var url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`;
+		var res = await fetch(url, { signal: ctrl.signal });
+		if (!res.ok) return [];
+		var data = await res.json();
+		// Firefox format: ["query", ["suggestion1", "suggestion2", ...]]
+		return (data[1] || []).slice(0, 5);
+	} catch {
+		return [];
 	}
 }
 
@@ -144,14 +181,18 @@ async function exportCookies(sessionId) {
 	}
 }
 
-async function navigateSession(sessionId, url) {
+async function navigateSession(sessionId, rawUrl) {
+	var url = normalizeUrl(rawUrl);
 	try {
 		var res = await browserAction({
 			session_id: sessionId,
 			action: "navigate",
 			url: url,
 		});
-		showToast(`Navigated to ${res.url || url}`);
+		if (!res.success) {
+			showToast(res.error || "Navigation failed", "error");
+			return;
+		}
 		await fetchSessions();
 		// Auto-start screencast after navigating to a real page
 		if (!screencasting.value && activeSession.value === sessionId) {
@@ -180,7 +221,7 @@ async function createSession() {
 		// screencast yet — about:blank won't generate any frames.
 		// Screencast starts automatically after the user navigates somewhere.
 		activeSession.value = newId;
-		showToast("Session created — enter a URL to get started");
+		showToast("Session created \u2014 enter a URL to get started");
 	} catch (e) {
 		showToast(`Failed to create session: ${e.message}`, "error");
 	} finally {
@@ -336,33 +377,173 @@ function formatDuration(secs) {
 function NavigateBar() {
 	var [url, setUrl] = useState("");
 	var [navigating, setNavigating] = useState(false);
+	var [suggestions, setSuggestions] = useState([]);
+	var [selectedIdx, setSelectedIdx] = useState(-1);
+	var [showDropdown, setShowDropdown] = useState(false);
+	var debounceRef = useRef(null);
+	var wrapperRef = useRef(null);
 
-	async function handleNavigate(e) {
-		e.preventDefault();
-		if (!(url.trim() && activeSession.value)) return;
+	// Close dropdown on outside click
+	useEffect(() => {
+		function onClickOutside(e) {
+			if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+				setShowDropdown(false);
+			}
+		}
+		document.addEventListener("mousedown", onClickOutside);
+		return () => document.removeEventListener("mousedown", onClickOutside);
+	}, []);
+
+	function buildItems(query, googleSuggestions) {
+		var items = [];
+		var q = query.trim().toLowerCase();
+		if (!q) return items;
+
+		// If it looks like a URL, offer direct navigation
+		if (looksLikeUrl(q)) {
+			var dest = /^https?:\/\//i.test(q) ? q : `https://${q}`;
+			items.push({ type: "url", label: dest, icon: "\u{1F310}" });
+		}
+
+		// Google suggestions
+		for (var s of googleSuggestions) {
+			items.push({ type: "search", label: s, icon: "\u{1F50D}" });
+		}
+
+		// Session URLs that match
+		for (var sess of sessions.value) {
+			if (sess.url && sess.url !== "about:blank" && sess.url.toLowerCase().includes(q)) {
+				// Avoid duplicate if already in list
+				if (!items.some((i) => i.label === sess.url)) {
+					items.push({ type: "history", label: sess.url, icon: "\u{1F4C4}" });
+				}
+			}
+		}
+
+		// If no URL match and no items yet, offer search
+		if (!looksLikeUrl(q) && !items.some((i) => i.type === "url")) {
+			items.unshift({
+				type: "search-go",
+				label: `Search Google for "${q}"`,
+				value: `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+				icon: "\u{1F50D}",
+			});
+		}
+
+		return items.slice(0, 8);
+	}
+
+	function onInput(e) {
+		var val = e.target.value;
+		setUrl(val);
+		setSelectedIdx(-1);
+
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		if (val.trim().length < 2) {
+			setSuggestions([]);
+			setShowDropdown(false);
+			return;
+		}
+
+		debounceRef.current = setTimeout(async () => {
+			var google = await fetchSuggestions(val.trim());
+			var items = buildItems(val, google);
+			setSuggestions(items);
+			setShowDropdown(items.length > 0);
+		}, 200);
+	}
+
+	function selectItem(item) {
+		var nav = item.value || item.label;
+		setUrl(nav);
+		setShowDropdown(false);
+		setSuggestions([]);
+		doNavigate(nav);
+	}
+
+	async function doNavigate(raw) {
+		if (!activeSession.value) return;
 		setNavigating(true);
-		await navigateSession(activeSession.value, url.trim());
+		await navigateSession(activeSession.value, raw);
 		setNavigating(false);
+	}
+
+	function onKeyDown(e) {
+		if (!showDropdown || suggestions.length === 0) {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				if (url.trim()) doNavigate(url.trim());
+			}
+			return;
+		}
+
+		switch (e.key) {
+			case "ArrowDown":
+				e.preventDefault();
+				setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+				break;
+			case "ArrowUp":
+				e.preventDefault();
+				setSelectedIdx((i) => Math.max(i - 1, -1));
+				break;
+			case "Enter":
+				e.preventDefault();
+				if (selectedIdx >= 0 && suggestions[selectedIdx]) {
+					selectItem(suggestions[selectedIdx]);
+				} else if (url.trim()) {
+					setShowDropdown(false);
+					doNavigate(url.trim());
+				}
+				break;
+			case "Escape":
+				setShowDropdown(false);
+				setSelectedIdx(-1);
+				break;
+		}
 	}
 
 	if (!activeSession.value) return null;
 
-	return html`<form onSubmit=${handleNavigate} class="flex items-center gap-2 mb-3">
-		<input
-			type="text"
-			class="flex-1 px-3 py-1.5 text-xs rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
-			placeholder="Navigate to URL..."
-			value=${url}
-			onInput=${(e) => setUrl(e.target.value)}
-		/>
-		<button
-			type="submit"
-			class="provider-btn text-xs px-3 py-1.5"
-			disabled=${navigating || !url.trim()}
-		>
-			${navigating ? "..." : "Go"}
-		</button>
-	</form>`;
+	return html`<div ref=${wrapperRef} class="relative mb-3">
+		<form onSubmit=${(e) => { e.preventDefault(); if (url.trim()) { setShowDropdown(false); doNavigate(url.trim()); } }} class="flex items-center gap-2">
+			<input
+				type="text"
+				class="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
+				style="padding: 3px 10px; font-size: 0.75rem;"
+				placeholder="Search or enter URL..."
+				value=${url}
+				onInput=${onInput}
+				onKeyDown=${onKeyDown}
+				onFocus=${() => { if (suggestions.length > 0) setShowDropdown(true); }}
+				autocomplete="off"
+			/>
+			<button
+				type="submit"
+				class="provider-btn provider-btn-sm"
+				disabled=${navigating || !url.trim()}
+			>
+				${navigating ? "\u2026" : "Go"}
+			</button>
+		</form>
+		${showDropdown && suggestions.length > 0 ? html`
+			<div class="absolute left-0 right-0 top-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg z-50 overflow-hidden" style="max-height: 320px; overflow-y: auto;">
+				${suggestions.map((item, idx) => html`
+					<button
+						key=${idx}
+						class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-hover)] ${idx === selectedIdx ? 'bg-[var(--bg-hover)]' : ''}"
+						style="border: none; background: ${idx === selectedIdx ? 'var(--bg-hover)' : 'transparent'}; cursor: pointer;"
+						onMouseDown=${(e) => { e.preventDefault(); selectItem(item); }}
+						onMouseEnter=${() => setSelectedIdx(idx)}
+					>
+						<span class="shrink-0 w-4 text-center">${item.icon}</span>
+						<span class="truncate text-[var(--text-strong)]">${item.label}</span>
+						${item.type === "url" ? html`<span class="ml-auto text-[var(--muted)] text-[10px] shrink-0">Go to site</span>` : null}
+						${item.type === "history" ? html`<span class="ml-auto text-[var(--muted)] text-[10px] shrink-0">Open tab</span>` : null}
+					</button>
+				`)}
+			</div>
+		` : null}
+	</div>`;
 }
 
 function BrowserCanvas() {
