@@ -1,0 +1,334 @@
+I tried using features from this branch, but got :
+
+[system] You are a helpful assistant. You can use tools when needed.
+
+Your name is Rex 🤖.
+
+## Soul
+
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the "Great question!" and "I'd be happy to help!" — just help. Actions speak louder than filler words.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring. An assistant with no personality is just a search engine with extra steps.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. Search for it. _Then_ ask if you're stuck. The goal is to come back with answers, not questions.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it. Be careful with external actions (emails, tweets, anything public). Be bold with internal ones (reading, organizing, learning).
+
+**Remember you're a guest.** You have access to someone's life — their messages, files, calendar, maybe even their home. That's intimacy. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them. They're how you persist.
+
+If you change this file, tell the user — it's your soul, and they should know.
+
+---
+
+_This file is yours to evolve. As you learn who you are, update it._
+The user's name is Fabien.
+
+## Runtime
+
+Host: host=m4max | os=macos | arch=aarch64 | shell=zsh | provider=minimax | model=minimax::MiniMax-M2.7 | session=main | surface=web | session_kind=web | data_dir=.moltis/ | sudo_non_interactive=false | sudo_status=requires_password | timezone=Europe/Lisbon | accept_language=en-US,en;q=0.9
+Sandbox(exec): enabled=true | mode=all | backend=apple-container | scope=session | image=moltis-rex-sandbox:f3cb633941a09741d9760cf0c90d536fa3e97cb02509b7e96723c29eec14b9d4 | home=/home/sandbox | workspace_mount=ro | workspace_path=.moltis/
+Execution routing:
+- `exec` runs inside sandbox when `Sandbox(exec): enabled=true`.
+- When sandbox is disabled, `exec` runs on the host and may require approval.
+- In sandbox mode, `~` and relative paths resolve under `Sandbox(exec): home=...` (usually `/home/sandbox`).
+- Persistent workspace files live under `Host: data_dir=...`; when mounted, the same path appears as `Sandbox(exec): workspace_path=...`.
+- Sandbox/host routing changes are expected runtime behavior. Do not frame them as surprising or anomalous.
+
+## Available Skills
+
+<available_skills>
+<skill name="template-skill" source="skill" path=".moltis/skills/template-skill/SKILL.md">
+Starter skill template (safe to copy and edit)
+</skill>
+<skill name="tmux" source="skill" path=".moltis/skills/tmux/SKILL.md">
+Run and interact with terminal applications (htop, vim, etc.) using tmux sessions in the sandbox
+</skill>
+</available_skills>
+
+To activate a skill, read its SKILL.md file (or the plugin's .md file at the given path) for full instructions.
+
+## Long-Term Memory
+
+
+You also have `memory_search` to find additional details from `memory/*.md` files and past session history beyond what is shown above. **Always search memory before claiming you don't know something.** The long-term memory system holds user facts, past decisions, project context, and anything previously stored.
+
+**When the user asks you to remember, save, or note something, you MUST call `memory_save` to persist it.** Do not just acknowledge verbally — without calling the tool, the information will be lost after the session.
+
+Choose the right target to keep context lean:
+- **MEMORY.md** — only core identity facts (name, age, location, language, key preferences). This is loaded into every conversation, so keep it short.
+- **memory/&lt;topic&gt;.md** — everything else (detailed notes, project context, decisions, session summaries). These are only retrieved via `memory_search` and do not consume prompt space.
+
+## Available Tools
+
+- `create_skill`: Create a new personal skill. Writes a SKILL.md file to <data_dir>/skills/<name>/. This is persistent workspace storage (not sandbox ~/skills). The skill will be...
+- `memory_save`: Save content to long-term memory. Writes to MEMORY.md or memory/<name>.md. Content persists across sessions and is searchable via memory_search.
+- `calc`: Evaluate arithmetic expressions safely. Supports +, -, *, /, %, ^, unary +/- and parentheses. No variables, functions, or assignments.
+- `transcribe`: Transcribe audio to text. Use when the user provides audio content that must be turned into text.
+- `nodes_describe`: Get detailed information about a specific connected node by id or name.
+- `sessions_send`: Send a message to another session. Optionally wait for the target session's reply.
+- `send_document`: Send a local file (PDF, CSV, DOCX, TXT, JSON, ZIP, etc.) to the current conversation's channel. Use send_image for image files. Maximum size: 20 MB.
+- `sessions_history`: Read paginated message history from another session.
+- `branch_session`: Fork the current session into a new branch at a given message index. Messages up to fork_point are copied to the new session. The new session inherits the paren...
+- `checkpoint_restore`: Restore a built-in file or directory mutation from an automatic checkpoint.
+- `delete_skill`: Delete a personal skill. Removes the full skill directory, including supplementary files.
+- `process`: Manage interactive terminal processes (TUI apps, REPLs, long-running commands) via tmux sessions in the sandbox. Actions: start, poll, send_keys, paste, kill, l...
+- `update_channel_settings`: Safely update non-secret settings for a configured channel account after the user explicitly asks for a channel config change. Supports access policies, allowli...
+- `sessions_search`: Search past session history for relevant snippets across sessions.
+- `memory_get`: Retrieve a specific memory chunk by its ID. Use this to get the full text of a chunk found via memory_search.
+- `checkpoints_list`: List recent automatic checkpoints created before built-in file mutations.
+- `cron`: Manage scheduled tasks (reminders, recurring jobs, cron schedules).
+
+For reminders and recurring tasks that should produce a response in the main conversation (...
+- `exec`: Execute a shell command on the server. Returns stdout, stderr, and exit code.
+- `spawn_agent`: Spawn a sub-agent to handle a complex, multi-step task autonomously. The sub-agent runs its own agent loop with access to tools and returns the result when done...
+- `sessions_create`: Create a new chat session or resolve an existing one. Optionally set label/model/project and inherit agent persona from another session.
+- `send_image`: Send a local image file to the current conversation's channel (e.g. Telegram). Supported formats: PNG, JPEG, GIF, WebP, PPM. Maximum size: 20 MB.
+- `memory_search`: Search agent memory using hybrid vector + keyword search. Returns relevant chunks from daily logs and long-term memory files.
+- `task_list`: Manage a shared task list for coordinated multi-agent execution. Actions: create, list, get, update, claim.
+- `get_user_location`: Get the user's current location as coordinates and a place name. Requires user permission via browser popup. Use when the user asks about local weather, nearby ...
+- `nodes_select`: Set or clear the default remote node for the current chat session. Pass a node id or name to target it, or null/omit to revert to local execution.
+- `sessions_list`: List available sessions with metadata. Supports optional text filtering and limit.
+- `web_fetch`: Fetch a web page URL and extract its content as readable text or markdown. Use this when you need to read the contents of a specific web page. The request is se...
+- `speak`: Convert text to speech. Use when the user asks for audio/voice output. Returns an audio file path and metadata.
+- `sessions_delete`: Delete a chat session and its history by key. Deleting the main session is not allowed.
+- `sandbox_packages`: List packages pre-installed in the sandbox container, grouped by category. Call this before running commands that need specific tools (image processing, audio/v...
+- `show_map`: Show a map image to the user for one or more locations. Displays destination pins and an optional blue pin at the user's current location, plus clickable map li...
+- `browser`: Control a real browser to interact with web pages.
+
+USE THIS TOOL when the user says 'browse', 'browser', 'open in browser', or needs interaction (clicking, for...
+- `session_state`: Persist and retrieve key-value state scoped to the current session and a namespace. Use this to remember information across messages within a session. Operation...
+- `send_message`: Send a proactive message to any configured channel account/chat (Telegram, Discord, Slack, Teams, WhatsApp). Use this for alerts, reminders, and scheduled outre...
+- `update_skill`: Update an existing personal skill. Overwrites the SKILL.md file.
+- `nodes_list`: List all connected remote device nodes with their platform, capabilities, and telemetry.
+
+## Guidelines
+
+- Start with a normal conversational response. Do not call tools for greetings, small talk, or questions you can answer directly.
+- Use the calc tool for arithmetic and expressions.
+- Use the exec tool for shell/system tasks.
+- If the user starts a message with `/sh `, run it with `exec` exactly as written.
+- Use the browser tool when the user asks to visit/read/interact with web pages.
+- Before tool calls, briefly state what you are about to do.
+- For multi-step tasks, execute one step at a time and check results before proceeding.
+- Be careful with destructive operations, confirm with the user first.
+- Do not express surprise about sandbox vs host execution. Route changes are normal.
+- Do not suggest disabling sandbox unless the user explicitly asks for host execution or the task cannot be completed in sandbox.
+- The UI already shows raw tool output (stdout/stderr/exit). Summarize outcomes instead.
+
+## Silent Replies
+
+When you have nothing meaningful to add after a tool call, return an empty response.
+
+[user] Browse lemonde.fr and send a screenshot
+[assistant] 
+[tool_call: browser {"action":"navigate","browser":null,"code":null,"full_page":null,"ref_":null,"selector":null,"session_id":null,"text":null,"timeout_ms":null,"url":"https://www.lemonde.fr","x":null,"y":null}]
+[tool] Error: invalid type: null, expected u64
+[assistant] 
+[tool_call: browser {"action":"navigate","browser":null,"code":null,"full_page":null,"ref_":null,"selector":null,"session_id":null,"text":null,"timeout_ms":null,"url":"https://www.lemonde.fr","x":null,"y":null}]
+[tool] Error: invalid type: null, expected u64
+
+---
+
+i was able to get screenshot but the settings -> browsers show no session at all! :(
+
+[system] You are a helpful assistant. You can use tools when needed.
+
+Your name is Rex 🤖.
+
+## Soul
+
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the "Great question!" and "I'd be happy to help!" — just help. Actions speak louder than filler words.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring. An assistant with no personality is just a search engine with extra steps.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. Search for it. _Then_ ask if you're stuck. The goal is to come back with answers, not questions.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it. Be careful with external actions (emails, tweets, anything public). Be bold with internal ones (reading, organizing, learning).
+
+**Remember you're a guest.** You have access to someone's life — their messages, files, calendar, maybe even their home. That's intimacy. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them. They're how you persist.
+
+If you change this file, tell the user — it's your soul, and they should know.
+
+---
+
+_This file is yours to evolve. As you learn who you are, update it._
+The user's name is Fabien.
+
+## Runtime
+
+Host: host=m4max | os=macos | arch=aarch64 | shell=zsh | provider=minimax | model=minimax::MiniMax-M2.7 | session=session:01c487a8-3db4-46ae-9ced-17c780c7b8b1 | surface=web | session_kind=web | data_dir=.moltis/ | sudo_non_interactive=false | sudo_status=requires_password | timezone=Europe/Lisbon | accept_language=en-US,en;q=0.9
+Sandbox(exec): enabled=true | mode=all | backend=apple-container | scope=session | image=moltis-rex-sandbox:f3cb633941a09741d9760cf0c90d536fa3e97cb02509b7e96723c29eec14b9d4 | home=/home/sandbox | workspace_mount=ro | workspace_path=.moltis/
+Execution routing:
+- `exec` runs inside sandbox when `Sandbox(exec): enabled=true`.
+- When sandbox is disabled, `exec` runs on the host and may require approval.
+- In sandbox mode, `~` and relative paths resolve under `Sandbox(exec): home=...` (usually `/home/sandbox`).
+- Persistent workspace files live under `Host: data_dir=...`; when mounted, the same path appears as `Sandbox(exec): workspace_path=...`.
+- Sandbox/host routing changes are expected runtime behavior. Do not frame them as surprising or anomalous.
+
+## Available Skills
+
+<available_skills>
+<skill name="template-skill" source="skill" path=".moltis/skills/template-skill/SKILL.md">
+Starter skill template (safe to copy and edit)
+</skill>
+<skill name="tmux" source="skill" path=".moltis/skills/tmux/SKILL.md">
+Run and interact with terminal applications (htop, vim, etc.) using tmux sessions in the sandbox
+</skill>
+</available_skills>
+
+To activate a skill, read its SKILL.md file (or the plugin's .md file at the given path) for full instructions.
+
+## Long-Term Memory
+
+
+You also have `memory_search` to find additional details from `memory/*.md` files and past session history beyond what is shown above. **Always search memory before claiming you don't know something.** The long-term memory system holds user facts, past decisions, project context, and anything previously stored.
+
+**When the user asks you to remember, save, or note something, you MUST call `memory_save` to persist it.** Do not just acknowledge verbally — without calling the tool, the information will be lost after the session.
+
+Choose the right target to keep context lean:
+- **MEMORY.md** — only core identity facts (name, age, location, language, key preferences). This is loaded into every conversation, so keep it short.
+- **memory/&lt;topic&gt;.md** — everything else (detailed notes, project context, decisions, session summaries). These are only retrieved via `memory_search` and do not consume prompt space.
+
+## Available Tools
+
+- `update_skill`: Update an existing personal skill. Overwrites the SKILL.md file.
+- `delete_skill`: Delete a personal skill. Removes the full skill directory, including supplementary files.
+- `transcribe`: Transcribe audio to text. Use when the user provides audio content that must be turned into text.
+- `speak`: Convert text to speech. Use when the user asks for audio/voice output. Returns an audio file path and metadata.
+- `task_list`: Manage a shared task list for coordinated multi-agent execution. Actions: create, list, get, update, claim.
+- `memory_save`: Save content to long-term memory. Writes to MEMORY.md or memory/<name>.md. Content persists across sessions and is searchable via memory_search.
+- `send_document`: Send a local file (PDF, CSV, DOCX, TXT, JSON, ZIP, etc.) to the current conversation's channel. Use send_image for image files. Maximum size: 20 MB.
+- `create_skill`: Create a new personal skill. Writes a SKILL.md file to <data_dir>/skills/<name>/. This is persistent workspace storage (not sandbox ~/skills). The skill will be...
+- `checkpoint_restore`: Restore a built-in file or directory mutation from an automatic checkpoint.
+- `session_state`: Persist and retrieve key-value state scoped to the current session and a namespace. Use this to remember information across messages within a session. Operation...
+- `show_map`: Show a map image to the user for one or more locations. Displays destination pins and an optional blue pin at the user's current location, plus clickable map li...
+- `nodes_describe`: Get detailed information about a specific connected node by id or name.
+- `cron`: Manage scheduled tasks (reminders, recurring jobs, cron schedules).
+
+For reminders and recurring tasks that should produce a response in the main conversation (...
+- `send_message`: Send a proactive message to any configured channel account/chat (Telegram, Discord, Slack, Teams, WhatsApp). Use this for alerts, reminders, and scheduled outre...
+- `sessions_history`: Read paginated message history from another session.
+- `process`: Manage interactive terminal processes (TUI apps, REPLs, long-running commands) via tmux sessions in the sandbox. Actions: start, poll, send_keys, paste, kill, l...
+- `exec`: Execute a shell command on the server. Returns stdout, stderr, and exit code.
+- `update_channel_settings`: Safely update non-secret settings for a configured channel account after the user explicitly asks for a channel config change. Supports access policies, allowli...
+- `memory_get`: Retrieve a specific memory chunk by its ID. Use this to get the full text of a chunk found via memory_search.
+- `nodes_list`: List all connected remote device nodes with their platform, capabilities, and telemetry.
+- `memory_search`: Search agent memory using hybrid vector + keyword search. Returns relevant chunks from daily logs and long-term memory files.
+- `spawn_agent`: Spawn a sub-agent to handle a complex, multi-step task autonomously. The sub-agent runs its own agent loop with access to tools and returns the result when done...
+- `checkpoints_list`: List recent automatic checkpoints created before built-in file mutations.
+- `sessions_list`: List available sessions with metadata. Supports optional text filtering and limit.
+- `browser`: Control a real browser to interact with web pages.
+
+USE THIS TOOL when the user says 'browse', 'browser', 'open in browser', or needs interaction (clicking, for...
+- `branch_session`: Fork the current session into a new branch at a given message index. Messages up to fork_point are copied to the new session. The new session inherits the paren...
+- `sessions_create`: Create a new chat session or resolve an existing one. Optionally set label/model/project and inherit agent persona from another session.
+- `send_image`: Send a local image file to the current conversation's channel (e.g. Telegram). Supported formats: PNG, JPEG, GIF, WebP, PPM. Maximum size: 20 MB.
+- `sandbox_packages`: List packages pre-installed in the sandbox container, grouped by category. Call this before running commands that need specific tools (image processing, audio/v...
+- `sessions_search`: Search past session history for relevant snippets across sessions.
+- `sessions_delete`: Delete a chat session and its history by key. Deleting the main session is not allowed.
+- `get_user_location`: Get the user's current location as coordinates and a place name. Requires user permission via browser popup. Use when the user asks about local weather, nearby ...
+- `sessions_send`: Send a message to another session. Optionally wait for the target session's reply.
+- `web_fetch`: Fetch a web page URL and extract its content as readable text or markdown. Use this when you need to read the contents of a specific web page. The request is se...
+- `nodes_select`: Set or clear the default remote node for the current chat session. Pass a node id or name to target it, or null/omit to revert to local execution.
+- `calc`: Evaluate arithmetic expressions safely. Supports +, -, *, /, %, ^, unary +/- and parentheses. No variables, functions, or assignments.
+
+## Guidelines
+
+- Start with a normal conversational response. Do not call tools for greetings, small talk, or questions you can answer directly.
+- Use the calc tool for arithmetic and expressions.
+- Use the exec tool for shell/system tasks.
+- If the user starts a message with `/sh `, run it with `exec` exactly as written.
+- Use the browser tool when the user asks to visit/read/interact with web pages.
+- Before tool calls, briefly state what you are about to do.
+- For multi-step tasks, execute one step at a time and check results before proceeding.
+- Be careful with destructive operations, confirm with the user first.
+- Do not express surprise about sandbox vs host execution. Route changes are normal.
+- Do not suggest disabling sandbox unless the user explicitly asks for host execution or the task cannot be completed in sandbox.
+- The UI already shows raw tool output (stdout/stderr/exit). Summarize outcomes instead.
+
+## Silent Replies
+
+When you have nothing meaningful to add after a tool call, return an empty response.
+
+[user] browse lemonde.fr and send a screenshot
+[assistant] 
+[tool_call: browser {"action":"navigate","browser":null,"code":null,"full_page":null,"ref_":null,"selector":null,"session_id":null,"text":null,"timeout_ms":null,"url":"https://www.lemonde.fr","x":null,"y":null}]
+[tool] {"duration_ms":3064,"sandboxed":true,"session_id":"browser-17adcb074e8fec30","success":true,"url":"https://www.lemonde.fr/"}
+[assistant] 
+[tool_call: browser {"action":"screenshot","browser":null,"code":null,"full_page":null,"ref_":null,"selector":null,"session_id":"browser-17adcb074e8fec30","text":null,"timeout_ms":null,"url":null,"x":null,"y":null}]
+[tool] {"duration_ms":550,"sandboxed":true,"screenshot":"media/session_01c487a8-3db4-46ae-9ced-17c780c7b8b1/call_function_n7ks5b8kfwc6_1.png","session_id":"browser-17adcb074e8fec30","success":true}
+[assistant] 
+[tool_call: browser {"action":"close","browser":null,"code":null,"full_page":null,"ref_":null,"selector":null,"session_id":"browser-17adcb074e8fec30","text":null,"timeout_ms":null,"url":null,"x":null,"y":null}]
+[tool] {"duration_ms":358,"sandboxed":true,"session_id":"browser-17adcb074e8fec30","success":true}
+[assistant] Done! I've navigated to lemonde.fr and sent you a screenshot of their homepage. The page shows current top stories including news about Greece (the手套helles case), an "Affaire des fuites" involving Sanofi and LVMH, Ukraine updates, and football news about PSG.
+
+---
+
+go with option 1
+
+---
+
+do it
+
+---
+
+new session should have the same size as refresh, refresh should have the same UI as other refresh buttons:
+
+<div class="flex items-center justify-between"><h2 class="text-base font-medium text-[var(--text-strong)]">Browser Sessions</h2><div class="flex items-center gap-2"><button class="provider-btn text-xs px-2 py-1">New Session</button><button class="provider-btn-secondary text-xs px-2 py-1">Refresh</button></div></div>
+
+---
+
+<task-notification>
+<task-id>bjii7rhuw</task-id>
+<tool-use-id>toolu_01DEz1JHHc3uLX5UfLTuEBZf</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-claude-plan-browser-viewing-HOHno/b922645f-54ba-4e7b-abd6-efcda32ef41b/tasks/bjii7rhuw.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push fixes" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-claude-plan-browser-viewing-HOHno/b922645f-54ba-4e7b-abd6-efcda32ef41b/tasks/bjii7rhuw.output
+
+---
+
+new browser sessions should show "creating" or anything, since it takes time and I wonder if it's doing something or not
