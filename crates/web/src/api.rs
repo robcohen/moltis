@@ -1232,7 +1232,7 @@ pub async fn api_browser_history_handler(State(state): State<AppState>) -> Respo
 /// Get action log for a specific browser session.
 pub async fn api_browser_actions_handler(
     State(state): State<AppState>,
-    axum::extract::Path(session_id): axum::extract::Path<String>,
+    Path(session_id): Path<String>,
 ) -> Response {
     match state
         .gateway
