@@ -1,0 +1,76 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e7a3f5b72771",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T20:09:28.299717Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/helpers.js",
+    "crates/web/src/assets/js/page-providers.js",
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/providers.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "eb72592a3603",
+  "checkpoint_transcript_start": 1790,
+  "transcript_lines_at_start": 1790,
+  "token_usage": {
+    "input_tokens": 23,
+    "cache_creation_tokens": 8815,
+    "cache_read_tokens": 5008632,
+    "output_tokens": 4046,
+    "api_call_count": 19
+  },
+  "summary": {
+    "intent": "Improve model sorting in the onboarding and settings pages so that models without createdAt dates (like Codex models) are sorted by version number (highest first) instead of alphabetically.",
+    "outcome": "Added a shared `modelVersionKey` helper to helpers.js and updated sort logic in onboarding-view.js, page-providers.js, and providers.js to use version number extraction as a fallback when no createdAt date is available.",
+    "learnings": {
+      "repo": [
+        "Model sort logic is duplicated across three files: onboarding-view.js, page-providers.js, and providers.js — all three needed updating for consistent behavior.",
+        "All three JS files import from helpers.js, making it the right place for shared utility functions like model sorting helpers.",
+        "Some providers (e.g. Codex/OAuth) do not populate createdAt on model objects, causing alphabetical sort to produce unintuitive ordering (GPT 5 before GPT 5.4)."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/helpers.js",
+          "finding": "New modelVersionKey helper added here to extract numeric version from model IDs for sort fallback."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-providers.js",
+          "finding": "Sort function updated to use modelVersionKey fallback when createdAt is absent."
+        },
+        {
+          "path": "crates/web/src/assets/js/onboarding-view.js",
+          "finding": "Sort function updated to use modelVersionKey fallback when createdAt is absent."
+        },
+        {
+          "path": "crates/web/src/assets/js/providers.js",
+          "finding": "Has its own independent sort for the preferred models modal; also updated to use modelVersionKey fallback."
+        }
+      ],
+      "workflow": [
+        "Grep for existing export functions and import patterns before deciding where to add shared utilities.",
+        "Check all files with similar sort logic when making a sorting change — it was spread across 3 files, not just the initially targeted 2."
+      ]
+    },
+    "friction": [
+      "Model sort logic was not centralized, requiring the same change to be applied in three separate files.",
+      "No existing shared model-utils file; had to determine helpers.js was the right home by grepping for common imports."
+    ],
+    "open_items": [
+      "Model sort logic is still duplicated inline across three files rather than using a single shared sort function from helpers.js — could be further consolidated.",
+      "Version extraction from model IDs is heuristic-based; edge cases with unusual model ID formats may not sort correctly."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T20:09:03.405867Z",
+    "agent_lines": 37,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 37,
+    "agent_percentage": 100
+  }
+}
