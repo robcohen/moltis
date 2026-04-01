@@ -352,11 +352,17 @@ async function selectSession(sessionId) {
 				screenshotCache[sessionId] = { data: snap.screenshot, mime: "image/png" };
 			}
 		} catch {
-			// Session might have died — refresh list
+			// Session died — deselect and refresh list
+			if (activeSession.value === sessionId) {
+				activeSession.value = null;
+				screencasting.value = false;
+				showToast("Session is no longer available", "error");
+			}
 			await fetchSessions();
-		} finally {
 			fetching.value = false;
+			return;
 		}
+		fetching.value = false;
 	}
 
 	// Guard: session might have changed during await
