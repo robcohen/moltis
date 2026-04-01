@@ -1437,8 +1437,23 @@ impl BrowserService for RealBrowserService {
         &self,
         session_id: &str,
     ) -> Option<tokio::sync::broadcast::Receiver<Value>> {
-        let manager = self.manager_if_initialized()?;
-        let raw_rx = manager.screencasts().subscribe(session_id).await?;
+        let manager = match self.manager_if_initialized() {
+            Some(m) => m,
+            None => {
+                tracing::warn!(session_id, "subscribe_screencast: manager not initialized");
+                return None;
+            },
+        };
+        let raw_rx = match manager.screencasts().subscribe(session_id).await {
+            Some(rx) => rx,
+            None => {
+                tracing::warn!(
+                    session_id,
+                    "subscribe_screencast: session not in active screencasts"
+                );
+                return None;
+            },
+        };
 
         // Create a Value-typed broadcast channel and spawn an adapter task
         // that serializes ScreencastFrame → serde_json::Value.

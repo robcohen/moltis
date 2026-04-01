@@ -1163,8 +1163,16 @@ async fn spawn_screencast_relay(state: AppState, session_id: &str) {
         .subscribe_screencast(session_id)
         .await
     else {
+        tracing::warn!(
+            session_id,
+            "screencast relay: failed to subscribe, no frames will be relayed"
+        );
         return;
     };
+    tracing::info!(
+        session_id,
+        "screencast relay: subscribed, broadcasting frames to WebSocket clients"
+    );
 
     let gateway = Arc::clone(&state.gateway);
     tokio::spawn(async move {

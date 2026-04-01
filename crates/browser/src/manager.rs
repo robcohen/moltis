@@ -1290,4 +1290,68 @@ mod tests {
             "error should mention the action"
         );
     }
+
+    /// Integration test: navigate to a page, start screencast, and verify
+    /// frames arrive through the broadcast channel.
+    ///
+    /// Requires a real browser (Chrome/Chromium). Run with:
+    ///   cargo test -p moltis-browser screencast_frames_arrive -- --ignored --nocapture
+    #[tokio::test]
+    #[ignore = "requires a real browser installed"]
+    async fn screencast_frames_arrive() {
+        use tokio::time::{Duration, timeout};
+
+        let manager = BrowserManager::default();
+
+        // Navigate to a simple data URI to create a session
+        let data_url = "https://example.com";
+        let request = BrowserRequest {
+            session_id: None,
+            action: BrowserAction::Navigate {
+                url: data_url.to_string(),
+            },
+            timeout_ms: 30000,
+            sandbox: Some(false),
+            browser: None,
+        };
+        let resp = manager.handle_request(request).await;
+        assert!(resp.success, "navigate failed: {:?}", resp.error);
+        let session_id = resp.session_id.clone();
+        assert!(!session_id.is_empty(), "session_id should not be empty");
+
+        // Start screencast
+        let request = BrowserRequest {
+            session_id: Some(session_id.clone()),
+            action: BrowserAction::StartScreencast {
+                quality: 60,
+                max_width: 800,
+                max_height: 600,
+            },
+            timeout_ms: 10000,
+            sandbox: Some(false),
+            browser: None,
+        };
+        let resp = manager.handle_request(request).await;
+        assert!(resp.success, "start_screencast failed: {:?}", resp.error);
+
+        // Subscribe to the screencast frames
+        let mut rx = manager
+            .screencasts()
+            .subscribe(&session_id)
+            .await
+            .unwrap_or_else(|| panic!("subscribe should succeed after start_screencast"));
+
+        // Wait for at least one frame (with timeout)
+        let frame = timeout(Duration::from_secs(10), rx.recv()).await;
+        assert!(frame.is_ok(), "timed out waiting for screencast frame");
+        let frame = frame.unwrap_or_else(|_| panic!("timeout"));
+        assert!(frame.is_ok(), "frame recv error: {:?}", frame.err());
+        let frame = frame.unwrap_or_else(|e| panic!("recv error: {e}"));
+        assert_eq!(frame.session_id, session_id);
+        assert!(!frame.data.is_empty(), "frame data should not be empty");
+        assert!(frame.sequence >= 1, "sequence should be at least 1");
+
+        // Cleanup
+        manager.close_session(&session_id).await;
+    }
 }

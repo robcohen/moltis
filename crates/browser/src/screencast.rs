@@ -18,7 +18,7 @@ use {
     futures::StreamExt,
     serde::Serialize,
     tokio::sync::{RwLock, broadcast},
-    tracing::{debug, warn},
+    tracing::{debug, info, warn},
 };
 
 /// A single screencast frame delivered to subscribers.
@@ -207,9 +207,14 @@ async fn relay_screencast_frames(
     };
 
     let mut sequence: u64 = 0;
+    debug!(session_id = %session_id, "screencast frame listener ready, waiting for CDP frames");
 
     while let Some(event) = listener.next().await {
         sequence += 1;
+
+        if sequence == 1 {
+            info!(session_id = %session_id, "first screencast frame received from CDP");
+        }
 
         // Acknowledge the frame so CDP sends the next one.
         let ack = ScreencastFrameAckParams::new(event.session_id);
