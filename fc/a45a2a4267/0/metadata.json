@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "fca45a2a4267",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T19:22:20.707263Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/provider-validation.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7dbced1028f9",
+  "checkpoint_transcript_start": 1360,
+  "transcript_lines_at_start": 1360,
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 6410,
+    "cache_read_tokens": 3092526,
+    "output_tokens": 3296,
+    "api_call_count": 14
+  },
+  "summary": {
+    "intent": "Show model probe error messages inline (not just in tooltips) on the unsupported model badge, so users can see why a model is unsupported without hovering.",
+    "outcome": "Fixed inline error display in both the onboarding model selector (ModelSelectCard in onboarding-view.js) and improved humanizeProbeError to preserve specific error details instead of replacing them with overly generic messages.",
+    "learnings": {
+      "repo": [
+        "Model probe errors flow through humanizeProbeError() in provider-validation.js before display — this function can silently replace specific errors with generic ones.",
+        "The onboarding model selector (ModelSelectCard in onboarding-view.js) and the settings page model selector (page-providers.js) are separate components requiring independent fixes.",
+        "The 'Unsupported' badge tooltip text originates from humanizeProbeError, not directly from the raw probe error logged by the backend."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/provider-validation.js",
+          "line": 32,
+          "end_line": 48,
+          "finding": "humanizeProbeError matches 'permission' too broadly — catches 'You do not have permission to access glm-5.1' and replaces it with a generic string, losing the model name. Falls through to raw error for unmatched patterns like 'temporarily unavailable'."
+        },
+        {
+          "path": "crates/web/src/assets/js/onboarding-view.js",
+          "finding": "ModelSelectCard renders the Unsupported badge but was not showing the probe error reason inline — error was only exposed via tooltip title attribute."
+        }
+      ],
+      "workflow": [
+        "When a fix is made in one component (settings page), verify if parallel components (onboarding) share the same bug — they often don't share code.",
+        "Cross-referencing HTML in the browser with log output is an effective way to identify message transformation bugs between backend error strings and frontend display."
+      ]
+    },
+    "friction": [
+      "Initial fix targeted the wrong component (page-providers.js / settings page) — the user's HTML was from the onboarding flow, requiring a second pass.",
+      "The tooltip showed a stale/different error ('Service temporarily unavailable') than the current log ('no permission'), making it harder to trace whether the propagation bug was in humanizeProbeError or the component."
+    ],
+    "open_items": [
+      "humanizeProbeError permission-matching pattern is still arguably too broad — the fix preserves specificity for the glm-5.1 case but the underlying pattern matching logic may need a more targeted regex to avoid future false matches.",
+      "The 'Service temporarily unavailable' error path through humanizeProbeError has no dedicated pattern and falls through to raw error — may be worth adding an explicit human-friendly mapping."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T19:21:55.679838Z",
+    "agent_lines": 7,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 7,
+    "agent_percentage": 100
+  }
+}
