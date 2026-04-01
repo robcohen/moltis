@@ -1,0 +1,117 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7e033e29b5dd",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T18:20:15.30513Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/browser.rs",
+    "crates/browser/src/types.rs",
+    "crates/gateway/src/services.rs",
+    "crates/browser/src/manager.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "91bc7e1a6b29",
+  "token_usage": {
+    "input_tokens": 4198,
+    "cache_creation_tokens": 1400941,
+    "cache_read_tokens": 233262987,
+    "output_tokens": 237009,
+    "api_call_count": 755
+  },
+  "summary": {
+    "intent": "Build a browser-in-browser feature for moltis, allowing users to view, interact with, and manage sandboxed browser sessions from the settings UI, with session history and cookie persistence.",
+    "outcome": "Full interactive browser viewer shipped: live CDP screencast, mouse/keyboard/scroll input relay, URL autocomplete bar, session persistence to SQLite, shared cookie profiles, per-agent browser profiles, and session history/action log UI — across ~30 commits on the plan-browser-viewing branch.",
+    "learnings": {
+      "repo": [
+        "BrowserTool and RealBrowserService each created independent BrowserManager instances, making tool-created sessions invisible to the UI API — shared via Arc\u003cOnceCell\u003e.",
+        "WebSocket broadcast uses an explicit subscription filter (broadcast.rs:100-102) — clients must list event types they want or they silently receive nothing.",
+        "axum 0.8 uses {param} syntax for path captures, not :param — runtime panic on startup if old syntax is used.",
+        "The moltis.toml config file had explicit viewport/timeout values that silently override code defaults, making default changes ineffective for existing installs.",
+        "CDP Page.startScreencast relay task exits immediately on tx.send() with zero receivers — CDP sends the first frame before subscribers connect, causing permanent silence.",
+        "CDP mouseWheel requires both deltaX and deltaY to be present even when one is zero — omitting either causes a deserialization error on the Chrome side.",
+        "Chrome SingletonLock file in the profile directory prevents reusing profiles across container restarts — must be deleted before launching a new container.",
+        "serde #[serde(default)] handles missing JSON keys but NOT explicit null values — LLMs (MiniMax) send null for all optional fields, breaking u64 deserialization.",
+        "The canvas useEffect with empty deps runs once on mount; if the canvas is conditionally rendered and not present at mount time, event listeners are never attached — use ref callbacks instead.",
+        "CDP screencast metadata includes offset_top (browser chrome height) which must be added to y-coordinates for accurate click mapping."
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/browser.rs",
+          "finding": "Null-stripping via obj.retain(|_, v| !v.is_null()) added before serde deserialization to handle LLM behavior of sending explicit null for all optional fields."
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "finding": "Relay task must not exit on SendError (zero receivers) — changed to drop frames silently and continue waiting for subscribers."
+        },
+        {
+          "path": "crates/gateway/src/broadcast.rs",
+          "line": 100,
+          "end_line": 102,
+          "finding": "Subscription filter: if !client.is_subscribed_to(event) { continue } — browser.screencast.frame was missing from websocket.js subscription list."
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "finding": "eventHandlers keys are used to build the v4 WebSocket subscription list — adding new event types here is required for them to be received."
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "start_screencast now calls SetDeviceMetricsOverride to resize viewport to 1280x800@1x before streaming, so pages render for the visible area regardless of configured resolution."
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "finding": "Sandbox sessions now use a shared profile dir (sandbox/default/ or sandbox/{profile_id}/) with SingletonLock cleanup, enabling cookie/session persistence across restarts."
+        },
+        {
+          "path": "crates/web/src/lib.rs",
+          "line": 123,
+          "finding": "axum route /:session_id panics at startup — must be /{session_id}."
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "RealBrowserService injects profile_id: 'default' for UI-originated requests and sandbox: true when sandbox mode is enabled, so the UI doesn't need to send these fields."
+        },
+        {
+          "path": "crates/browser/src/types.rs",
+          "finding": "BrowserRequest now has optional profile_id field; BrowserTool injects the chat session key as profile_id so each agent's sessions share cookies within their own profile."
+        }
+      ],
+      "workflow": [
+        "Adding tracing logs at every stage of a multi-hop relay chain (CDP → registry → service → WS) is the fastest way to bisect silent data loss bugs.",
+        "Integration tests with real browsers should use ephemeral temp profiles and --test-threads=1 to avoid SingletonLock contention between parallel tests.",
+        "When removing conditional wrapping from code (an if block), always check for orphaned closing braces — a stray } closed a function early, putting a return at module scope.",
+        "replace_all on a field name can accidentally hit unrelated fields with the same name in other structs — prefer targeted edits."
+      ]
+    },
+    "friction": [
+      "YubiKey tap required for every git push — interrupted the workflow multiple times throughout the session.",
+      "Cascading silent failures in the screencast relay: null deserialization, relay exit on zero receivers, missing WebSocket subscription, and missing deltaX/deltaY were all separate bugs that looked identical from the UI (blank canvas).",
+      "User config file (moltis.toml) had explicit viewport values overriding code defaults — changing defaults in code had no effect, discovered only after the captcha centering issue persisted.",
+      "replace_all on session_store accidentally modified an unrelated GatewayServices field, causing a type mismatch compilation error.",
+      "axum 0.8 path syntax change (:param vs {param}) caused a runtime panic only discovered at server startup, not at compile time.",
+      "Background task notifications required reading output files, adding friction to the push-verify loop.",
+      "Pre-existing clippy errors in moltis-httpd and moltis-voice created noise when running workspace-wide clippy checks."
+    ],
+    "open_items": [
+      "WebRTC upgrade (neko architecture) for sub-100ms latency and 6-18x bandwidth reduction vs CDP JPEG screencast — discussed but deferred.",
+      "Binary WebSocket frames for screencast to eliminate ~33% base64 overhead — identified but not implemented.",
+      "Multiple concurrent sandbox sessions sharing a profile may have cookie write conflicts — acknowledged tradeoff, no mitigation yet.",
+      "Playwright e2e tests exist for browser UI but click/scroll accuracy tests are Rust integration tests requiring a real browser — CI coverage gap for sandbox mode.",
+      "Session history UI (closed sessions, action log) was added but screenshot replay of past sessions was not implemented.",
+      "URL polling interval (2s) for detecting in-page navigations is a workaround — CDP NavigatedWithinDocument events would be more reliable.",
+      "Scrollbar click-to-scroll uses a CDP evaluate call that may fail on CSP-restricted pages.",
+      "moltis-httpd has pre-existing compilation errors unrelated to this branch that should be fixed."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T18:19:09.45941Z",
+    "agent_lines": 0,
+    "human_added": 75,
+    "human_modified": 18,
+    "human_removed": 0,
+    "total_committed": 75,
+    "agent_percentage": 0
+  }
+}
