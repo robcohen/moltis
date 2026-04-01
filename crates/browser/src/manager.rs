@@ -1291,33 +1291,29 @@ mod tests {
         );
     }
 
-    /// Integration test: navigate to a page, start screencast, and verify
-    /// frames arrive through the broadcast channel.
+    /// Shared screencast integration test logic.
     ///
-    /// Requires a real browser (Chrome/Chromium). Run with:
-    ///   cargo test -p moltis-browser screencast_frames_arrive -- --ignored --nocapture
-    #[tokio::test]
-    #[ignore = "requires a real browser installed"]
-    async fn screencast_frames_arrive() {
+    /// Navigates to a page, starts screencast, subscribes, and verifies at
+    /// least one frame arrives through the broadcast channel.
+    async fn assert_screencast_frames_arrive(sandbox: bool) {
         use tokio::time::{Duration, timeout};
 
         let manager = BrowserManager::default();
 
-        // Navigate to a simple data URI to create a session
-        let data_url = "https://example.com";
+        // Navigate to create a session
         let request = BrowserRequest {
             session_id: None,
             action: BrowserAction::Navigate {
-                url: data_url.to_string(),
+                url: "https://example.com".to_string(),
             },
             timeout_ms: 30000,
-            sandbox: Some(false),
+            sandbox: Some(sandbox),
             browser: None,
         };
         let resp = manager.handle_request(request).await;
         assert!(resp.success, "navigate failed: {:?}", resp.error);
         let session_id = resp.session_id.clone();
-        assert!(!session_id.is_empty(), "session_id should not be empty");
+        assert!(!session_id.is_empty());
 
         // Start screencast
         let request = BrowserRequest {
@@ -1328,7 +1324,7 @@ mod tests {
                 max_height: 600,
             },
             timeout_ms: 10000,
-            sandbox: Some(false),
+            sandbox: Some(sandbox),
             browser: None,
         };
         let resp = manager.handle_request(request).await;
@@ -1342,16 +1338,39 @@ mod tests {
             .unwrap_or_else(|| panic!("subscribe should succeed after start_screencast"));
 
         // Wait for at least one frame (with timeout)
-        let frame = timeout(Duration::from_secs(10), rx.recv()).await;
+        let frame = timeout(Duration::from_secs(15), rx.recv()).await;
         assert!(frame.is_ok(), "timed out waiting for screencast frame");
-        let frame = frame.unwrap_or_else(|_| panic!("timeout"));
-        assert!(frame.is_ok(), "frame recv error: {:?}", frame.err());
-        let frame = frame.unwrap_or_else(|e| panic!("recv error: {e}"));
+        let frame = frame
+            .unwrap_or_else(|_| panic!("timeout"))
+            .unwrap_or_else(|e| panic!("recv error: {e}"));
         assert_eq!(frame.session_id, session_id);
         assert!(!frame.data.is_empty(), "frame data should not be empty");
         assert!(frame.sequence >= 1, "sequence should be at least 1");
 
         // Cleanup
         manager.close_session(&session_id).await;
+    }
+
+    /// Host mode: screencast frames arrive without sandboxing.
+    ///
+    ///   cargo test -p moltis-browser screencast_host -- --ignored --nocapture
+    #[tokio::test]
+    #[ignore = "requires a real browser installed"]
+    async fn screencast_host() {
+        assert_screencast_frames_arrive(false).await;
+    }
+
+    /// Sandbox mode: screencast frames arrive from a containerized browser.
+    /// Skips if no container runtime is available.
+    ///
+    ///   cargo test -p moltis-browser screencast_sandbox -- --ignored --nocapture
+    #[tokio::test]
+    #[ignore = "requires a container runtime (Docker/Podman/Apple Container)"]
+    async fn screencast_sandbox() {
+        if !crate::container::is_container_available() {
+            eprintln!("SKIP: no container runtime available");
+            return;
+        }
+        assert_screencast_frames_arrive(true).await;
     }
 }
