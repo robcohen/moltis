@@ -19,6 +19,7 @@ var frameMime = signal("image/jpeg");
 var frameMeta = signal(null);
 var frameSeq = signal(0);
 var creating = signal(false);
+var fetching = signal(false);
 var containerEl = null;
 
 // ── URL helpers ─────────────────────────────────────────────
@@ -351,10 +352,11 @@ function SessionList() {
 			stopScreencast(activeSession.value);
 		}
 		activeSession.value = sessionId;
-		screencasting.value = true;
+		frameData.value = null;
+		fetching.value = true;
 
-		// Fetch an immediate screenshot so the canvas isn't blank while
-		// waiting for the first screencast frame over WebSocket.
+		// Fetch an immediate screenshot so the canvas shows something
+		// while the screencast stream connects.
 		try {
 			var snap = await browserAction({
 				session_id: sessionId,
@@ -370,8 +372,11 @@ function SessionList() {
 			}
 		} catch {
 			// Best effort — screencast will fill in shortly
+		} finally {
+			fetching.value = false;
 		}
 
+		screencasting.value = true;
 		await startScreencast(sessionId);
 	}
 
@@ -396,7 +401,11 @@ function SessionList() {
 						</div>
 						<div class="flex items-center gap-1 shrink-0">
 							${sess.sandboxed ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">sandbox</span>` : null}
-							${isActive && screencasting.value ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>` : null}
+							${isActive && screencasting.value
+								? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
+								: sess.url && sess.url !== "about:blank"
+									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
+									: null}
 						</div>
 					</div>
 					<div class="flex items-center gap-1.5 text-xs">
@@ -662,19 +671,25 @@ function BrowserCanvas() {
 
 	if (!activeSession.value) {
 		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
-			Select a session and click "View" to see the browser
+			Select a session to view the browser
 		</div>`;
 	}
 
-	if (!screencasting.value) {
+	if (!screencasting.value && !fetching.value && !frameData.value) {
 		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
 			Enter a URL above to start browsing
 		</div>`;
 	}
 
+	if (fetching.value && !frameData.value) {
+		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
+			Fetching browser view\u2026
+		</div>`;
+	}
+
 	if (!frameData.value) {
 		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
-			Waiting for first frame...
+			Waiting for first frame\u2026
 		</div>`;
 	}
 
