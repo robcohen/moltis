@@ -1,0 +1,55 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "82ab595a793d",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T19:17:29.401605Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-providers.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d5d3b9c3bf58",
+  "checkpoint_transcript_start": 1332,
+  "transcript_lines_at_start": 1332,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 2161,
+    "cache_read_tokens": 1301943,
+    "output_tokens": 802,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Display the actual error message when a model probe fails, instead of just showing 'Unsupported' as the badge status.",
+    "outcome": "Updated page-providers.js to show the error message below the model ID rather than only displaying it in a tooltip, then committed and pushed to the remote branch `succinct-pyroraptor`.",
+    "learnings": {
+      "repo": [
+        "Model probe failures (e.g. permission errors) are captured and stored, but were only surfaced as a tooltip via the `title` attribute on the 'Unsupported' badge — not visible in the main UI.",
+        "The moltis web frontend is a Rust workspace with JS assets under crates/web/src/assets/js/."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-providers.js",
+          "finding": "Model probe error messages were stored (accessible as tooltip text) but not rendered inline. The fix added the error message as visible text below the model ID."
+        }
+      ],
+      "workflow": [
+        "JS linting was run after editing before committing, suggesting a lint step is part of the standard pre-commit workflow for this project."
+      ]
+    },
+    "friction": [
+      "The error message was silently hidden in a tooltip, making it non-obvious that failure details were available — required reading the source to discover."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T19:17:08.751646Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}
