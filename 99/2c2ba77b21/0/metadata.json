@@ -1,0 +1,119 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "992c2ba77b21",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T13:47:46.377994Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/browser/src/types.rs",
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "175991e60537",
+  "token_usage": {
+    "input_tokens": 3819,
+    "cache_creation_tokens": 776295,
+    "cache_read_tokens": 85275669,
+    "output_tokens": 159658,
+    "api_call_count": 423
+  },
+  "summary": {
+    "intent": "Build a fully interactive browser-in-browser viewing feature in the moltis UI, allowing users to create, view, and interact with browser sessions from the settings page.",
+    "outcome": "Delivered a working interactive browser viewer with session creation, live screencast via CDP, click/scroll relay, URL autocomplete, screenshot prefetching, and sandbox support — resolving multiple bugs along the way including null deserialization crashes, shared manager isolation, WebSocket subscription filtering, and coordinate mapping errors.",
+    "learnings": {
+      "repo": [
+        "The gateway has two separate subsystems (BrowserTool and RealBrowserService) that each created independent BrowserManager instances — sessions created by the AI tool were invisible to the UI's API until shared via Arc\u003cOnceCell\u003e",
+        "The WebSocket broadcast system uses an explicit subscription filter (broadcast.rs:100-102) — events are silently dropped if the client doesn't subscribe to that event type by name; 'browser.screencast.frame' was missing from websocket.js",
+        "CDP Page.startScreencast relay exits immediately when tx.send() has zero receivers — the relay task can die before any subscriber connects, causing a permanent 'no frames' state",
+        "validate_url() only allows http/https schemes — about:blank was rejected, silently failing new session creation",
+        "serde #[serde(default)] handles missing JSON keys but NOT explicit null values — LLMs like MiniMax send null for every optional field, causing u64 deserialization failures",
+        "The default viewport (2560x1440@2x) is optimized for agent screenshots but causes layout and coordinate issues in interactive viewing — websites render for the massive viewport, captchas appear off-center",
+        "CDP mouseWheel events require BOTH deltaX and deltaY to be present — conditional omission of deltaX when 0 causes CDP to reject the event entirely",
+        "Canvas event listeners attached via useEffect([]) never fire if the canvas is conditionally rendered — the effect runs once on mount before the canvas exists; ref callbacks are the correct pattern"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/browser.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Added obj.retain(|_, v| !v.is_null()) to strip null values from LLM tool call payloads before serde deserialization"
+        },
+        {
+          "path": "crates/gateway/src/broadcast.rs",
+          "line": 100,
+          "end_line": 102,
+          "finding": "Subscription filter: if !client.is_subscribed_to(event) { continue } — silently drops events for clients not subscribed to that type"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 237,
+          "end_line": 239,
+          "finding": "Original relay exited on SendError (zero receivers); fixed to continue loop and drop frames when no subscribers rather than terminating"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "mouseWheel CDP event now always sends both delta_x and delta_y; previously conditionally omitted deltaX when 0, causing CDP rejection"
+        },
+        {
+          "path": "crates/browser/src/types.rs",
+          "line": 1,
+          "end_line": 30,
+          "finding": "Default viewport changed from 2560x1440@2x to 1440x900@1x for interactive viewing sessions"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "line": 1,
+          "end_line": 100,
+          "finding": "Canvas coordinate mapping must use img.naturalWidth/naturalHeight (actual JPEG dimensions) and add offset_top from screencast metadata for click accuracy; offsetX/offsetY avoids border offset issues"
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "line": 1338,
+          "end_line": 1358,
+          "finding": "Missing 'browser.screencast.frame' in the subscription list — added to ensure frames are not filtered out by broadcast.rs"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "line": 1,
+          "end_line": 50,
+          "finding": "useEffect([]) pattern fails for conditionally rendered canvas — replaced with ref callback (canvasRefCallback) that fires on DOM insertion/removal"
+        }
+      ],
+      "workflow": [
+        "Adding diagnostic tracing at every stage of a relay chain (CDP → registry → service → WebSocket) was essential to isolate which stage was dropping events",
+        "Integration tests with real browser sessions (marked #[ignore] for CI, runnable locally) caught the deltaX/deltaY CDP bug that unit tests would have missed",
+        "YubiKey-signed git pushes require manual interaction — background push tasks reliably fail without a tap; always retry explicitly after tap",
+        "Playwright e2e tests added alongside Rust integration tests provide dual coverage of the same feature at different layers",
+        "Screencast metadata (offset_top, device dimensions) from CDP is the authoritative source for coordinate mapping — not CSS layout or hardcoded values"
+      ]
+    },
+    "friction": [
+      "YubiKey tap required for every git push, causing repeated push failures in background tasks and requiring manual intervention multiple times",
+      "The 'Waiting for first frame' bug required four separate investigation rounds before the actual root cause (missing WebSocket subscription) was found — earlier fixes (relay keepalive, null stripping) were valid but not the root cause",
+      "Google suggestions CORS for autocomplete required using client=firefox endpoint workaround",
+      "Parallel Rust tests conflicted over browser profile lock files — requires --test-threads=1 for integration tests",
+      "Click offset debugging was complicated by multiple compounding issues: border offset, hardcoded aspect ratio, missing offset_top, and wrong scale source all contributing simultaneously"
+    ],
+    "open_items": [
+      "WebRTC upgrade (neko architecture with GStreamer + VP8/VP9) identified as the right long-term direction for \u003c100ms latency and 6-18x bandwidth improvement over CDP JPEG screencast",
+      "Binary WebSocket frames for screencast (eliminate base64 overhead, ~33% bandwidth reduction) — identified but not yet implemented",
+      "Per-agent browser profiles for session isolation — currently single global profile dir shared across all sessions",
+      "'Create Session from UI' feature fully working but per-agent profile isolation not built",
+      "Export Cookies button was removed from UI but backend cookie export/import via CDP remains available — may need re-exposing",
+      "Playwright e2e tests for canvas interaction (click accuracy, scroll) are written but rely on real browser availability — CI may skip them"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T13:46:59.650384Z",
+    "agent_lines": 0,
+    "human_added": 29,
+    "human_modified": 27,
+    "human_removed": 0,
+    "total_committed": 29,
+    "agent_percentage": 0
+  }
+}
