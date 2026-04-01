@@ -17,6 +17,7 @@ var screencasting = signal(false);
 var frameData = signal(null);
 var frameMeta = signal(null);
 var frameSeq = signal(0);
+var creating = signal(false);
 var containerEl = null;
 
 // ── API helpers ─────────────────────────────────────────────
@@ -158,6 +159,8 @@ async function navigateSession(sessionId, url) {
 }
 
 async function createSession() {
+	if (creating.value) return;
+	creating.value = true;
 	try {
 		var res = await browserAction({
 			action: "navigate",
@@ -172,6 +175,8 @@ async function createSession() {
 		await startScreencast(newId);
 	} catch (e) {
 		showToast(`Failed to create session: ${e.message}`, "error");
+	} finally {
+		creating.value = false;
 	}
 }
 
@@ -433,8 +438,8 @@ function BrowserPage() {
 		<div class="flex items-center justify-between">
 			<h2 class="text-base font-medium text-[var(--text-strong)]">Browser Sessions</h2>
 			<div class="flex items-center gap-2">
-				<button class="provider-btn provider-btn-sm" onClick=${createSession}>
-					New Session
+				<button class="provider-btn provider-btn-sm" onClick=${createSession} disabled=${creating.value}>
+					${creating.value ? "Creating\u2026" : "New Session"}
 				</button>
 				<button class="provider-btn provider-btn-secondary provider-btn-sm" onClick=${fetchSessions}>
 					Refresh
