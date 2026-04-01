@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "eb57efdb4ba2",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T08:40:40.731698Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1418311b9c8f",
+  "checkpoint_transcript_start": 921,
+  "transcript_lines_at_start": 921,
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 28443,
+    "cache_read_tokens": 1853626,
+    "output_tokens": 17834,
+    "api_call_count": 12
+  },
+  "summary": {
+    "intent": "Add Safari/Chrome-style URL autocomplete with Google suggestions, bookmarks, and history to the browser UI, while also fixing a button height mismatch and a silent navigation failure for bare domains like 'lemonde.fr'.",
+    "outcome": "Rewrote the NavigateBar component in page-browser.js with auto-prepend of https://, Google suggestions via suggestqueries.google.com, session URL history, keyboard navigation in dropdown, and matched button/input heights. Changes were committed and pushed.",
+    "learnings": {
+      "repo": [
+        "Browser sessions created via UI default to sandbox mode when sandbox != 'none'; the service injects sandbox:true into requests missing it.",
+        "CSS class provider-btn-sm uses padding: 3px 10px; font-size: 0.75rem — used to match button height with input.",
+        "Google autocomplete suggestions fetched via suggestqueries.google.com with client=firefox for CORS-friendly JSON.",
+        "The project uses Tailwind; CSS rebuild is a separate step checked after JS changes."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "NavigateBar was fully rewritten to include https:// auto-prepend, res.success checking, Google suggestions dropdown with keyboard navigation, and session URL history."
+        },
+        {
+          "path": "crates/web/src/assets/css/components.css",
+          "finding": "provider-btn-sm class defined here; used to align Go button height with the URL input."
+        }
+      ],
+      "workflow": [
+        "After JS changes, Tailwind must be explicitly rebuilt and checked for new utility classes — in this case no new classes were needed.",
+        "Committing from the repo root (not the worktree subdirectory) was required for the push to succeed."
+      ]
+    },
+    "friction": [
+      "Navigation to bare domains like 'lemonde.fr' silently failed with no error — no https:// prepend and no success check on the response meant the page stayed on about:blank, appearing as 'Waiting for first frame'.",
+      "Button height mismatch was caused by padding class inconsistency between input and button elements.",
+      "Multiple grep attempts were needed to locate the provider-btn-sm class definition."
+    ],
+    "open_items": [
+      "Bookmark integration in autocomplete suggestions was mentioned but not confirmed implemented — only history and Google suggestions are explicit in the transcript.",
+      "Favicon display in autocomplete dropdown was requested by user but not confirmed in the implementation details.",
+      "CORS behavior of suggestqueries.google.com with client=firefox should be validated in production — it's a workaround, not an official API."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T08:40:22.28947Z",
+    "agent_lines": 204,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 204,
+    "agent_percentage": 100
+  }
+}
