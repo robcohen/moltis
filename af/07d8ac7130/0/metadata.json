@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "af07d8ac7130",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T08:31:24.053798Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/services.rs",
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9779769e0075",
+  "checkpoint_transcript_start": 820,
+  "transcript_lines_at_start": 820,
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 11704,
+    "cache_read_tokens": 2896391,
+    "output_tokens": 4750,
+    "api_call_count": 22
+  },
+  "summary": {
+    "intent": "Fix newly launched browser sessions defaulting to host mode instead of sandboxed mode when created from the UI.",
+    "outcome": "Added a `default_sandbox` flag to `RealBrowserService` that injects `sandbox: true` when the field is absent, wired to the sandbox config mode in server.rs. Changes compiled, passed clippy, and were committed and pushed.",
+    "learnings": {
+      "repo": [
+        "`request.sandbox.unwrap_or(false)` in services.rs causes all UI-initiated sessions to run in host mode since the UI never sends `sandbox: true`.",
+        "Sandbox config lives at `config.tools.exec.sandbox.mode` in crates/config/src/schema.rs; mode values include at least 'none' and 'all'.",
+        "The sandbox router/config is constructed later in the startup sequence than the browser service, making direct dependency injection awkward."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/services.rs",
+          "line": 98,
+          "end_line": 98,
+          "finding": "`request.sandbox.unwrap_or(false)` — sandbox defaults to false (host mode) when not explicitly set by the caller."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Sandbox config is built after the browser service is initialized, so `default_sandbox` is wired by checking `config.tools.exec.sandbox.mode != 'none'` directly rather than via the sandbox router."
+        }
+      ],
+      "workflow": [
+        "When initialization order prevents clean dependency injection, reading config directly at the call site is a pragmatic alternative to restructuring.",
+        "Grepping for trait definitions and config struct fields was the fastest way to understand the sandbox architecture without reading all files."
+      ]
+    },
+    "friction": [
+      "Sandbox router is constructed after the browser service in server.rs, requiring a workaround (direct config inspection) instead of clean dependency injection.",
+      "The sandbox mode enum/string values were not immediately obvious and required multiple grep passes to confirm valid values."
+    ],
+    "open_items": [
+      "The initialization order issue (browser service constructed before sandbox router) is a structural debt — a cleaner fix would restructure startup order or pass sandbox config earlier.",
+      "The UI never sends `sandbox: true` — it may be worth auditing whether the UI should explicitly control sandbox mode rather than relying on a server-side default."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T08:31:08.049013Z",
+    "agent_lines": 24,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 24,
+    "agent_percentage": 100
+  }
+}
