@@ -15,6 +15,7 @@ var loading = signal(false);
 var activeSession = signal(null);
 var screencasting = signal(false);
 var frameData = signal(null);
+var frameMime = signal("image/jpeg");
 var frameMeta = signal(null);
 var frameSeq = signal(0);
 var creating = signal(false);
@@ -100,6 +101,7 @@ function startFrameListener() {
 	frameUnsub = onEvent("browser.screencast.frame", (payload) => {
 		if (payload.session_id !== activeSession.value) return;
 		frameData.value = payload.data;
+		frameMime.value = "image/jpeg";
 		frameMeta.value = payload.metadata;
 		frameSeq.value = payload.sequence;
 	});
@@ -342,14 +344,35 @@ function SessionList() {
 		</div>`;
 	}
 
-	function selectSession(sessionId) {
+	async function selectSession(sessionId) {
 		if (activeSession.value === sessionId) return;
 		// Stop current screencast if switching sessions
 		if (screencasting.value && activeSession.value) {
 			stopScreencast(activeSession.value);
 		}
 		activeSession.value = sessionId;
-		startScreencast(sessionId);
+		screencasting.value = true;
+
+		// Fetch an immediate screenshot so the canvas isn't blank while
+		// waiting for the first screencast frame over WebSocket.
+		try {
+			var snap = await browserAction({
+				session_id: sessionId,
+				action: "screenshot",
+			});
+			if (snap.screenshot) {
+				frameData.value = snap.screenshot;
+				frameMime.value = "image/png";
+				frameMeta.value = {
+					device_width: snap.screenshot_scale ? 1280 * snap.screenshot_scale : 1280,
+					device_height: snap.screenshot_scale ? 800 * snap.screenshot_scale : 800,
+				};
+			}
+		} catch {
+			// Best effort — screencast will fill in shortly
+		}
+
+		await startScreencast(sessionId);
 	}
 
 	return html`<div class="flex flex-col gap-2">
@@ -598,7 +621,7 @@ function BrowserCanvas() {
 			var ctx = canvas.getContext("2d");
 			ctx.drawImage(img, 0, 0);
 		};
-		img.src = `data:image/jpeg;base64,${frameData.value}`;
+		img.src = `data:${frameMime.value};base64,${frameData.value}`;
 	}, [frameData.value]);
 
 	// Attach input handlers
