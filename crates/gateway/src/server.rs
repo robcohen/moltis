@@ -1323,10 +1323,12 @@ pub async fn prepare_gateway_core(
     let browser_tool = moltis_tools::browser::BrowserTool::from_config(&config.tools.browser)
         .map(|t| t.with_container_prefix(browser_container_prefix));
     if let Some(ref tool) = browser_tool {
+        let sandbox_enabled = config.tools.exec.sandbox.mode != "none";
         let browser_svc = crate::services::RealBrowserService::with_shared_manager(
             &config.tools.browser,
             tool.shared_manager_cell(),
-        );
+        )
+        .with_default_sandbox(sandbox_enabled);
         services.browser = Arc::new(browser_svc);
     }
 

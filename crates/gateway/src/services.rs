@@ -1307,6 +1307,8 @@ fn set_skill_trusted(params: &Value, trusted: bool) -> ServiceResult {
 pub struct RealBrowserService {
     config: moltis_browser::BrowserConfig,
     manager: Arc<tokio::sync::OnceCell<Arc<moltis_browser::BrowserManager>>>,
+    /// Default sandbox mode for UI-created requests that don't specify it.
+    default_sandbox: bool,
 }
 
 impl RealBrowserService {
@@ -1316,6 +1318,7 @@ impl RealBrowserService {
         Self {
             config: browser_config,
             manager: Arc::new(tokio::sync::OnceCell::new()),
+            default_sandbox: false,
         }
     }
 
@@ -1329,7 +1332,14 @@ impl RealBrowserService {
         Self {
             config: moltis_browser::BrowserConfig::from(config),
             manager,
+            default_sandbox: false,
         }
+    }
+
+    /// Set the default sandbox mode for requests that don't specify it.
+    pub fn with_default_sandbox(mut self, sandbox: bool) -> Self {
+        self.default_sandbox = sandbox;
+        self
     }
 
     pub fn from_config(
@@ -1379,6 +1389,17 @@ impl RealBrowserService {
 #[async_trait]
 impl BrowserService for RealBrowserService {
     async fn request(&self, params: Value) -> ServiceResult {
+        // Inject default sandbox mode for UI-created requests that omit it.
+        let params = if self.default_sandbox {
+            let mut params = params;
+            if let Some(obj) = params.as_object_mut() {
+                obj.entry("sandbox").or_insert(serde_json::json!(true));
+            }
+            params
+        } else {
+            params
+        };
+
         let request: moltis_browser::BrowserRequest =
             serde_json::from_value(params).map_err(|e| format!("invalid request: {e}"))?;
 
