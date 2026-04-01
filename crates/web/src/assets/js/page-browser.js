@@ -674,6 +674,7 @@ function NavigateBar() {
 function BrowserCanvas() {
 	var canvasRef = useRef(null);
 	var imgRef = useRef(null);
+	var cleanupRef = useRef(null);
 
 	// Draw frame onto canvas when new frame arrives
 	useEffect(() => {
@@ -694,9 +695,15 @@ function BrowserCanvas() {
 		img.src = `data:${frameMime.value};base64,${frameData.value}`;
 	}, [frameData.value]);
 
-	// Attach input handlers
-	useEffect(() => {
-		var canvas = canvasRef.current;
+	// Attach/detach input handlers via ref callback — fires whenever
+	// the canvas DOM element appears or disappears (conditional render).
+	function canvasRefCallback(canvas) {
+		// Detach previous listeners
+		if (cleanupRef.current) {
+			cleanupRef.current();
+			cleanupRef.current = null;
+		}
+		canvasRef.current = canvas;
 		if (!canvas) return;
 
 		function onMouse(e) {
@@ -713,13 +720,11 @@ function BrowserCanvas() {
 		canvas.addEventListener("mousemove", onMouse);
 		canvas.addEventListener("wheel", onWheel, { passive: false });
 		canvas.addEventListener("contextmenu", onContextMenu);
-
-		// Keyboard: focus the canvas to receive key events
 		canvas.setAttribute("tabindex", "0");
 		canvas.addEventListener("keydown", relayKeyEvent);
 		canvas.addEventListener("keyup", relayKeyEvent);
 
-		return () => {
+		cleanupRef.current = () => {
 			canvas.removeEventListener("mousedown", onMouse);
 			canvas.removeEventListener("mouseup", onMouse);
 			canvas.removeEventListener("mousemove", onMouse);
@@ -728,7 +733,7 @@ function BrowserCanvas() {
 			canvas.removeEventListener("keydown", relayKeyEvent);
 			canvas.removeEventListener("keyup", relayKeyEvent);
 		};
-	}, []);
+	}
 
 	if (!activeSession.value) {
 		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
@@ -761,10 +766,9 @@ function BrowserCanvas() {
 			${frameMeta.value ? html`<span>${frameMeta.value.device_width}x${frameMeta.value.device_height}</span>` : null}
 		</div>
 		<canvas
-			ref=${canvasRef}
+			ref=${canvasRefCallback}
 			class="w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
 			style="aspect-ratio: 16/10; object-fit: contain;"
-			onClick=${(e) => e.target.focus()}
 		/>
 	</div>`;
 }
