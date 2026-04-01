@@ -261,6 +261,7 @@ async function createSession() {
 	frameData.value = null;
 	frameMeta.value = null;
 	currentUrl.value = "";
+	selectedHistorySession.value = null;
 	activeSession.value = placeholderId;
 
 	try {
