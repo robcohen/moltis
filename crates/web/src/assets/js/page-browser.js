@@ -857,10 +857,10 @@ function BrowserCanvas() {
 			<span>Frame #${frameSeq.value}</span>
 			${frameMeta.value ? html`<span>${frameMeta.value.device_width}x${frameMeta.value.device_height}</span>` : null}
 		</div>
-		<div class="relative flex-1">
+		<div class="relative inline-block w-full">
 			<canvas
 				ref=${canvasRefCallback}
-				class="w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
+				class="block w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
 				style="aspect-ratio: ${frameMeta.value ? `${frameMeta.value.device_width} / ${frameMeta.value.device_height}` : '16 / 9'};"
 			/>
 			${showScrollbar ? html`

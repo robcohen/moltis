@@ -429,7 +429,16 @@ impl BrowserPool {
                         error = %e,
                         "failed to create browser profile directory for container"
                     ),
-                    Ok(()) => set_container_dir_permissions(dir),
+                    Ok(()) => {
+                        set_container_dir_permissions(dir);
+                        // Remove stale SingletonLock from a previous session so
+                        // Chrome doesn't refuse to start. This is safe because
+                        // the old Chrome process is gone (container was stopped).
+                        let lock = dir.join("SingletonLock");
+                        if lock.exists() {
+                            let _ = std::fs::remove_file(&lock);
+                        }
+                    },
                 }
             }
 
@@ -718,11 +727,13 @@ fn sanitize_session_component(session_id: &str) -> String {
 }
 
 /// Derive a per-session sandbox profile directory from a configured profile root.
-fn sandbox_profile_dir(profile_root: Option<PathBuf>, session_id: &str) -> Option<PathBuf> {
-    profile_root.map(|root| {
-        root.join("sandbox")
-            .join(sanitize_session_component(session_id))
-    })
+fn sandbox_profile_dir(profile_root: Option<PathBuf>, _session_id: &str) -> Option<PathBuf> {
+    // Use a single shared profile directory for all sandbox sessions so
+    // cookies, local storage, and login state persist across sessions and
+    // restarts. The profile is shared — each container gets a bind-mount to
+    // the same host directory. Chrome's SingletonLock is cleaned up before
+    // launch to avoid conflicts between consecutive sessions.
+    profile_root.map(|root| root.join("sandbox"))
 }
 
 /// Make a directory world-accessible so container processes (which run as a
@@ -765,12 +776,13 @@ mod tests {
     }
 
     #[test]
-    fn sandbox_profile_dir_is_namespaced_by_session() {
+    fn sandbox_profile_dir_is_shared() {
         let base = PathBuf::from("/tmp/moltis-profile");
         let path = sandbox_profile_dir(Some(base), "browser-abc123");
+        // All sessions share a single profile dir for cookie persistence
         assert_eq!(
             path,
-            Some(PathBuf::from("/tmp/moltis-profile/sandbox/browser-abc123"))
+            Some(PathBuf::from("/tmp/moltis-profile/sandbox"))
         );
     }
 
