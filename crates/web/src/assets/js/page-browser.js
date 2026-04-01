@@ -20,10 +20,13 @@ var frameMeta = signal(null);
 var frameSeq = signal(0);
 var creating = signal(false);
 var fetching = signal(false);
-// Screenshot cache: session_id → { data, scale }
+// Current URL for the active session — kept in sync with the remote browser.
+var currentUrl = signal("");
+// Screenshot cache: session_id → { data }
 var screenshotCache = {};
 // Track placeholder IDs so fetchSessions doesn't remove them
 var placeholderIds = new Set();
+var urlPollTimer = null;
 var containerEl = null;
 
 // ── URL helpers ─────────────────────────────────────────────
@@ -135,6 +138,31 @@ function stopFrameListener() {
 	}
 }
 
+// ── URL polling — detect in-page navigations (link clicks, etc.) ────
+
+function startUrlPolling() {
+	stopUrlPolling();
+	urlPollTimer = setInterval(async () => {
+		var sid = activeSession.value;
+		if (!sid || !screencasting.value) return;
+		try {
+			var res = await browserAction({ session_id: sid, action: "get_url" });
+			if (res.url && activeSession.value === sid) {
+				currentUrl.value = res.url;
+			}
+		} catch {
+			// best effort
+		}
+	}, 2000);
+}
+
+function stopUrlPolling() {
+	if (urlPollTimer) {
+		clearInterval(urlPollTimer);
+		urlPollTimer = null;
+	}
+}
+
 // ── Session actions ─────────────────────────────────────────
 
 async function sendStartScreencast(sessionId) {
@@ -168,6 +196,8 @@ async function closeSession(sessionId) {
 			screencasting.value = false;
 			activeSession.value = null;
 			frameData.value = null;
+			currentUrl.value = "";
+			stopUrlPolling();
 		}
 		delete screenshotCache[sessionId];
 		await fetchSessions();
@@ -179,8 +209,8 @@ async function closeSession(sessionId) {
 async function navigateSession(sessionId, rawUrl) {
 	var url = normalizeUrl(rawUrl);
 	try {
-		await browserAction({ session_id: sessionId, action: "navigate", url: url });
-		// Invalidate cached screenshot since page changed
+		var res = await browserAction({ session_id: sessionId, action: "navigate", url: url });
+		currentUrl.value = res.url || url;
 		delete screenshotCache[sessionId];
 		await fetchSessions();
 		if (!screencasting.value && activeSession.value === sessionId) {
@@ -209,6 +239,7 @@ async function createSession() {
 	];
 	frameData.value = null;
 	frameMeta.value = null;
+	currentUrl.value = "";
 	activeSession.value = placeholderId;
 
 	try {
@@ -249,6 +280,10 @@ async function selectSession(sessionId) {
 	frameData.value = null;
 	fetching.value = true;
 
+	// Set URL from session list immediately
+	var sess = sessions.value.find((s) => s.session_id === sessionId);
+	currentUrl.value = sess?.url && sess.url !== "about:blank" ? sess.url : "";
+
 	// Show cached screenshot instantly, or fetch one
 	var cached = screenshotCache[sessionId];
 	if (cached) {
@@ -272,6 +307,7 @@ async function selectSession(sessionId) {
 	// Guard: session might have changed during await
 	if (activeSession.value !== sessionId) return;
 	await sendStartScreencast(sessionId);
+	startUrlPolling();
 }
 
 function applyScreenshot(data) {
@@ -488,17 +524,13 @@ function formatDuration(secs) {
 }
 
 function NavigateBar() {
-	var [url, setUrl] = useState("");
+	var [editing, setEditing] = useState(false);
+	var [editUrl, setEditUrl] = useState("");
 	var [navigating, setNavigating] = useState(false);
-	var lastSessionRef = useRef(null);
 
-	var currentSession = activeSession.value;
-	if (currentSession !== lastSessionRef.current) {
-		lastSessionRef.current = currentSession;
-		var sess = sessions.value.find((s) => s.session_id === currentSession);
-		var sessionUrl = sess?.url && sess.url !== "about:blank" ? sess.url : "";
-		setUrl(sessionUrl);
-	}
+	// Show the live currentUrl unless the user is actively editing
+	var displayUrl = editing ? editUrl : currentUrl.value;
+
 	var [suggestions, setSuggestions] = useState([]);
 	var [selectedIdx, setSelectedIdx] = useState(-1);
 	var [showDropdown, setShowDropdown] = useState(false);
@@ -551,7 +583,8 @@ function NavigateBar() {
 
 	function onInput(e) {
 		var val = e.target.value;
-		setUrl(val);
+		setEditing(true);
+		setEditUrl(val);
 		setSelectedIdx(-1);
 
 		if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -571,14 +604,15 @@ function NavigateBar() {
 
 	function selectItem(item) {
 		var nav = item.value || item.label;
-		setUrl(nav);
 		setShowDropdown(false);
 		setSuggestions([]);
+		setEditing(false);
 		doNavigate(nav);
 	}
 
 	async function doNavigate(raw) {
 		if (!activeSession.value) return;
+		setEditing(false);
 		setNavigating(true);
 		await navigateSession(activeSession.value, raw);
 		setNavigating(false);
@@ -588,7 +622,7 @@ function NavigateBar() {
 		if (!showDropdown || suggestions.length === 0) {
 			if (e.key === "Enter") {
 				e.preventDefault();
-				if (url.trim()) doNavigate(url.trim());
+				if (displayUrl.trim()) doNavigate(displayUrl.trim());
 			}
 			return;
 		}
@@ -606,14 +640,15 @@ function NavigateBar() {
 				e.preventDefault();
 				if (selectedIdx >= 0 && suggestions[selectedIdx]) {
 					selectItem(suggestions[selectedIdx]);
-				} else if (url.trim()) {
+				} else if (displayUrl.trim()) {
 					setShowDropdown(false);
-					doNavigate(url.trim());
+					doNavigate(displayUrl.trim());
 				}
 				break;
 			case "Escape":
 				setShowDropdown(false);
 				setSelectedIdx(-1);
+				setEditing(false);
 				break;
 		}
 	}
@@ -621,22 +656,23 @@ function NavigateBar() {
 	if (!activeSession.value) return null;
 
 	return html`<div ref=${wrapperRef} class="relative mb-3">
-		<form onSubmit=${(e) => { e.preventDefault(); if (url.trim()) { setShowDropdown(false); doNavigate(url.trim()); } }} class="flex items-center gap-2">
+		<form onSubmit=${(e) => { e.preventDefault(); if (displayUrl.trim()) { setShowDropdown(false); doNavigate(displayUrl.trim()); } }} class="flex items-center gap-2">
 			<input
 				type="text"
 				class="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
 				style="padding: 3px 10px; font-size: 0.75rem;"
 				placeholder="Search or enter URL..."
-				value=${url}
+				value=${displayUrl}
 				onInput=${onInput}
 				onKeyDown=${onKeyDown}
-				onFocus=${() => { if (suggestions.length > 0) setShowDropdown(true); }}
+				onFocus=${() => { setEditing(true); setEditUrl(currentUrl.value); if (suggestions.length > 0) setShowDropdown(true); }}
+				onBlur=${() => { setTimeout(() => setEditing(false), 200); }}
 				autocomplete="off"
 			/>
 			<button
 				type="submit"
 				class="provider-btn provider-btn-sm"
-				disabled=${navigating || !url.trim()}
+				disabled=${navigating || !displayUrl.trim()}
 			>
 				${navigating ? "\u2026" : "Go"}
 			</button>
@@ -817,6 +853,7 @@ export function initBrowser(container) {
 
 export function teardownBrowser() {
 	stopFrameListener();
+	stopUrlPolling();
 	if (containerEl) {
 		render(null, containerEl);
 		containerEl = null;
@@ -824,4 +861,5 @@ export function teardownBrowser() {
 	screencasting.value = false;
 	activeSession.value = null;
 	frameData.value = null;
+	currentUrl.value = "";
 }
