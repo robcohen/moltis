@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "76e24ac2897a",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T08:47:51.012431Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d30a2969a060",
+  "checkpoint_transcript_start": 976,
+  "transcript_lines_at_start": 976,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 3062,
+    "cache_read_tokens": 1329970,
+    "output_tokens": 1678,
+    "api_call_count": 8
+  },
+  "summary": {
+    "intent": "Improve the browser URL bar UX by showing error messages to the user when URL navigation fails, instead of silently doing nothing.",
+    "outcome": "Centralized error handling in the `browserAction` helper so all browser API calls that return `success: false` automatically surface errors to the user, and removed the now-redundant per-call check in `navigateSession`.",
+    "learnings": {
+      "repo": [
+        "The browser manager API returns errors as HTTP 200 with `success: false` in the body, not as non-2xx status codes — callers must check the response body explicitly.",
+        "Prior to this fix, `browserAction` only threw on non-2xx HTTP, so `success: false` responses were silently swallowed."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "The `browserAction` helper is the centralized wrapper for all browser manager API calls. Adding `success` checking here covers all actions without touching each call site."
+        }
+      ],
+      "workflow": [
+        "JS is linted before committing (`Lint JS` step in the workflow).",
+        "Centralizing error handling in a shared helper reduces duplication and ensures consistent behavior across all call sites."
+      ]
+    },
+    "friction": [
+      "The silent failure mode (200 OK with `success: false`) was non-obvious and caused a hard-to-diagnose 'Waiting for first frame' bug — the URL bar appeared to work but navigation never happened."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T08:47:37.592481Z",
+    "agent_lines": 6,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "agent_percentage": 100
+  }
+}
