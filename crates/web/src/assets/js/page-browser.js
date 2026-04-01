@@ -27,6 +27,8 @@ var screenshotCache = {};
 // Track placeholder IDs so fetchSessions doesn't remove them
 var placeholderIds = new Set();
 var urlPollTimer = null;
+// Scroll state for scrollbar overlay
+var scrollInfo = signal(null); // { scrollTop, scrollHeight, viewportHeight }
 var sessionHistory = signal([]);
 var selectedHistorySession = signal(null);
 var actionLog = signal([]);
@@ -178,9 +180,14 @@ function startUrlPolling() {
 		var sid = activeSession.value;
 		if (!sid || !screencasting.value) return;
 		try {
-			var res = await browserAction({ session_id: sid, action: "get_url" });
-			if (res.url && activeSession.value === sid) {
-				currentUrl.value = res.url;
+			var [urlRes, scrollRes] = await Promise.all([
+				browserAction({ session_id: sid, action: "get_url" }),
+				browserAction({ session_id: sid, action: "evaluate", code: "JSON.stringify({scrollTop:window.scrollY,scrollHeight:document.documentElement.scrollHeight,viewportHeight:window.innerHeight})" }),
+			]);
+			if (activeSession.value !== sid) return;
+			if (urlRes.url) currentUrl.value = urlRes.url;
+			if (scrollRes.result) {
+				try { scrollInfo.value = JSON.parse(scrollRes.result); } catch {}
 			}
 		} catch {
 			// best effort
@@ -826,17 +833,49 @@ function BrowserCanvas() {
 		</div>`;
 	}
 
+	// Scrollbar calculations
+	var si = scrollInfo.value;
+	var showScrollbar = si && si.scrollHeight > si.viewportHeight;
+	var thumbPct = showScrollbar ? (si.viewportHeight / si.scrollHeight) * 100 : 100;
+	var thumbTopPct = showScrollbar ? (si.scrollTop / si.scrollHeight) * 100 : 0;
+
+	function onScrollbarClick(e) {
+		if (!showScrollbar || !activeSession.value) return;
+		var rect = e.currentTarget.getBoundingClientRect();
+		var clickPct = (e.clientY - rect.top) / rect.height;
+		var targetScroll = clickPct * si.scrollHeight - si.viewportHeight / 2;
+		browserAction({
+			session_id: activeSession.value,
+			action: "evaluate",
+			code: `window.scrollTo(0, ${Math.max(0, Math.round(targetScroll))})`,
+		}).catch(() => {});
+	}
+
 	return html`<div class="flex-1 flex flex-col min-h-0">
 		<div class="flex items-center justify-between mb-1 text-[10px] text-[var(--muted)]">
 			<span>Session: ${activeSession.value}</span>
 			<span>Frame #${frameSeq.value}</span>
 			${frameMeta.value ? html`<span>${frameMeta.value.device_width}x${frameMeta.value.device_height}</span>` : null}
 		</div>
-		<canvas
-			ref=${canvasRefCallback}
-			class="w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
-			style="aspect-ratio: ${frameMeta.value ? `${frameMeta.value.device_width} / ${frameMeta.value.device_height}` : '16 / 9'};"
-		/>
+		<div class="relative flex-1">
+			<canvas
+				ref=${canvasRefCallback}
+				class="w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
+				style="aspect-ratio: ${frameMeta.value ? `${frameMeta.value.device_width} / ${frameMeta.value.device_height}` : '16 / 9'};"
+			/>
+			${showScrollbar ? html`
+				<div
+					class="absolute top-0 right-0 w-2 h-full rounded-r-lg cursor-pointer opacity-40 hover:opacity-70 transition-opacity"
+					style="background: var(--surface2);"
+					onClick=${onScrollbarClick}
+				>
+					<div
+						class="absolute w-full rounded-full"
+						style="background: var(--muted); top: ${thumbTopPct}%; height: ${thumbPct}%; min-height: 20px;"
+					/>
+				</div>
+			` : null}
+		</div>
 	</div>`;
 }
 
