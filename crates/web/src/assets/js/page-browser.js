@@ -539,14 +539,14 @@ function SessionList() {
 						<span class="text-[var(--muted)]">Age: ${formatDuration(sess.age_secs)}</span>
 						<span class="text-[var(--muted)]">Idle: ${formatDuration(sess.idle_secs)}</span>
 					</div>
-					${!sess.creating ? html`<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
+					${sess.creating ? null : html`<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
 						<button
 							class="text-[10px] text-[var(--muted)] hover:text-[var(--error)] transition-colors"
 							onClick=${() => closeSession(sess.session_id)}
 						>
 							Close
 						</button>
-					</div>` : null}
+					</div>`}
 				</div>
 			`; },
 		)}
@@ -598,10 +598,8 @@ function NavigateBar() {
 		}
 
 		for (var sess of sessions.value) {
-			if (sess.url && sess.url !== "about:blank" && sess.url.toLowerCase().includes(q)) {
-				if (!items.some((i) => i.label === sess.url)) {
-					items.push({ type: "history", label: sess.url, icon: "\u{1F4C4}" });
-				}
+			if (sess.url && sess.url !== "about:blank" && sess.url.toLowerCase().includes(q) && !items.some((i) => i.label === sess.url)) {
+				items.push({ type: "history", label: sess.url, icon: "\u{1F4C4}" });
 			}
 		}
 
@@ -968,10 +966,8 @@ function getKnownProfiles() {
 	for (var s of sessions.value) {
 		if (s.profile_id) profiles.add(s.profile_id);
 	}
-	for (var s of sessionHistory.value) {
-		// Derive profile from session records (stored sessions don't have profile_id yet,
-		// but active sessions do)
-		if (s.profile_id) profiles.add(s.profile_id);
+	for (var h of sessionHistory.value) {
+		if (h.profile_id) profiles.add(h.profile_id);
 	}
 	return [...profiles].sort();
 }
