@@ -22,21 +22,20 @@ var creating = signal(false);
 var fetching = signal(false);
 // Screenshot cache: session_id → { data, scale }
 var screenshotCache = {};
+// Track placeholder IDs so fetchSessions doesn't remove them
+var placeholderIds = new Set();
 var containerEl = null;
 
 // ── URL helpers ─────────────────────────────────────────────
 
-/** Return true if text looks like a navigable URL or domain. */
 function looksLikeUrl(text) {
 	return /^https?:\/\//i.test(text) || /^[a-z0-9]([a-z0-9-]*\.)+[a-z]{2,}/i.test(text);
 }
 
-/** Ensure URL has a scheme — prepend https:// for bare domains. */
 function normalizeUrl(input) {
 	var text = input.trim();
 	if (/^https?:\/\//i.test(text)) return text;
 	if (looksLikeUrl(text)) return `https://${text}`;
-	// Treat as Google search
 	return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
 }
 
@@ -65,8 +64,11 @@ async function fetchSessions() {
 		var res = await fetch("/api/browser/sessions");
 		if (res.ok) {
 			var data = await res.json();
-			sessions.value = data.sessions || [];
-			prefetchScreenshots(data.sessions || []);
+			var realSessions = data.sessions || [];
+			// Preserve placeholder entries that haven't resolved yet
+			var placeholders = sessions.value.filter((s) => placeholderIds.has(s.session_id));
+			sessions.value = [...placeholders, ...realSessions];
+			prefetchScreenshots(realSessions);
 		}
 	} catch (e) {
 		console.error("Failed to fetch browser sessions:", e);
@@ -75,12 +77,10 @@ async function fetchSessions() {
 	}
 }
 
-/** Prefetch screenshots for sessions we don't have cached yet. */
 function prefetchScreenshots(sessionList) {
 	for (var sess of sessionList) {
 		if (screenshotCache[sess.session_id]) continue;
 		if (!sess.url || sess.url === "about:blank") continue;
-		// Fire and forget — populate cache in background
 		browserAction({ session_id: sess.session_id, action: "screenshot" })
 			.then((snap) => {
 				if (snap.screenshot) {
@@ -108,7 +108,6 @@ async function fetchSuggestions(query) {
 		var res = await fetch(url, { signal: ctrl.signal });
 		if (!res.ok) return [];
 		var data = await res.json();
-		// Firefox format: ["query", ["suggestion1", "suggestion2", ...]]
 		return (data[1] || []).slice(0, 5);
 	} catch {
 		return [];
@@ -119,7 +118,9 @@ async function fetchSuggestions(query) {
 
 var frameUnsub = null;
 
-function startFrameListener() {
+// Keep the frame listener always active — it filters by session_id.
+// This avoids teardown/setup gaps when switching sessions.
+function ensureFrameListener() {
 	if (frameUnsub) return;
 	frameUnsub = onEvent("browser.screencast.frame", (payload) => {
 		if (payload.session_id !== activeSession.value) return;
@@ -139,7 +140,7 @@ function stopFrameListener() {
 
 // ── Session actions ─────────────────────────────────────────
 
-async function startScreencast(sessionId) {
+async function sendStartScreencast(sessionId) {
 	try {
 		await browserAction({
 			session_id: sessionId,
@@ -148,80 +149,45 @@ async function startScreencast(sessionId) {
 			max_width: 1280,
 			max_height: 800,
 		});
-		activeSession.value = sessionId;
 		screencasting.value = true;
-		startFrameListener();
-		showToast("Screencast started");
+		ensureFrameListener();
 	} catch (e) {
 		showToast(`Failed to start screencast: ${e.message}`, "error");
 	}
 }
 
-async function stopScreencast(sessionId) {
+async function sendStopScreencast(sessionId) {
 	try {
-		await browserAction({
-			session_id: sessionId,
-			action: "stop_screencast",
-		});
+		await browserAction({ session_id: sessionId, action: "stop_screencast" });
 	} catch {
 		// best effort
 	}
-	screencasting.value = false;
-	activeSession.value = null;
-	frameData.value = null;
-	stopFrameListener();
-	showToast("Screencast stopped");
 }
 
 async function closeSession(sessionId) {
 	try {
-		await browserAction({
-			session_id: sessionId,
-			action: "close",
-		});
-		showToast("Session closed");
+		await browserAction({ session_id: sessionId, action: "close" });
 		if (activeSession.value === sessionId) {
 			screencasting.value = false;
 			activeSession.value = null;
 			frameData.value = null;
-			stopFrameListener();
 		}
+		delete screenshotCache[sessionId];
 		await fetchSessions();
 	} catch (e) {
 		showToast(`Failed to close session: ${e.message}`, "error");
 	}
 }
 
-async function exportCookies(sessionId) {
-	try {
-		var res = await browserAction({
-			session_id: sessionId,
-			action: "export_cookies",
-		});
-		if (res.cookies && res.cookies.length > 0) {
-			var text = JSON.stringify(res.cookies, null, 2);
-			await navigator.clipboard.writeText(text);
-			showToast(`${res.cookies.length} cookies copied to clipboard`);
-		} else {
-			showToast("No cookies found in this session");
-		}
-	} catch (e) {
-		showToast(`Failed to export cookies: ${e.message}`, "error");
-	}
-}
-
 async function navigateSession(sessionId, rawUrl) {
 	var url = normalizeUrl(rawUrl);
 	try {
-		await browserAction({
-			session_id: sessionId,
-			action: "navigate",
-			url: url,
-		});
+		await browserAction({ session_id: sessionId, action: "navigate", url: url });
+		// Invalidate cached screenshot since page changed
+		delete screenshotCache[sessionId];
 		await fetchSessions();
-		// Auto-start screencast after navigating to a real page
 		if (!screencasting.value && activeSession.value === sessionId) {
-			await startScreencast(sessionId);
+			await sendStartScreencast(sessionId);
 		}
 	} catch (e) {
 		showToast(`Navigation failed: ${e.message}`, "error");
@@ -232,73 +198,113 @@ async function createSession() {
 	if (creating.value) return;
 	creating.value = true;
 
-	// Stop current screencast before creating a new session
+	// Stop current screencast silently
 	if (screencasting.value && activeSession.value) {
-		stopScreencast(activeSession.value);
+		sendStopScreencast(activeSession.value);
+		screencasting.value = false;
 	}
 
-	// Immediately add a placeholder session to the list and select it
 	var placeholderId = `creating-${Date.now()}`;
+	placeholderIds.add(placeholderId);
 	sessions.value = [
 		{ session_id: placeholderId, url: "", sandboxed: false, age_secs: 0, idle_secs: 0, creating: true },
 		...sessions.value,
 	];
 	frameData.value = null;
 	frameMeta.value = null;
-	screencasting.value = false;
 	activeSession.value = placeholderId;
 
 	try {
-		var res = await browserAction({
-			action: "navigate",
-			url: "about:blank",
-		});
+		var res = await browserAction({ action: "navigate", url: "about:blank" });
 		var newId = res.session_id;
 		if (!newId) {
 			showToast("Failed to create session", "error");
-			// Remove placeholder
 			sessions.value = sessions.value.filter((s) => s.session_id !== placeholderId);
+			placeholderIds.delete(placeholderId);
 			activeSession.value = null;
 			return;
 		}
-		// Replace placeholder with real session
+		placeholderIds.delete(placeholderId);
 		activeSession.value = newId;
 		await fetchSessions();
 	} catch (e) {
 		showToast(`Failed to create session: ${e.message}`, "error");
 		sessions.value = sessions.value.filter((s) => s.session_id !== placeholderId);
+		placeholderIds.delete(placeholderId);
 		activeSession.value = null;
 	} finally {
 		creating.value = false;
 	}
 }
 
-// ── Mouse/keyboard/scroll input relay ────────────────────────
+// ── Select / switch session ─────────────────────────────────
 
-function canvasCoords(e, canvas) {
-	var rect = canvas.getBoundingClientRect();
-	var meta = frameMeta.value;
-	if (!meta) return null;
-	var scaleX = meta.device_width / rect.width;
-	var scaleY = meta.device_height / rect.height;
-	return {
-		x: (e.clientX - rect.left) * scaleX,
-		y: (e.clientY - rect.top) * scaleY,
+async function selectSession(sessionId) {
+	if (activeSession.value === sessionId) return;
+
+	// Stop previous screencast silently (don't reset activeSession)
+	if (screencasting.value && activeSession.value) {
+		sendStopScreencast(activeSession.value);
+		screencasting.value = false;
+	}
+
+	activeSession.value = sessionId;
+	frameData.value = null;
+	fetching.value = true;
+
+	// Show cached screenshot instantly, or fetch one
+	var cached = screenshotCache[sessionId];
+	if (cached) {
+		applyScreenshot(cached.data, cached.scale);
+		fetching.value = false;
+	} else {
+		try {
+			var snap = await browserAction({ session_id: sessionId, action: "screenshot" });
+			if (snap.screenshot && activeSession.value === sessionId) {
+				applyScreenshot(snap.screenshot, snap.screenshot_scale || 1);
+				screenshotCache[sessionId] = { data: snap.screenshot, scale: snap.screenshot_scale || 1 };
+			}
+		} catch {
+			// Session might have died — refresh list
+			await fetchSessions();
+		} finally {
+			fetching.value = false;
+		}
+	}
+
+	// Guard: session might have changed during await
+	if (activeSession.value !== sessionId) return;
+	await sendStartScreencast(sessionId);
+}
+
+function applyScreenshot(data, scale) {
+	frameData.value = data;
+	frameMime.value = "image/png";
+	frameMeta.value = {
+		device_width: 1280 * scale,
+		device_height: 800 * scale,
 	};
 }
 
+// ── Mouse/keyboard/scroll input relay ────────────────────────
+
+function canvasCoords(e, canvas) {
+	var meta = frameMeta.value;
+	if (!meta) return null;
+	var scaleX = meta.device_width / canvas.clientWidth;
+	var scaleY = meta.device_height / canvas.clientHeight;
+	return { x: e.offsetX * scaleX, y: e.offsetY * scaleY };
+}
+
 var lastMoveTime = 0;
-var MOUSE_MOVE_THROTTLE_MS = 50;
 
 function relayMouseEvent(e, canvas) {
 	if (!(activeSession.value && screencasting.value)) return;
-	// Prevent text selection, drag, and context menu on the canvas
 	e.preventDefault();
 
-	// Throttle mousemove to avoid flooding the server
 	if (e.type === "mousemove") {
 		var now = Date.now();
-		if (now - lastMoveTime < MOUSE_MOVE_THROTTLE_MS) return;
+		if (now - lastMoveTime < 50) return;
 		lastMoveTime = now;
 	}
 
@@ -321,24 +327,19 @@ function relayMouseEvent(e, canvas) {
 			return;
 	}
 
-	var button = ["left", "middle", "right"][e.button] || "left";
-
 	browserAction({
 		session_id: activeSession.value,
 		action: "mouse_input",
 		x: coords.x,
 		y: coords.y,
 		event_type: eventType,
-		button: button,
+		button: ["left", "middle", "right"][e.button] || "left",
 		click_count: e.type === "mousedown" ? e.detail || 1 : 1,
 	}).catch(() => {});
 }
 
-// Accumulate wheel deltas and flush periodically to avoid flooding
-// the server with one HTTP request per wheel tick.
 var wheelAccum = { x: 0, y: 0, cx: 0, cy: 0 };
 var wheelTimer = null;
-var WHEEL_FLUSH_MS = 50;
 
 function flushWheel() {
 	wheelTimer = null;
@@ -377,7 +378,7 @@ function relayWheelEvent(e, canvas) {
 	wheelAccum.cy = coords.y;
 
 	if (!wheelTimer) {
-		wheelTimer = setTimeout(flushWheel, WHEEL_FLUSH_MS);
+		wheelTimer = setTimeout(flushWheel, 50);
 	}
 }
 
@@ -385,7 +386,6 @@ function relayKeyEvent(e) {
 	if (!(activeSession.value && screencasting.value)) return;
 	e.preventDefault();
 
-	var eventType = e.type === "keydown" ? "keyDown" : "keyUp";
 	var modifiers = 0;
 	if (e.altKey) modifiers |= 1;
 	if (e.ctrlKey) modifiers |= 2;
@@ -395,7 +395,7 @@ function relayKeyEvent(e) {
 	browserAction({
 		session_id: activeSession.value,
 		action: "keyboard_input",
-		event_type: eventType,
+		event_type: e.type === "keydown" ? "keyDown" : "keyUp",
 		key: e.key,
 		code: e.code,
 		text: e.key.length === 1 ? e.key : undefined,
@@ -421,54 +421,6 @@ function SessionList() {
 		return html`<div class="text-xs text-[var(--muted)] p-3">
 			No active browser sessions. Click "New Session" to create one, or sessions will appear here when the agent uses the browser tool.
 		</div>`;
-	}
-
-	async function selectSession(sessionId) {
-		if (activeSession.value === sessionId) return;
-		// Stop current screencast if switching sessions
-		if (screencasting.value && activeSession.value) {
-			stopScreencast(activeSession.value);
-		}
-		activeSession.value = sessionId;
-		frameData.value = null;
-
-		// Use prefetch cache for instant display, otherwise fetch live
-		var cached = screenshotCache[sessionId];
-		if (cached) {
-			frameData.value = cached.data;
-			frameMime.value = "image/png";
-			frameMeta.value = {
-				device_width: 1280 * cached.scale,
-				device_height: 800 * cached.scale,
-			};
-		} else {
-			fetching.value = true;
-			try {
-				var snap = await browserAction({
-					session_id: sessionId,
-					action: "screenshot",
-				});
-				if (snap.screenshot) {
-					frameData.value = snap.screenshot;
-					frameMime.value = "image/png";
-					frameMeta.value = {
-						device_width: snap.screenshot_scale ? 1280 * snap.screenshot_scale : 1280,
-						device_height: snap.screenshot_scale ? 800 * snap.screenshot_scale : 800,
-					};
-					screenshotCache[sessionId] = {
-						data: snap.screenshot,
-						scale: snap.screenshot_scale || 1,
-					};
-				}
-			} catch {
-				// Best effort
-			} finally {
-				fetching.value = false;
-			}
-		}
-
-		screencasting.value = true;
-		await startScreencast(sessionId);
 	}
 
 	return html`<div class="flex flex-col gap-2">
@@ -530,11 +482,9 @@ function NavigateBar() {
 	var [navigating, setNavigating] = useState(false);
 	var lastSessionRef = useRef(null);
 
-	// Reset URL bar when switching sessions
 	var currentSession = activeSession.value;
 	if (currentSession !== lastSessionRef.current) {
 		lastSessionRef.current = currentSession;
-		// Find the session's current URL to display
 		var sess = sessions.value.find((s) => s.session_id === currentSession);
 		var sessionUrl = sess?.url && sess.url !== "about:blank" ? sess.url : "";
 		setUrl(sessionUrl);
@@ -545,7 +495,6 @@ function NavigateBar() {
 	var debounceRef = useRef(null);
 	var wrapperRef = useRef(null);
 
-	// Close dropdown on outside click
 	useEffect(() => {
 		function onClickOutside(e) {
 			if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -561,28 +510,23 @@ function NavigateBar() {
 		var q = query.trim().toLowerCase();
 		if (!q) return items;
 
-		// If it looks like a URL, offer direct navigation
 		if (looksLikeUrl(q)) {
 			var dest = /^https?:\/\//i.test(q) ? q : `https://${q}`;
 			items.push({ type: "url", label: dest, icon: "\u{1F310}" });
 		}
 
-		// Google suggestions
 		for (var s of googleSuggestions) {
 			items.push({ type: "search", label: s, icon: "\u{1F50D}" });
 		}
 
-		// Session URLs that match
 		for (var sess of sessions.value) {
 			if (sess.url && sess.url !== "about:blank" && sess.url.toLowerCase().includes(q)) {
-				// Avoid duplicate if already in list
 				if (!items.some((i) => i.label === sess.url)) {
 					items.push({ type: "history", label: sess.url, icon: "\u{1F4C4}" });
 				}
 			}
 		}
 
-		// If no URL match and no items yet, offer search
 		if (!looksLikeUrl(q) && !items.some((i) => i.type === "url")) {
 			items.unshift({
 				type: "search-go",
@@ -713,7 +657,6 @@ function BrowserCanvas() {
 	var imgRef = useRef(null);
 	var cleanupRef = useRef(null);
 
-	// Draw frame onto canvas when new frame arrives
 	useEffect(() => {
 		if (!(frameData.value && canvasRef.current)) return;
 		var img = imgRef.current;
@@ -732,10 +675,7 @@ function BrowserCanvas() {
 		img.src = `data:${frameMime.value};base64,${frameData.value}`;
 	}, [frameData.value]);
 
-	// Attach/detach input handlers via ref callback — fires whenever
-	// the canvas DOM element appears or disappears (conditional render).
 	function canvasRefCallback(canvas) {
-		// Detach previous listeners
 		if (cleanupRef.current) {
 			cleanupRef.current();
 			cleanupRef.current = null;
@@ -743,30 +683,25 @@ function BrowserCanvas() {
 		canvasRef.current = canvas;
 		if (!canvas) return;
 
-		function onMouse(e) {
-			relayMouseEvent(e, canvas);
-		}
-		function onWheel(e) {
-			relayWheelEvent(e, canvas);
-		}
-		function onContextMenu(e) {
-			e.preventDefault();
-		}
+		function onMouse(e) { relayMouseEvent(e, canvas); }
+		function onWheel(e) { relayWheelEvent(e, canvas); }
+		function onCtx(e) { e.preventDefault(); }
 		canvas.addEventListener("mousedown", onMouse);
 		canvas.addEventListener("mouseup", onMouse);
 		canvas.addEventListener("mousemove", onMouse);
 		canvas.addEventListener("wheel", onWheel, { passive: false });
-		canvas.addEventListener("contextmenu", onContextMenu);
+		canvas.addEventListener("contextmenu", onCtx);
 		canvas.setAttribute("tabindex", "0");
 		canvas.addEventListener("keydown", relayKeyEvent);
 		canvas.addEventListener("keyup", relayKeyEvent);
+		canvas.focus();
 
 		cleanupRef.current = () => {
 			canvas.removeEventListener("mousedown", onMouse);
 			canvas.removeEventListener("mouseup", onMouse);
 			canvas.removeEventListener("mousemove", onMouse);
 			canvas.removeEventListener("wheel", onWheel);
-			canvas.removeEventListener("contextmenu", onContextMenu);
+			canvas.removeEventListener("contextmenu", onCtx);
 			canvas.removeEventListener("keydown", relayKeyEvent);
 			canvas.removeEventListener("keyup", relayKeyEvent);
 		};
@@ -825,9 +760,8 @@ function BrowserPage() {
 		</div>
 
 		<div class="text-xs text-[var(--muted)] max-w-form">
-			Create browser sessions or view ones created by agents. Click "View" to see the
-			browser screen, interact with mouse/keyboard to log in to websites, and agents
-			will share the same cookies. Use "Export Cookies" to copy session data.
+			Create browser sessions or view ones created by agents. Click a session to view and
+			interact with it. Agents share the same cookies across all sessions.
 		</div>
 
 		<div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
