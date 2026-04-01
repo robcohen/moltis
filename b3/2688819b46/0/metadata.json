@@ -1,0 +1,101 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b32688819b46",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T18:32:46.711186Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "crates/chat/src/lib.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/gateway/src/local_llm_setup.rs",
+    "crates/gateway/src/server.rs",
+    "crates/provider-setup/src/lib.rs",
+    "crates/providers/src/github_copilot.rs",
+    "crates/providers/src/lib.rs",
+    "crates/providers/src/openai.rs",
+    "crates/providers/src/openai_codex.rs",
+    "crates/swift-bridge/src/lib.rs",
+    "crates/web/src/assets/js/locales/en/providers.js",
+    "crates/web/src/assets/js/locales/fr/providers.js",
+    "crates/web/src/assets/js/locales/zh/providers.js",
+    "crates/web/src/assets/js/page-providers.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a1f9bf3b4396",
+  "token_usage": {
+    "input_tokens": 240,
+    "cache_creation_tokens": 219618,
+    "cache_read_tokens": 36501965,
+    "output_tokens": 60224,
+    "api_call_count": 229
+  },
+  "summary": {
+    "intent": "Reduce the overwhelming model list in the LLM settings UI (111+ models for OpenAI alone) by collapsing lists, surfacing preferred/recommended models first, and hiding legacy models from the chat selector.",
+    "outcome": "Implemented collapsible model lists (top 3 visible by default), added a `recommended` field throughout the Rust provider stack, pattern-matched OpenAI flagship models, marked static catalog flagships, added legacy model filtering (\u003e1 year old) to the chat model selector with a config override, and updated Anthropic's catalog to include the 4.6 model family.",
+    "learnings": {
+      "repo": [
+        "ModelInfo is constructed in many places across providers/src/lib.rs, openai.rs, openai_codex.rs, github_copilot.rs, local_llm_setup.rs, swift-bridge/src/lib.rs — adding a new field requires touching all of them",
+        "Static model catalogs use catalog_to_discovered() helper; the first N entries get recommended=true based on position in the array",
+        "models.list() had `preferred` field but models.list_all() (used by settings page) did not — they diverged silently",
+        "The sessions table stores a `model TEXT` column that could be used for real usage-based popularity in the future",
+        "providers.show_legacy_models config field follows the is_false skip_serializing_if pattern used elsewhere in config/src/schema.rs",
+        "Anthropic catalog needed updating: correct flagship models are now Opus 4.6, Sonnet 4.6, Haiku 4.6 (not 4.5)"
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "line": 2079,
+          "end_line": 2091,
+          "finding": "Anthropic catalog uses destructuring pattern (model_id, display_name, created_at) — adding recommended required updating both destructuring and ModelInfo construction"
+        },
+        {
+          "path": "crates/providers/src/openai.rs",
+          "finding": "parse_model_entry() is where OpenAI API-discovered models get created — flagship detection by pattern-matching known model IDs without date suffixes happens here"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "finding": "Legacy model filter uses SystemTime; models without created_at (static catalog entries) and preferred models are exempt from the 1-year cutoff"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Bulk sed script to add recommended: false incorrectly targeted PendingInvoke struct fields — needed manual cleanup"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-providers.js",
+          "finding": "Settings page sort order: preferred \u003e recommended \u003e most recent; collapses to 3 models by default with toggle"
+        }
+      ],
+      "workflow": [
+        "Bulk sed to add new struct fields across a large codebase is risky — it matched non-target structs (PendingInvoke) and struct definitions in swift-bridge, requiring manual fixes",
+        "Compiling after each batch of struct field additions and fixing errors iteratively is more reliable than trying to find all sites upfront",
+        "is_false helper for skip_serializing_if must be defined if not already present — check before referencing"
+      ]
+    },
+    "friction": [
+      "Adding recommended field to ModelInfo required touching 15+ construction sites across 6+ files — no struct update or builder pattern to reduce blast radius",
+      "Bulk sed script incorrectly modified non-ModelInfo structs (PendingInvoke in server.rs, struct definition in swift-bridge) requiring manual cleanup",
+      "models.list() and models.list_all() had diverged — preferred was missing from list_all, discovered only mid-implementation",
+      "Test timestamps used old epoch values (1600000000 = Sept 2020) that triggered the new legacy filter, causing test failures"
+    ],
+    "open_items": [
+      "Popularity before first selection: add a `recommended` field to onboarding model selector based on provider-curated tiers — not yet implemented for onboarding view",
+      "Real usage-based popularity: sessions table has model column, could add RPC `SELECT model, COUNT(*) FROM sessions GROUP BY model` to sort by actual user usage",
+      "OpenAI-compatible providers (MiniMax, Z.AI, Moonshot, Ollama) only get top-2 recommended by position — no flagship pattern matching like OpenAI has",
+      "Reasoning variants (@reasoning-low/medium/high) are explicitly excluded from recommended — may want to reconsider for power users",
+      "GitHub Copilot and OpenAI Codex flagships are marked by catalog position only, not by model ID pattern matching"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T18:32:08.584163Z",
+    "agent_lines": 362,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 362,
+    "agent_percentage": 100
+  }
+}
