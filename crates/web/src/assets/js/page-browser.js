@@ -287,10 +287,20 @@ function canvasCoords(e, canvas) {
 	};
 }
 
+var lastMoveTime = 0;
+var MOUSE_MOVE_THROTTLE_MS = 50;
+
 function relayMouseEvent(e, canvas) {
 	if (!(activeSession.value && screencasting.value)) return;
 	// Prevent text selection, drag, and context menu on the canvas
 	e.preventDefault();
+
+	// Throttle mousemove to avoid flooding the server
+	if (e.type === "mousemove") {
+		var now = Date.now();
+		if (now - lastMoveTime < MOUSE_MOVE_THROTTLE_MS) return;
+		lastMoveTime = now;
+	}
 
 	var coords = canvasCoords(e, canvas);
 	if (!coords) return;
@@ -324,6 +334,36 @@ function relayMouseEvent(e, canvas) {
 	}).catch(() => {});
 }
 
+// Accumulate wheel deltas and flush periodically to avoid flooding
+// the server with one HTTP request per wheel tick.
+var wheelAccum = { x: 0, y: 0, cx: 0, cy: 0 };
+var wheelTimer = null;
+var WHEEL_FLUSH_MS = 50;
+
+function flushWheel() {
+	wheelTimer = null;
+	if (wheelAccum.x === 0 && wheelAccum.y === 0) return;
+	if (!activeSession.value) return;
+	var dx = wheelAccum.x;
+	var dy = wheelAccum.y;
+	var cx = wheelAccum.cx;
+	var cy = wheelAccum.cy;
+	wheelAccum.x = 0;
+	wheelAccum.y = 0;
+
+	browserAction({
+		session_id: activeSession.value,
+		action: "mouse_input",
+		x: cx,
+		y: cy,
+		event_type: "mouseWheel",
+		button: "left",
+		click_count: 0,
+		delta_x: dx,
+		delta_y: dy,
+	}).catch(() => {});
+}
+
 function relayWheelEvent(e, canvas) {
 	if (!(activeSession.value && screencasting.value)) return;
 	e.preventDefault();
@@ -331,17 +371,14 @@ function relayWheelEvent(e, canvas) {
 	var coords = canvasCoords(e, canvas);
 	if (!coords) return;
 
-	browserAction({
-		session_id: activeSession.value,
-		action: "mouse_input",
-		x: coords.x,
-		y: coords.y,
-		event_type: "mouseWheel",
-		button: "left",
-		click_count: 0,
-		delta_x: e.deltaX,
-		delta_y: e.deltaY,
-	}).catch(() => {});
+	wheelAccum.x += e.deltaX;
+	wheelAccum.y += e.deltaY;
+	wheelAccum.cx = coords.x;
+	wheelAccum.cy = coords.y;
+
+	if (!wheelTimer) {
+		wheelTimer = setTimeout(flushWheel, WHEEL_FLUSH_MS);
+	}
 }
 
 function relayKeyEvent(e) {
