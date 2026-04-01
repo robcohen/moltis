@@ -1,0 +1,101 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f818e6d815b2",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T11:23:39.764443Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/browser/src/manager.rs",
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "acefb17d52d9",
+  "token_usage": {
+    "input_tokens": 3779,
+    "cache_creation_tokens": 416156,
+    "cache_read_tokens": 73693630,
+    "output_tokens": 151594,
+    "api_call_count": 389
+  },
+  "summary": {
+    "intent": "Build a browser viewing feature for the Moltis agent platform, allowing users to see and interact with browser sessions (both agent-created and manually created) through a UI panel.",
+    "outcome": "Delivered a fully functional browser viewing panel with session creation, live screencast streaming, click/scroll interaction, URL autocomplete, and cross-session state management. Fixed multiple bugs along the way including serde null handling, shared manager instances, WebSocket subscription missing event, screencast relay race condition, and CDP coordinate mapping.",
+    "learnings": {
+      "repo": [
+        "BrowserTool and RealBrowserService were separate instances with separate BrowserManagers — sessions created by the tool were invisible to the UI service until shared via Arc\u003cOnceCell\u003e",
+        "The v4 WebSocket protocol requires clients to explicitly subscribe to event types via a subscription list in websocket.js; events not listed in Object.keys(eventHandlers) are silently dropped by broadcast.rs",
+        "Screencast relay exits when tx.send() finds 0 receivers — CDP sends the first frame before the UI subscriber connects, causing a race condition",
+        "CDP requires both deltaX and deltaY to be present (not conditional) for mouseWheel events — omitting zero values causes a CDP error",
+        "Screencast metadata includes offset_top and device dimensions (not raw viewport) — coordinate mapping must use these values, not the canvas CSS size",
+        "about:blank is rejected by validate_url() which only allows http/https schemes",
+        "serde #[serde(default)] handles missing keys but not explicit null values — LLMs (MiniMax) send null for all optional fields causing u64 deserialization failures",
+        "The workspace denies .expect() calls even in test code (clippy deny)"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/browser.rs",
+          "finding": "Added null-stripping via obj.retain(|_, v| !v.is_null()) before deserialization in execute()"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "finding": "Changed relay exit on SendError to continue (drop frame) so relay survives until subscribers arrive"
+        },
+        {
+          "path": "crates/gateway/src/broadcast.rs",
+          "line": 100,
+          "end_line": 102,
+          "finding": "Subscription filter: clients must be subscribed to an event type or subscriptions must be None (wildcard) for broadcast to reach them"
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "finding": "browser.screencast.frame was missing from the event subscription list — added to fix frames never reaching the UI"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "Canvas event listeners were attached in useEffect([]) which ran before canvas was conditionally rendered — fixed with ref callback (canvasRefCallback)"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "Added integration tests for screencast, click, and scroll; parallel tests conflict over browser profiles — requires --test-threads=1 or ephemeral profiles"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "CDP dispatchMouseEvent requires deltaX and deltaY both present for mouseWheel type, not conditionally"
+        }
+      ],
+      "workflow": [
+        "Diagnostic logging at every stage of a relay chain (CDP → registry → subscriber → WS → client) is essential for tracing async frame delivery bugs",
+        "Integration tests with real browsers must use ephemeral profiles to avoid lock conflicts when run in parallel",
+        "YubiKey-signed git pushes require manual tap during automated push sequences",
+        "Biome linting should be run before every JS commit to maintain consistency"
+      ]
+    },
+    "friction": [
+      "Multiple YubiKey tap interruptions during automated push sequences required manual intervention",
+      "The 'Waiting for first frame' bug required 4 separate investigation rounds before root cause (missing WebSocket subscription) was identified",
+      "Coordinate mapping was wrong in multiple ways simultaneously: border offsets, wrong aspect ratio (16/10 vs 16/9), missing offset_top from metadata — hard to isolate without e2e tests",
+      "Scroll events were silently failing at the CDP layer (both deltaX and deltaY required) with no error surfaced to the UI",
+      "Parallel browser integration tests fight over shared browser profiles causing lock errors",
+      "The CUDA clippy error in moltis-voice creates noise when running workspace-wide clippy checks"
+    ],
+    "open_items": [
+      "Per-agent browser profiles for session isolation — currently single global profile in host mode",
+      "Google Suggestions autocomplete in the URL bar requires CORS-friendly endpoint — suggestqueries.google.com with client=firefox was planned but may need server-side proxying",
+      "Playwright e2e tests written but interaction tests (click accuracy, scroll) need real CDP connection to verify coordinate mapping end-to-end",
+      "Screencast frame delivery in sandbox mode vs host mode parity not fully verified — integration test only confirmed host mode",
+      "Session cookie export feature was removed from the UI but backend still supports it — may want to re-expose",
+      "Mousemove throttling (16ms) and wheel batching (50ms) may need tuning for responsiveness vs server load tradeoff"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T11:23:02.448527Z",
+    "agent_lines": 0,
+    "human_added": 167,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 167,
+    "agent_percentage": 0
+  }
+}
