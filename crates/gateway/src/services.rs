@@ -1309,6 +1309,9 @@ pub struct RealBrowserService {
     manager: Arc<tokio::sync::OnceCell<Arc<moltis_browser::BrowserManager>>>,
     /// Default sandbox mode for UI-created requests that don't specify it.
     default_sandbox: bool,
+    /// Persistent session history store for action logging.
+    /// Set after database initialization via `set_session_store`.
+    session_store: tokio::sync::OnceCell<crate::browser_session_store::BrowserSessionStore>,
 }
 
 impl RealBrowserService {
@@ -1319,6 +1322,7 @@ impl RealBrowserService {
             config: browser_config,
             manager: Arc::new(tokio::sync::OnceCell::new()),
             default_sandbox: false,
+            session_store: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -1333,6 +1337,7 @@ impl RealBrowserService {
             config: moltis_browser::BrowserConfig::from(config),
             manager,
             default_sandbox: false,
+            session_store: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -1340,6 +1345,13 @@ impl RealBrowserService {
     pub fn with_default_sandbox(mut self, sandbox: bool) -> Self {
         self.default_sandbox = sandbox;
         self
+    }
+
+    /// Set the persistent session store (called after database initialization).
+    pub fn set_session_store(&self, pool: sqlx::SqlitePool) {
+        let _ = self
+            .session_store
+            .set(crate::browser_session_store::BrowserSessionStore::new(pool));
     }
 
     pub fn from_config(
@@ -1400,11 +1412,66 @@ impl BrowserService for RealBrowserService {
             params
         };
 
+        // Extract action name and session_id for logging before consuming params
+        let action_name = params
+            .get("action")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let req_session_id = params
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let req_sandbox = params
+            .get("sandbox")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         let request: moltis_browser::BrowserRequest =
             serde_json::from_value(params).map_err(|e| format!("invalid request: {e}"))?;
 
         let manager = self.manager().await;
         let response = manager.handle_request(request).await;
+
+        // Log action to persistent session store (best-effort, don't fail the request)
+        if let Some(store) = self.session_store.get() {
+            let sid = &response.session_id;
+            if !sid.is_empty() {
+                // Ensure session record exists
+                if action_name == "navigate" && req_session_id.is_none() {
+                    // New session created
+                    let _ = store.start_session(sid, req_sandbox).await;
+                }
+
+                // Log the action (skip high-frequency events)
+                if !matches!(
+                    action_name.as_str(),
+                    "mouse_input"
+                        | "keyboard_input"
+                        | "start_screencast"
+                        | "stop_screencast"
+                        | "get_url"
+                        | "get_title"
+                        | "screenshot"
+                ) {
+                    let _ = store
+                        .log_action(
+                            sid,
+                            &action_name,
+                            response.url.as_deref(),
+                            response.success,
+                            response.error.as_deref(),
+                            response.duration_ms,
+                        )
+                        .await;
+                }
+
+                // Mark session as closed
+                if action_name == "close" {
+                    let _ = store.close_session(sid).await;
+                }
+            }
+        }
 
         Ok(serde_json::to_value(&response).map_err(|e| format!("serialization error: {e}"))?)
     }
@@ -1430,6 +1497,28 @@ impl BrowserService for RealBrowserService {
             Ok(serde_json::json!({ "sessions": enriched }))
         } else {
             Ok(serde_json::json!({ "sessions": [] }))
+        }
+    }
+
+    async fn list_session_history(&self, limit: u32) -> ServiceResult {
+        if let Some(store) = self.session_store.get() {
+            match store.list_all(limit).await {
+                Ok(sessions) => Ok(serde_json::json!({ "sessions": sessions })),
+                Err(e) => Err(format!("failed to list session history: {e}").into()),
+            }
+        } else {
+            Ok(serde_json::json!({ "sessions": [] }))
+        }
+    }
+
+    async fn get_session_actions(&self, session_id: &str, limit: u32) -> ServiceResult {
+        if let Some(store) = self.session_store.get() {
+            match store.get_actions(session_id, limit).await {
+                Ok(actions) => Ok(serde_json::json!({ "actions": actions })),
+                Err(e) => Err(format!("failed to get session actions: {e}").into()),
+            }
+        } else {
+            Ok(serde_json::json!({ "actions": [] }))
         }
     }
 

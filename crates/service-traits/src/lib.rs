@@ -739,6 +739,14 @@ pub trait BrowserService: Send + Sync {
     ) -> Option<tokio::sync::broadcast::Receiver<Value>> {
         None
     }
+    /// List session history (active + closed), most recent first.
+    async fn list_session_history(&self, _limit: u32) -> ServiceResult {
+        Ok(serde_json::json!({ "sessions": [] }))
+    }
+    /// Get action log for a specific session.
+    async fn get_session_actions(&self, _session_id: &str, _limit: u32) -> ServiceResult {
+        Ok(serde_json::json!({ "actions": [] }))
+    }
     /// Initialize browser internals opportunistically after startup.
     async fn warmup(&self) {}
     /// Clean up idle browser instances (called periodically).

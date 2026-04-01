@@ -1322,15 +1322,21 @@ pub async fn prepare_gateway_core(
     // The tool is registered into the tool_registry later; we just hold it here.
     let browser_tool = moltis_tools::browser::BrowserTool::from_config(&config.tools.browser)
         .map(|t| t.with_container_prefix(browser_container_prefix));
-    if let Some(ref tool) = browser_tool {
-        let sandbox_enabled = config.tools.exec.sandbox.mode != "none";
-        let browser_svc = crate::services::RealBrowserService::with_shared_manager(
-            &config.tools.browser,
-            tool.shared_manager_cell(),
-        )
-        .with_default_sandbox(sandbox_enabled);
-        services.browser = Arc::new(browser_svc);
-    }
+    let browser_svc_ref: Option<Arc<crate::services::RealBrowserService>> =
+        if let Some(ref tool) = browser_tool {
+            let sandbox_enabled = config.tools.exec.sandbox.mode != "none";
+            let svc = Arc::new(
+                crate::services::RealBrowserService::with_shared_manager(
+                    &config.tools.browser,
+                    tool.shared_manager_cell(),
+                )
+                .with_default_sandbox(sandbox_enabled),
+            );
+            services.browser = Arc::clone(&svc) as Arc<dyn crate::services::BrowserService>;
+            Some(svc)
+        } else {
+            None
+        };
 
     // Wire live onboarding service.
     let onboarding_config_path = moltis_config::find_or_default_config_path();
@@ -1547,6 +1553,11 @@ pub async fn prepare_gateway_core(
     moltis_vault::run_migrations(&db_pool)
         .await
         .expect("failed to run vault migrations");
+
+    // Wire browser session store after DB is ready.
+    if let Some(ref svc) = browser_svc_ref {
+        svc.set_session_store(db_pool.clone());
+    }
 
     // Migrate plugins data into unified skills system (idempotent, non-fatal).
     moltis_skills::migration::migrate_plugins_to_skills(&data_dir).await;

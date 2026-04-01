@@ -1211,6 +1211,45 @@ pub async fn api_browser_sessions_handler(State(state): State<AppState>) -> Resp
     }
 }
 
+/// List browser session history (active + closed).
+pub async fn api_browser_history_handler(State(state): State<AppState>) -> Response {
+    match state
+        .gateway
+        .services
+        .browser
+        .list_session_history(100)
+        .await
+    {
+        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
+        Err(e) => api_error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            BROWSER_REQUEST_FAILED,
+            e.to_string(),
+        ),
+    }
+}
+
+/// Get action log for a specific browser session.
+pub async fn api_browser_actions_handler(
+    State(state): State<AppState>,
+    axum::extract::Path(session_id): axum::extract::Path<String>,
+) -> Response {
+    match state
+        .gateway
+        .services
+        .browser
+        .get_session_actions(&session_id, 200)
+        .await
+    {
+        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
+        Err(e) => api_error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            BROWSER_REQUEST_FAILED,
+            e.to_string(),
+        ),
+    }
+}
+
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
