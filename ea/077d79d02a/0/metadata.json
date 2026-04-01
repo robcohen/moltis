@@ -1,0 +1,83 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ea077d79d02a",
+  "session_id": "8ab6b798-adbb-41f6-b5c5-9dbe221f2487",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T19:31:16.496434Z",
+  "branch": "succinct-pyroraptor",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/helpers.js",
+    "crates/web/src/assets/js/provider-validation.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "da7e9cced318",
+  "checkpoint_transcript_start": 1480,
+  "transcript_lines_at_start": 1480,
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 22636,
+    "cache_read_tokens": 9097208,
+    "output_tokens": 8291,
+    "api_call_count": 38
+  },
+  "summary": {
+    "intent": "Display the actual probe error message (e.g. 'You do not have permission to access glm-5.1') in model cards instead of the generic 'Service temporarily unavailable' text.",
+    "outcome": "Fixed the root cause: `localizeRpcError` in `ws-connect.js` was overwriting specific server error messages with generic locale strings before `testModel` could see them. Patched `localizedRpcErrorMessage` in `helpers.js` to preserve the original server message when one is provided, and updated `testModel` in `provider-validation.js` to prefer the raw server message.",
+    "learnings": {
+      "repo": [
+        "All WebSocket RPC error responses are localized in `ws-connect.js` line ~96 via `localizeRpcError` before any caller sees them — this is a global intercept point that can silently swallow specific error messages.",
+        "ServiceError::Message (non-Forbidden variants) maps to error code UNAVAILABLE in service-traits/src/lib.rs line ~51, causing the generic locale string to replace all specific backend error text.",
+        "There are three separate model card rendering code paths: Settings page (page-providers.js), Onboarding model selector (onboarding-view.js), and Preferred Models modal (providers.js) — each required its own inline error display fix."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/ws-connect.js",
+          "line": 96,
+          "end_line": 96,
+          "finding": "frame.error = localizeRpcError(frame.error) runs on every inbound WS RPC response, replacing error.message with a locale string before resolving the pending promise."
+        },
+        {
+          "path": "crates/web/src/assets/js/helpers.js",
+          "line": 196,
+          "end_line": 201,
+          "finding": "localizedRpcErrorMessage returns the locale translation keyed on error.code, ignoring error.message entirely — fixed to preserve original message when server provides one."
+        },
+        {
+          "path": "crates/web/src/assets/js/provider-validation.js",
+          "line": 104,
+          "end_line": 104,
+          "finding": "testModel reads res?.error?.message for probe error display — updated to prefer raw server message over localized fallback."
+        },
+        {
+          "path": "crates/service-traits/src/lib.rs",
+          "line": 51,
+          "end_line": 51,
+          "finding": "ServiceError variants other than Forbidden serialize to ErrorShape with code UNAVAILABLE, which triggers the generic locale message in the frontend."
+        }
+      ],
+      "workflow": [
+        "When frontend shows a generic error but backend logs show a specific one, check for a global WS response interceptor that may be localizing/overwriting error messages.",
+        "Tracing the full error path (backend enum → ErrorShape serialization → WS frame → client intercept → caller) was necessary to find the localization clobber."
+      ]
+    },
+    "friction": [
+      "The error was masked at the WS layer, requiring tracing through ws-connect.js, helpers.js, service-traits, and provider-validation.js before the clobber point was identified.",
+      "Initial investigation was misdirected toward cached stale unsupportedReason data and parse_chat_error before the WS intercept was found.",
+      "Multiple grep/read cycles were needed because the error transformation happened at a global middleware layer not obvious from the calling code."
+    ],
+    "open_items": [
+      "The UNAVAILABLE error code is a broad catch-all for all non-Forbidden ServiceErrors — consider introducing more granular error codes (e.g. PERMISSION_DENIED, RATE_LIMITED) so the frontend can localize meaningfully without discarding specific messages.",
+      "The three separate model card code paths (Settings, Onboarding, Preferred Models modal) each needed independent fixes — consolidating them into a shared component would prevent similar divergence in the future."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T19:30:47.50437Z",
+    "agent_lines": 5,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 5,
+    "agent_percentage": 100
+  }
+}
