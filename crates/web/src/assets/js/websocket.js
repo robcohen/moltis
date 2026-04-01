@@ -1355,6 +1355,7 @@ var connectOpts = {
 				"metrics.update",
 				"skills.install.progress",
 				"mcp.status",
+				"browser.screencast.frame",
 			]),
 		);
 		S.setSubscribed(true);
