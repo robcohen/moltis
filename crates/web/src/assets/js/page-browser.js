@@ -178,16 +178,22 @@ function startUrlPolling() {
 	stopUrlPolling();
 	urlPollTimer = setInterval(async () => {
 		var sid = activeSession.value;
-		if (!sid || !screencasting.value) return;
+		if (!(sid && screencasting.value)) return;
 		try {
 			var [urlRes, scrollRes] = await Promise.all([
 				browserAction({ session_id: sid, action: "get_url" }),
-				browserAction({ session_id: sid, action: "evaluate", code: "JSON.stringify({scrollTop:window.scrollY,scrollHeight:document.documentElement.scrollHeight,viewportHeight:window.innerHeight})" }),
+				browserAction({
+					session_id: sid,
+					action: "evaluate",
+					code: "JSON.stringify({scrollTop:window.scrollY,scrollHeight:document.documentElement.scrollHeight,viewportHeight:window.innerHeight})",
+				}),
 			]);
 			if (activeSession.value !== sid) return;
 			if (urlRes.url) currentUrl.value = urlRes.url;
 			if (scrollRes.result) {
-				try { scrollInfo.value = JSON.parse(scrollRes.result); } catch {}
+				try {
+					scrollInfo.value = JSON.parse(scrollRes.result);
+				} catch {}
 			}
 		} catch {
 			// best effort
@@ -263,7 +269,15 @@ async function createSession(profileId) {
 	var placeholderId = `creating-${Date.now()}`;
 	placeholderIds.add(placeholderId);
 	sessions.value = [
-		{ session_id: placeholderId, url: "", sandboxed: false, age_secs: 0, idle_secs: 0, creating: true, profile_id: useProfile },
+		{
+			session_id: placeholderId,
+			url: "",
+			sandboxed: false,
+			age_secs: 0,
+			idle_secs: 0,
+			creating: true,
+			profile_id: useProfile,
+		},
 		...sessions.value,
 	];
 	frameData.value = null;
@@ -505,14 +519,15 @@ function SessionList() {
 	}
 
 	return html`<div class="flex flex-col gap-2">
-		${s.map(
-			(sess) => {
-				var isActive = activeSession.value === sess.session_id;
-				return html`
+		${s.map((sess) => {
+			var isActive = activeSession.value === sess.session_id;
+			return html`
 				<div
 					key=${sess.session_id}
-					class="rounded-lg border p-3 flex flex-col gap-2 transition-colors ${sess.creating ? 'border-[var(--border)] bg-[var(--surface)] opacity-75' : isActive ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50 cursor-pointer'}"
-					onClick=${() => { if (!sess.creating) selectSession(sess.session_id); }}
+					class="rounded-lg border p-3 flex flex-col gap-2 transition-colors ${sess.creating ? "border-[var(--border)] bg-[var(--surface)] opacity-75" : isActive ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50 cursor-pointer"}"
+					onClick=${() => {
+						if (!sess.creating) selectSession(sess.session_id);
+					}}
 				>
 					<div class="flex items-center justify-between gap-2">
 						<div class="flex-1 min-w-0">
@@ -525,13 +540,15 @@ function SessionList() {
 						</div>
 						<div class="flex items-center gap-1 shrink-0">
 							${sess.sandboxed ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">sandbox</span>` : null}
-							${sess.creating
-								? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">creating</span>`
-								: isActive && screencasting.value
-									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
-									: sess.url && sess.url !== "about:blank"
-										? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
-										: null}
+							${
+								sess.creating
+									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">creating</span>`
+									: isActive && screencasting.value
+										? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
+										: sess.url && sess.url !== "about:blank"
+											? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
+											: null
+							}
 						</div>
 					</div>
 					<div class="flex items-center gap-1.5 text-xs">
@@ -539,17 +556,21 @@ function SessionList() {
 						<span class="text-[var(--muted)]">Age: ${formatDuration(sess.age_secs)}</span>
 						<span class="text-[var(--muted)]">Idle: ${formatDuration(sess.idle_secs)}</span>
 					</div>
-					${sess.creating ? null : html`<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
+					${
+						sess.creating
+							? null
+							: html`<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
 						<button
 							class="text-[10px] text-[var(--muted)] hover:text-[var(--error)] transition-colors"
 							onClick=${() => closeSession(sess.session_id)}
 						>
 							Close
 						</button>
-					</div>`}
+					</div>`
+					}
 				</div>
-			`; },
-		)}
+			`;
+		})}
 	</div>`;
 }
 
@@ -598,12 +619,17 @@ function NavigateBar() {
 		}
 
 		for (var sess of sessions.value) {
-			if (sess.url && sess.url !== "about:blank" && sess.url.toLowerCase().includes(q) && !items.some((i) => i.label === sess.url)) {
+			if (
+				sess.url &&
+				sess.url !== "about:blank" &&
+				sess.url.toLowerCase().includes(q) &&
+				!items.some((i) => i.label === sess.url)
+			) {
 				items.push({ type: "history", label: sess.url, icon: "\u{1F4C4}" });
 			}
 		}
 
-		if (!looksLikeUrl(q) && !items.some((i) => i.type === "url")) {
+		if (!(looksLikeUrl(q) || items.some((i) => i.type === "url"))) {
 			items.unshift({
 				type: "search-go",
 				label: `Search Google for "${q}"`,
@@ -690,7 +716,13 @@ function NavigateBar() {
 	if (!activeSession.value) return null;
 
 	return html`<div ref=${wrapperRef} class="relative mb-3">
-		<form onSubmit=${(e) => { e.preventDefault(); if (displayUrl.trim()) { setShowDropdown(false); doNavigate(displayUrl.trim()); } }} class="flex items-center gap-2">
+		<form onSubmit=${(e) => {
+			e.preventDefault();
+			if (displayUrl.trim()) {
+				setShowDropdown(false);
+				doNavigate(displayUrl.trim());
+			}
+		}} class="flex items-center gap-2">
 			<input
 				type="text"
 				class="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
@@ -699,8 +731,14 @@ function NavigateBar() {
 				value=${displayUrl}
 				onInput=${onInput}
 				onKeyDown=${onKeyDown}
-				onFocus=${() => { setEditing(true); setEditUrl(currentUrl.value); if (suggestions.length > 0) setShowDropdown(true); }}
-				onBlur=${() => { setTimeout(() => setEditing(false), 200); }}
+				onFocus=${() => {
+					setEditing(true);
+					setEditUrl(currentUrl.value);
+					if (suggestions.length > 0) setShowDropdown(true);
+				}}
+				onBlur=${() => {
+					setTimeout(() => setEditing(false), 200);
+				}}
 				autocomplete="off"
 			/>
 			<button
@@ -711,14 +749,20 @@ function NavigateBar() {
 				${navigating ? "\u2026" : "Go"}
 			</button>
 		</form>
-		${showDropdown && suggestions.length > 0 ? html`
+		${
+			showDropdown && suggestions.length > 0
+				? html`
 			<div class="absolute left-0 right-0 top-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg z-50 overflow-hidden" style="max-height: 320px; overflow-y: auto;">
-				${suggestions.map((item, idx) => html`
+				${suggestions.map(
+					(item, idx) => html`
 					<button
 						key=${idx}
-						class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-hover)] ${idx === selectedIdx ? 'bg-[var(--bg-hover)]' : ''}"
-						style="border: none; background: ${idx === selectedIdx ? 'var(--bg-hover)' : 'transparent'}; cursor: pointer;"
-						onMouseDown=${(e) => { e.preventDefault(); selectItem(item); }}
+						class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-hover)] ${idx === selectedIdx ? "bg-[var(--bg-hover)]" : ""}"
+						style="border: none; background: ${idx === selectedIdx ? "var(--bg-hover)" : "transparent"}; cursor: pointer;"
+						onMouseDown=${(e) => {
+							e.preventDefault();
+							selectItem(item);
+						}}
 						onMouseEnter=${() => setSelectedIdx(idx)}
 					>
 						<span class="shrink-0 w-4 text-center">${item.icon}</span>
@@ -726,9 +770,12 @@ function NavigateBar() {
 						${item.type === "url" ? html`<span class="ml-auto text-[var(--muted)] text-[10px] shrink-0">Go to site</span>` : null}
 						${item.type === "history" ? html`<span class="ml-auto text-[var(--muted)] text-[10px] shrink-0">Open tab</span>` : null}
 					</button>
-				`)}
+				`,
+				)}
 			</div>
-		` : null}
+		`
+				: null
+		}
 	</div>`;
 }
 
@@ -785,9 +832,15 @@ function BrowserCanvas() {
 		canvasRef.current = canvas;
 		if (!canvas) return;
 
-		function onMouse(e) { relayMouseEvent(e, canvas); }
-		function onWheel(e) { relayWheelEvent(e, canvas); }
-		function onCtx(e) { e.preventDefault(); }
+		function onMouse(e) {
+			relayMouseEvent(e, canvas);
+		}
+		function onWheel(e) {
+			relayWheelEvent(e, canvas);
+		}
+		function onCtx(e) {
+			e.preventDefault();
+		}
 		canvas.addEventListener("mousedown", onMouse);
 		canvas.addEventListener("mouseup", onMouse);
 		canvas.addEventListener("mousemove", onMouse);
@@ -815,7 +868,7 @@ function BrowserCanvas() {
 		</div>`;
 	}
 
-	if (!screencasting.value && !fetching.value && !frameData.value) {
+	if (!(screencasting.value || fetching.value || frameData.value)) {
 		return html`<div class="flex-1 flex items-center justify-center text-xs text-[var(--muted)] border border-dashed border-[var(--border)] rounded-lg min-h-[300px]">
 			Enter a URL above to start browsing
 		</div>`;
@@ -840,7 +893,7 @@ function BrowserCanvas() {
 	var thumbTopPct = showScrollbar ? (si.scrollTop / si.scrollHeight) * 100 : 0;
 
 	function onScrollbarClick(e) {
-		if (!showScrollbar || !activeSession.value) return;
+		if (!(showScrollbar && activeSession.value)) return;
 		var rect = e.currentTarget.getBoundingClientRect();
 		var clickPct = (e.clientY - rect.top) / rect.height;
 		var targetScroll = clickPct * si.scrollHeight - si.viewportHeight / 2;
@@ -861,9 +914,11 @@ function BrowserCanvas() {
 			<canvas
 				ref=${canvasRefCallback}
 				class="block w-full rounded-lg border border-[var(--border)] cursor-crosshair bg-black"
-				style="aspect-ratio: ${frameMeta.value ? `${frameMeta.value.device_width} / ${frameMeta.value.device_height}` : '16 / 9'};"
+				style="aspect-ratio: ${frameMeta.value ? `${frameMeta.value.device_width} / ${frameMeta.value.device_height}` : "16 / 9"};"
 			/>
-			${showScrollbar ? html`
+			${
+				showScrollbar
+					? html`
 				<div
 					class="absolute top-0 right-0 w-2 h-full rounded-r-lg cursor-pointer opacity-40 hover:opacity-70 transition-opacity"
 					style="background: var(--surface2);"
@@ -874,7 +929,9 @@ function BrowserCanvas() {
 						style="background: var(--muted); top: ${thumbTopPct}%; height: ${thumbPct}%; min-height: 20px;"
 					/>
 				</div>
-			` : null}
+			`
+					: null
+			}
 		</div>
 	</div>`;
 }
@@ -895,7 +952,7 @@ function SessionHistory() {
 				return html`
 					<div
 						key=${sess.session_id}
-						class="rounded border p-2 text-xs cursor-pointer transition-colors ${isSelected ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50'}"
+						class="rounded border p-2 text-xs cursor-pointer transition-colors ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50"}"
 						onClick=${() => {
 							// Deselect live session, show history
 							activeSession.value = null;
@@ -935,18 +992,22 @@ function ActionLogPanel() {
 			</div>
 			<button
 				class="provider-btn provider-btn-secondary provider-btn-sm"
-				onClick=${() => { selectedHistorySession.value = null; }}
+				onClick=${() => {
+					selectedHistorySession.value = null;
+				}}
 			>
 				Back
 			</button>
 		</div>
-		${actionLog.value.length === 0
-			? html`<div class="text-xs text-[var(--muted)] p-3">No actions recorded for this session.</div>`
-			: html`<div class="flex flex-col gap-1">
-				${actionLog.value.map((entry) => html`
+		${
+			actionLog.value.length === 0
+				? html`<div class="text-xs text-[var(--muted)] p-3">No actions recorded for this session.</div>`
+				: html`<div class="flex flex-col gap-1">
+				${actionLog.value.map(
+					(entry) => html`
 					<div key=${entry.id} class="rounded border border-[var(--border)] p-2 text-xs bg-[var(--surface)]">
 						<div class="flex items-center justify-between gap-2">
-							<span class="font-mono font-medium ${entry.success ? 'text-[var(--text-strong)]' : 'text-[var(--error)]'}">
+							<span class="font-mono font-medium ${entry.success ? "text-[var(--text-strong)]" : "text-[var(--error)]"}">
 								${entry.action}
 							</span>
 							<span class="text-[var(--muted)]">${entry.duration_ms}ms</span>
@@ -955,7 +1016,8 @@ function ActionLogPanel() {
 						${entry.error ? html`<div class="text-[var(--error)] mt-0.5">${entry.error}</div>` : null}
 						<div class="text-[var(--muted)] mt-0.5">${entry.created_at}</div>
 					</div>
-				`)}
+				`,
+				)}
 			</div>`
 		}
 	</div>`;
@@ -1004,21 +1066,35 @@ function NewSessionButton() {
 				\u25BE
 			</button>
 		</div>
-		${showMenu ? html`
+		${
+			showMenu
+				? html`
 			<div class="absolute right-0 top-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg z-50 min-w-[200px] overflow-hidden">
 				<div class="px-3 py-1.5 text-[10px] text-[var(--muted)] uppercase tracking-wide">Profile</div>
-				${profiles.map((p) => html`
+				${profiles.map(
+					(p) => html`
 					<button
 						key=${p}
 						class="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)] flex items-center gap-2"
 						style="border: none; background: transparent; cursor: pointer;"
-						onClick=${() => { setShowMenu(false); createSession(p); }}
+						onClick=${() => {
+							setShowMenu(false);
+							createSession(p);
+						}}
 					>
 						<span class="text-[var(--text-strong)]">${p}</span>
 					</button>
-				`)}
+				`,
+				)}
 				<div class="border-t border-[var(--border)] px-3 py-1.5">
-					<form class="flex gap-1" onSubmit=${(e) => { e.preventDefault(); if (customProfile.trim()) { setShowMenu(false); createSession(customProfile.trim()); setCustomProfile(""); } }}>
+					<form class="flex gap-1" onSubmit=${(e) => {
+						e.preventDefault();
+						if (customProfile.trim()) {
+							setShowMenu(false);
+							createSession(customProfile.trim());
+							setCustomProfile("");
+						}
+					}}>
 						<input
 							type="text"
 							class="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none text-xs"
@@ -1031,7 +1107,9 @@ function NewSessionButton() {
 					</form>
 				</div>
 			</div>
-		` : null}
+		`
+				: null
+		}
 	</div>`;
 }
 
@@ -1058,9 +1136,10 @@ function BrowserPage() {
 				<${SessionHistory} />
 			</div>
 			<div class="flex-1 flex flex-col min-w-0">
-				${selectedHistorySession.value
-					? html`<${ActionLogPanel} />`
-					: html`<fragment>
+				${
+					selectedHistorySession.value
+						? html`<${ActionLogPanel} />`
+						: html`<fragment>
 						<${NavigateBar} />
 						<${BrowserCanvas} />
 					</fragment>`
