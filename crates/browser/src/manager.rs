@@ -846,20 +846,20 @@ impl BrowserManager {
             .await?;
         let page = self.pool.get_page(&sid).await?;
 
-        // Resize the viewport to match the screencast area so websites
-        // render content at the visible resolution. Without this, a
-        // 2560x1440 viewport gets squished into 1280x800, making
-        // everything tiny. After resize, the page re-renders at the
-        // screencast size and content fills the canvas properly.
-        let resize = SetDeviceMetricsOverrideParams::builder()
-            .width(max_width)
-            .height(max_height)
-            .device_scale_factor(1.0)
-            .mobile(false)
-            .build()
-            .map_err(|e| Error::Cdp(e.to_string()))?;
-        if let Err(e) = page.execute(resize).await {
-            debug!(session_id = sid, error = %e, "viewport resize failed (non-fatal)");
+        // Resize the viewport to match the screencast area on first
+        // screencast only. Repeated resizes on session switch can
+        // destabilize the Chrome process inside containers.
+        if !self.screencasts.is_active(&sid).await {
+            let resize = SetDeviceMetricsOverrideParams::builder()
+                .width(max_width)
+                .height(max_height)
+                .device_scale_factor(1.0)
+                .mobile(false)
+                .build()
+                .map_err(|e| Error::Cdp(e.to_string()))?;
+            if let Err(e) = page.execute(resize).await {
+                debug!(session_id = sid, error = %e, "viewport resize failed (non-fatal)");
+            }
         }
 
         let _rx = self

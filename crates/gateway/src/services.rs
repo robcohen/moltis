@@ -1436,11 +1436,8 @@ impl BrowserService for RealBrowserService {
         if let Some(store) = self.session_store.get() {
             let sid = &response.session_id;
             if !sid.is_empty() {
-                // Ensure session record exists
-                if action_name == "navigate" && req_session_id.is_none() {
-                    // New session created
-                    let _ = store.start_session(sid, req_sandbox).await;
-                }
+                // Ensure session record exists (INSERT OR IGNORE is idempotent)
+                let _ = store.start_session(sid, req_sandbox).await;
 
                 // Log the action (skip high-frequency events)
                 if !matches!(
