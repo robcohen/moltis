@@ -231,12 +231,24 @@ async function navigateSession(sessionId, rawUrl) {
 async function createSession() {
 	if (creating.value) return;
 	creating.value = true;
-	try {
-		// Stop current screencast before creating a new session
-		if (screencasting.value && activeSession.value) {
-			stopScreencast(activeSession.value);
-		}
 
+	// Stop current screencast before creating a new session
+	if (screencasting.value && activeSession.value) {
+		stopScreencast(activeSession.value);
+	}
+
+	// Immediately add a placeholder session to the list and select it
+	var placeholderId = `creating-${Date.now()}`;
+	sessions.value = [
+		{ session_id: placeholderId, url: "", sandboxed: false, age_secs: 0, idle_secs: 0, creating: true },
+		...sessions.value,
+	];
+	frameData.value = null;
+	frameMeta.value = null;
+	screencasting.value = false;
+	activeSession.value = placeholderId;
+
+	try {
 		var res = await browserAction({
 			action: "navigate",
 			url: "about:blank",
@@ -244,17 +256,18 @@ async function createSession() {
 		var newId = res.session_id;
 		if (!newId) {
 			showToast("Failed to create session", "error");
+			// Remove placeholder
+			sessions.value = sessions.value.filter((s) => s.session_id !== placeholderId);
+			activeSession.value = null;
 			return;
 		}
-		await fetchSessions();
-		// Clear previous session state and select the new one
-		frameData.value = null;
-		frameMeta.value = null;
-		screencasting.value = false;
+		// Replace placeholder with real session
 		activeSession.value = newId;
-		showToast("Session created \u2014 enter a URL to get started");
+		await fetchSessions();
 	} catch (e) {
 		showToast(`Failed to create session: ${e.message}`, "error");
+		sessions.value = sessions.value.filter((s) => s.session_id !== placeholderId);
+		activeSession.value = null;
 	} finally {
 		creating.value = false;
 	}
@@ -428,39 +441,41 @@ function SessionList() {
 				return html`
 				<div
 					key=${sess.session_id}
-					class="rounded-lg border p-3 flex flex-col gap-2 cursor-pointer transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50'}"
-					onClick=${() => selectSession(sess.session_id)}
+					class="rounded-lg border p-3 flex flex-col gap-2 transition-colors ${sess.creating ? 'border-[var(--border)] bg-[var(--surface)] opacity-75' : isActive ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50 cursor-pointer'}"
+					onClick=${() => { if (!sess.creating) selectSession(sess.session_id); }}
 				>
 					<div class="flex items-center justify-between gap-2">
 						<div class="flex-1 min-w-0">
 							<div class="text-xs font-mono text-[var(--text-strong)] truncate" title=${sess.session_id}>
-								${sess.session_id.slice(0, 12)}...
+								${sess.creating ? "New session" : sess.session_id.slice(0, 12) + "..."}
 							</div>
 							<div class="text-xs text-[var(--muted)] truncate mt-0.5" title=${sess.url}>
-								${sess.url || "(no page loaded)"}
+								${sess.creating ? "Starting browser\u2026" : sess.url || "(no page loaded)"}
 							</div>
 						</div>
 						<div class="flex items-center gap-1 shrink-0">
 							${sess.sandboxed ? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">sandbox</span>` : null}
-							${isActive && screencasting.value
-								? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
-								: sess.url && sess.url !== "about:blank"
-									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
-									: null}
+							${sess.creating
+								? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">creating</span>`
+								: isActive && screencasting.value
+									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
+									: sess.url && sess.url !== "about:blank"
+										? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
+										: null}
 						</div>
 					</div>
 					<div class="flex items-center gap-1.5 text-xs">
 						<span class="text-[var(--muted)]">Age: ${formatDuration(sess.age_secs)}</span>
 						<span class="text-[var(--muted)]">Idle: ${formatDuration(sess.idle_secs)}</span>
 					</div>
-					<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
+					${!sess.creating ? html`<div class="flex items-center justify-end" onClick=${(e) => e.stopPropagation()}>
 						<button
 							class="text-[10px] text-[var(--muted)] hover:text-[var(--error)] transition-colors"
 							onClick=${() => closeSession(sess.session_id)}
 						>
 							Close
 						</button>
-					</div>
+					</div>` : null}
 				</div>
 			`; },
 		)}
