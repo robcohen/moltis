@@ -433,10 +433,10 @@ function BrowserPage() {
 		<div class="flex items-center justify-between">
 			<h2 class="text-base font-medium text-[var(--text-strong)]">Browser Sessions</h2>
 			<div class="flex items-center gap-2">
-				<button class="provider-btn text-xs px-2 py-1" onClick=${createSession}>
+				<button class="provider-btn provider-btn-sm" onClick=${createSession}>
 					New Session
 				</button>
-				<button class="provider-btn-secondary text-xs px-2 py-1" onClick=${fetchSessions}>
+				<button class="provider-btn provider-btn-secondary provider-btn-sm" onClick=${fetchSessions}>
 					Refresh
 				</button>
 			</div>
