@@ -824,4 +824,32 @@ mod tests {
         // profile_dir takes precedence, implicitly enabling persistence
         assert!(config.resolved_profile_dir().is_some());
     }
+
+    #[test]
+    fn browser_request_deserializes_after_null_stripping() {
+        // LLMs often send explicit nulls for optional/defaulted fields.
+        // The tool strips nulls before deserializing, so simulate that here.
+        let raw = serde_json::json!({
+            "action": "navigate",
+            "url": "https://example.com",
+            "session_id": null,
+            "browser": null,
+            "timeout_ms": null,
+            "sandbox": null,
+        });
+
+        // Without stripping, this would fail: "invalid type: null, expected u64"
+        let mut obj = raw.as_object().unwrap_or(&serde_json::Map::new()).clone();
+        obj.retain(|_, v| !v.is_null());
+        let cleaned = serde_json::Value::Object(obj);
+
+        let req: BrowserRequest = serde_json::from_value(cleaned).unwrap_or_else(|e| {
+            panic!("should deserialize after null-stripping: {e}");
+        });
+        assert!(req.session_id.is_none());
+        assert_eq!(req.timeout_ms, 60000); // default
+        assert!(req.browser.is_none());
+        assert!(req.sandbox.is_none());
+        assert!(matches!(req.action, BrowserAction::Navigate { .. }));
+    }
 }

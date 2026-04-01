@@ -1318,10 +1318,15 @@ pub async fn prepare_gateway_core(
 
     services.exec_approval = Arc::new(LiveExecApprovalService::new(Arc::clone(&approval_manager)));
 
-    // Wire browser service if enabled.
-    if let Some(browser_svc) =
-        crate::services::RealBrowserService::from_config(&config, browser_container_prefix)
-    {
+    // Create BrowserTool early so the browser service can share its manager.
+    // The tool is registered into the tool_registry later; we just hold it here.
+    let browser_tool = moltis_tools::browser::BrowserTool::from_config(&config.tools.browser)
+        .map(|t| t.with_container_prefix(browser_container_prefix));
+    if let Some(ref tool) = browser_tool {
+        let browser_svc = crate::services::RealBrowserService::with_shared_manager(
+            &config.tools.browser,
+            tool.shared_manager_cell(),
+        );
         services.browser = Arc::new(browser_svc);
     }
 
@@ -3346,7 +3351,7 @@ pub async fn prepare_gateway_core(
             };
             tool_registry.register(Box::new(t));
         }
-        if let Some(t) = moltis_tools::browser::BrowserTool::from_config(&config.tools.browser) {
+        if let Some(t) = browser_tool {
             let t = if sandbox_router.backend_name() != "none" {
                 t.with_sandbox_router(Arc::clone(&sandbox_router))
             } else {

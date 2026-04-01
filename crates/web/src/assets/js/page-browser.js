@@ -157,6 +157,24 @@ async function navigateSession(sessionId, url) {
 	}
 }
 
+async function createSession() {
+	try {
+		var res = await browserAction({
+			action: "navigate",
+			url: "about:blank",
+		});
+		var newId = res.session_id;
+		if (!newId) {
+			showToast("Failed to create session", "error");
+			return;
+		}
+		await fetchSessions();
+		await startScreencast(newId);
+	} catch (e) {
+		showToast(`Failed to create session: ${e.message}`, "error");
+	}
+}
+
 // ── Mouse/keyboard input relay ──────────────────────────────
 
 function relayMouseEvent(e, canvas) {
@@ -238,7 +256,7 @@ function SessionList() {
 
 	if (s.length === 0) {
 		return html`<div class="text-xs text-[var(--muted)] p-3">
-			No active browser sessions. Sessions appear here when the agent uses the browser tool.
+			No active browser sessions. Click "New Session" to create one, or sessions will appear here when the agent uses the browser tool.
 		</div>`;
 	}
 
@@ -414,15 +432,20 @@ function BrowserPage() {
 	return html`<div class="flex-1 flex flex-col min-w-0 p-4 gap-3 overflow-y-auto">
 		<div class="flex items-center justify-between">
 			<h2 class="text-base font-medium text-[var(--text-strong)]">Browser Sessions</h2>
-			<button class="provider-btn-secondary text-xs px-2 py-1" onClick=${fetchSessions}>
-				Refresh
-			</button>
+			<div class="flex items-center gap-2">
+				<button class="provider-btn text-xs px-2 py-1" onClick=${createSession}>
+					New Session
+				</button>
+				<button class="provider-btn-secondary text-xs px-2 py-1" onClick=${fetchSessions}>
+					Refresh
+				</button>
+			</div>
 		</div>
 
 		<div class="text-xs text-[var(--muted)] max-w-form">
-			View and interact with browser sessions created by agents. Click "View" to see the
-			browser screen via CDP screencast, and interact with mouse/keyboard to log in to
-			websites. Use "Export Cookies" to copy the authenticated session for automation.
+			Create browser sessions or view ones created by agents. Click "View" to see the
+			browser screen, interact with mouse/keyboard to log in to websites, and agents
+			will share the same cookies. Use "Export Cookies" to copy session data.
 		</div>
 
 		<div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">

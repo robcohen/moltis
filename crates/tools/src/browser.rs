@@ -32,7 +32,7 @@ use crate::error::Error;
 /// across unrelated chats.
 pub struct BrowserTool {
     config: moltis_browser::BrowserConfig,
-    manager: OnceCell<Arc<BrowserManager>>,
+    manager: Arc<OnceCell<Arc<BrowserManager>>>,
     sandbox_router: Option<Arc<SandboxRouter>>,
     /// Track the most recent browser session ID per chat/session context.
     /// This prevents pool exhaustion when the LLM forgets to pass session_id,
@@ -53,7 +53,7 @@ impl BrowserTool {
     pub fn new(config: moltis_browser::BrowserConfig) -> Self {
         Self {
             config,
-            manager: OnceCell::new(),
+            manager: Arc::new(OnceCell::new()),
             sandbox_router: None,
             session_ids: RwLock::new(HashMap::new()),
         }
@@ -63,6 +63,21 @@ impl BrowserTool {
     pub fn with_sandbox_router(mut self, router: Arc<SandboxRouter>) -> Self {
         self.sandbox_router = Some(router);
         self
+    }
+
+    /// Set the container name prefix for sandboxed browser instances.
+    pub fn with_container_prefix(mut self, prefix: String) -> Self {
+        self.config.container_prefix = prefix;
+        self
+    }
+
+    /// Return a shared handle to the lazy browser manager cell.
+    ///
+    /// This allows other components (e.g. the browser UI service) to share
+    /// the same [`BrowserManager`] so that sessions created by the tool are
+    /// visible in the management API.
+    pub fn shared_manager_cell(&self) -> Arc<OnceCell<Arc<BrowserManager>>> {
+        Arc::clone(&self.manager)
     }
 
     /// Create from config; returns `None` if browser is disabled.
@@ -262,6 +277,10 @@ impl AgentTool for BrowserTool {
 
             // Inject sandbox mode from session context
             obj.insert("sandbox".to_string(), serde_json::json!(sandbox_mode));
+
+            // Strip explicit nulls — LLMs often send them for optional/defaulted fields
+            // and serde(default) only handles *missing* keys, not null values.
+            obj.retain(|_, v| !v.is_null());
         }
 
         // Check if this is a "close" action - we'll clear saved session after

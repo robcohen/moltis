@@ -1300,9 +1300,13 @@ fn set_skill_trusted(params: &Value, trusted: bool) -> ServiceResult {
 // ── Browser (Real implementation — depends on moltis-browser) ───────────────
 
 /// Real browser service using BrowserManager.
+///
+/// When a [`BrowserTool`](moltis_tools::browser::BrowserTool) exists, the
+/// service should share its manager cell so that sessions created by
+/// agent tool calls are visible in the browser management UI.
 pub struct RealBrowserService {
     config: moltis_browser::BrowserConfig,
-    manager: tokio::sync::OnceCell<Arc<moltis_browser::BrowserManager>>,
+    manager: Arc<tokio::sync::OnceCell<Arc<moltis_browser::BrowserManager>>>,
 }
 
 impl RealBrowserService {
@@ -1311,7 +1315,20 @@ impl RealBrowserService {
         browser_config.container_prefix = container_prefix;
         Self {
             config: browser_config,
-            manager: tokio::sync::OnceCell::new(),
+            manager: Arc::new(tokio::sync::OnceCell::new()),
+        }
+    }
+
+    /// Create from a shared manager cell (typically obtained from
+    /// [`BrowserTool::shared_manager_cell`]). This ensures the tool and
+    /// service operate on the same browser pool.
+    pub fn with_shared_manager(
+        config: &moltis_config::schema::BrowserConfig,
+        manager: Arc<tokio::sync::OnceCell<Arc<moltis_browser::BrowserManager>>>,
+    ) -> Self {
+        Self {
+            config: moltis_browser::BrowserConfig::from(config),
+            manager,
         }
     }
 
