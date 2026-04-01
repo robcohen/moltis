@@ -252,9 +252,10 @@ async function navigateSession(sessionId, rawUrl) {
 	}
 }
 
-async function createSession() {
+async function createSession(profileId) {
 	if (creating.value) return;
 	creating.value = true;
+	var useProfile = profileId || "default";
 
 	// Don't stop previous screencast — let it run in background
 	screencasting.value = false;
@@ -262,7 +263,7 @@ async function createSession() {
 	var placeholderId = `creating-${Date.now()}`;
 	placeholderIds.add(placeholderId);
 	sessions.value = [
-		{ session_id: placeholderId, url: "", sandboxed: false, age_secs: 0, idle_secs: 0, creating: true },
+		{ session_id: placeholderId, url: "", sandboxed: false, age_secs: 0, idle_secs: 0, creating: true, profile_id: useProfile },
 		...sessions.value,
 	];
 	frameData.value = null;
@@ -272,7 +273,7 @@ async function createSession() {
 	activeSession.value = placeholderId;
 
 	try {
-		var res = await browserAction({ action: "navigate", url: "about:blank" });
+		var res = await browserAction({ action: "navigate", url: "about:blank", profile_id: useProfile });
 		var newId = res.session_id;
 		if (!newId) {
 			showToast("Failed to create session", "error");
@@ -534,6 +535,7 @@ function SessionList() {
 						</div>
 					</div>
 					<div class="flex items-center gap-1.5 text-xs">
+						${sess.profile_id ? html`<span class="text-[var(--muted)]">${sess.profile_id}</span><span class="text-[var(--muted)]">\u00b7</span>` : null}
 						<span class="text-[var(--muted)]">Age: ${formatDuration(sess.age_secs)}</span>
 						<span class="text-[var(--muted)]">Idle: ${formatDuration(sess.idle_secs)}</span>
 					</div>
@@ -961,14 +963,88 @@ function ActionLogPanel() {
 	</div>`;
 }
 
+function getKnownProfiles() {
+	var profiles = new Set(["default"]);
+	for (var s of sessions.value) {
+		if (s.profile_id) profiles.add(s.profile_id);
+	}
+	for (var s of sessionHistory.value) {
+		// Derive profile from session records (stored sessions don't have profile_id yet,
+		// but active sessions do)
+		if (s.profile_id) profiles.add(s.profile_id);
+	}
+	return [...profiles].sort();
+}
+
+function NewSessionButton() {
+	var [showMenu, setShowMenu] = useState(false);
+	var [customProfile, setCustomProfile] = useState("");
+	var menuRef = useRef(null);
+
+	useEffect(() => {
+		function onClickOutside(e) {
+			if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+		}
+		document.addEventListener("mousedown", onClickOutside);
+		return () => document.removeEventListener("mousedown", onClickOutside);
+	}, []);
+
+	var profiles = getKnownProfiles();
+
+	return html`<div class="relative" ref=${menuRef}>
+		<div class="flex">
+			<button
+				class="provider-btn provider-btn-sm rounded-r-none"
+				onClick=${() => createSession()}
+				disabled=${creating.value}
+			>
+				${creating.value ? "Creating\u2026" : "New Session"}
+			</button>
+			<button
+				class="provider-btn provider-btn-sm rounded-l-none border-l border-white/20 px-1.5"
+				onClick=${() => setShowMenu(!showMenu)}
+				disabled=${creating.value}
+			>
+				\u25BE
+			</button>
+		</div>
+		${showMenu ? html`
+			<div class="absolute right-0 top-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg z-50 min-w-[200px] overflow-hidden">
+				<div class="px-3 py-1.5 text-[10px] text-[var(--muted)] uppercase tracking-wide">Profile</div>
+				${profiles.map((p) => html`
+					<button
+						key=${p}
+						class="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)] flex items-center gap-2"
+						style="border: none; background: transparent; cursor: pointer;"
+						onClick=${() => { setShowMenu(false); createSession(p); }}
+					>
+						<span class="text-[var(--text-strong)]">${p}</span>
+					</button>
+				`)}
+				<div class="border-t border-[var(--border)] px-3 py-1.5">
+					<form class="flex gap-1" onSubmit=${(e) => { e.preventDefault(); if (customProfile.trim()) { setShowMenu(false); createSession(customProfile.trim()); setCustomProfile(""); } }}>
+						<input
+							type="text"
+							class="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-strong)] outline-none text-xs"
+							style="padding: 2px 6px; font-size: 0.7rem;"
+							placeholder="New profile name..."
+							value=${customProfile}
+							onInput=${(e) => setCustomProfile(e.target.value)}
+						/>
+						<button type="submit" class="provider-btn provider-btn-sm" style="padding: 2px 6px; font-size: 0.7rem;" disabled=${!customProfile.trim()}>+</button>
+					</form>
+				</div>
+			</div>
+		` : null}
+	</div>`;
+}
+
 function BrowserPage() {
 	return html`<div class="flex-1 flex flex-col min-w-0 p-4 gap-3 overflow-y-auto">
 		<div class="flex items-center justify-between">
 			<h2 class="text-base font-medium text-[var(--text-strong)]">Browser Sessions</h2>
 			<div class="flex items-center gap-2">
-				<button class="provider-btn provider-btn-sm" onClick=${createSession} disabled=${creating.value}>
-					${creating.value ? "Creating\u2026" : "New Session"}
-				</button>
+				<${NewSessionButton} />
 				<button class="provider-btn provider-btn-secondary provider-btn-sm" onClick=${fetchSessions}>
 					Refresh
 				</button>

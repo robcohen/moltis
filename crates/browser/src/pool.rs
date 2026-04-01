@@ -34,6 +34,7 @@ pub struct BrowserSessionInfo {
     pub url: String,
     pub age_secs: u64,
     pub idle_secs: u64,
+    pub profile_id: String,
 }
 
 /// Get current system memory usage as a percentage (0-100).
@@ -81,6 +82,8 @@ struct BrowserInstance {
     /// Container for sandboxed instances (None for host browser).
     #[allow(dead_code)]
     container: Option<BrowserContainer>,
+    /// Browser profile identifier for cookie isolation.
+    profile_id: String,
 }
 
 /// Pool of browser instances for reuse.
@@ -358,6 +361,7 @@ impl BrowserPool {
                 url,
                 age_secs: inst.created_at.elapsed().as_secs(),
                 idle_secs: inst.last_used.elapsed().as_secs(),
+                profile_id: inst.profile_id.clone(),
             });
         }
         sessions
@@ -519,6 +523,7 @@ impl BrowserPool {
             created_at: Instant::now(),
             sandboxed: true,
             container: Some(container),
+            profile_id: profile_id.to_string(),
         })
     }
 
@@ -692,6 +697,7 @@ impl BrowserPool {
             created_at: Instant::now(),
             sandboxed: false,
             container: None,
+            profile_id: "default".to_string(),
         })
     }
 }
