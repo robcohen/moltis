@@ -1,0 +1,112 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "365150329fac",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T14:22:02.363968Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "15f5df95bdd6",
+  "token_usage": {
+    "input_tokens": 3915,
+    "cache_creation_tokens": 831549,
+    "cache_read_tokens": 117899440,
+    "output_tokens": 179517,
+    "api_call_count": 507
+  },
+  "summary": {
+    "intent": "Build out an interactive browser-in-browser feature for the moltis AI assistant, allowing users to create, view, and interact with browser sessions from the settings UI, and fixing numerous bugs along the way.",
+    "outcome": "Feature is fully functional: sessions created by agents appear in UI, users can create sessions, navigate, click, scroll, and interact with the remote browser. Multiple layered bugs were fixed including deserialization crashes, screencast frame delivery, coordinate mapping, and session stability.",
+    "learnings": {
+      "repo": [
+        "serde's #[serde(default)] handles missing fields but NOT explicit null — LLMs (especially MiniMax) send null for every optional field, requiring a pre-deserialization null-strip pass",
+        "BrowserTool and RealBrowserService each created independent BrowserManager instances, making agent sessions invisible to the UI API — fixed by sharing via Arc\u003cOnceCell\u003e",
+        "The v4 WebSocket protocol requires explicit client subscription to event types; browser.screencast.frame was missing from the subscription list in websocket.js, silently dropping all frames",
+        "CDP screencast relay exits when tx.send() finds zero receivers — race condition where first frame arrives before subscriber connects; fixed by dropping frames silently instead of exiting",
+        "about:blank is rejected by validate_url() which only allowed http/https, causing silent navigate failure and no screencast frames from blank page",
+        "Canvas event listeners attached in useEffect([]) never fire if canvas is conditionally rendered — the effect ran before canvas existed; fixed with ref callback pattern",
+        "CDP mouseWheel event requires BOTH deltaX and deltaY always present — omitting either when zero causes CDP to reject the event entirely",
+        "Screencast metadata offset_top (browser chrome height) must be added to y-coordinates; canvas aspect-ratio CSS must match actual viewport ratio, not hardcoded 16/10",
+        "Default viewport was 2560x1440@2x (designed for agent screenshots) — terrible for interactive viewing; changed to 1440x900@1x",
+        "Rapid stop/start of screencasts when switching sessions overwhelms CDP and kills Chrome connections — screencasts should persist across session switches, filtered by session_id client-side",
+        "Single CDP failure was triggering session cleanup; with queued mouse events, this produced a flood of cleanup calls for already-dead sessions"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/browser.rs",
+          "finding": "Null-stripping via obj.retain(|_, v| !v.is_null()) added before serde deserialization in execute()"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "finding": "Relay task changed from exiting on SendError (no receivers) to continuing — drops frames when no subscribers instead of dying"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "validate_url() added special case for about:blank; also has_session() guard prevents repeated cleanup calls for dead sessions"
+        },
+        {
+          "path": "crates/browser/src/types.rs",
+          "finding": "Default viewport changed from 2560x1440 device_scale_factor=2.0 to 1440x900 device_scale_factor=1.0; idle_timeout increased to match hard TTL (2 hours)"
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "finding": "has_session() method added to check before cleanup; idle_timeout increased to prevent aggressive session reaping"
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "finding": "browser.screencast.frame missing from event subscription list — broadcast filter silently dropped all screencast frames"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "Canvas event listeners must use ref callback not useEffect([]) when canvas is conditionally rendered; coordinate mapping needs offset_top from screencast metadata and image natural dimensions"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "RealBrowserService has default_sandbox flag to inject sandbox:true when service config has sandbox enabled — UI sessions now run sandboxed"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "BrowserTool created early and shared with RealBrowserService via shared_manager_cell() — the single fix that makes agent sessions visible in UI"
+        }
+      ],
+      "workflow": [
+        "Adding diagnostic tracing at every stage of a relay chain (CDP → registry → subscriber → WS → client) was essential for isolating which layer dropped frames",
+        "Integration tests with #[ignore] for sandbox modes effectively documented which runtime is available and auto-skip when not present",
+        "YubiKey signing required manual tap for each git push — consider batching commits before pushing",
+        "Playwright e2e tests complement Rust integration tests: Rust tests verify CDP dispatch chain works, Playwright tests verify UI behavior end-to-end",
+        "When LLMs generate tool calls, all optional fields get explicit null — defensive null-stripping at the tool boundary is a required pattern, not optional"
+      ]
+    },
+    "friction": [
+      "YubiKey tap required for every push, causing repeated interruptions and failed background tasks",
+      "Multiple 'Waiting for first frame' recurrences — each fix revealed a deeper layer in the same symptom chain (about:blank → relay race condition → missing WS subscription)",
+      "The 2560x1440@2x viewport default was optimized for agent screenshots but completely wrong for interactive viewing — caused centering issues with captchas and content",
+      "Rapid session switching caused Chrome process death due to CDP being overwhelmed by stop/start screencast commands — not obvious that screencasts should persist across switches",
+      "Click coordinates were off due to three compounding issues: border offset, missing offset_top, and wrong aspect ratio — required multiple iteration rounds to fully fix",
+      "Parallel browser tests fought over temp profiles and needed --test-threads=1",
+      "CDP silently returns success:false on bad URLs (200 OK with success=false) — required explicit checks at every call site until browserAction() was updated to throw on failure"
+    ],
+    "open_items": [
+      "WebRTC upgrade (neko architecture) for lower latency (\u003c100ms vs 100-300ms) and better bandwidth efficiency — deferred as medium-term improvement",
+      "Binary WebSocket frames for screencast — eliminates ~33% base64 overhead, not yet implemented",
+      "Per-agent browser profiles for session isolation — currently single global profile with shared cookies",
+      "Chrome process crashes under memory pressure in Apple Container sandbox — needs investigation into container resource limits",
+      "URL polling (2s interval via get_url CDP call) is a workaround for in-page navigation detection — WebSocket-based CDP events would be more efficient",
+      "PR not yet created for the plan-browser-viewing branch",
+      "Playwright e2e tests for interactive features (click accuracy, scroll) not yet written — only navigation/session lifecycle covered"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T14:21:03.564586Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 8,
+    "human_removed": 9,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
