@@ -585,10 +585,10 @@ function SessionList() {
 							${
 								sess.creating
 									? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">creating</span>`
-									: isActive && screencasting.value
+									: sess.screencasting || (isActive && screencasting.value)
 										? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">live</span>`
 										: sess.url && sess.url !== "about:blank"
-											? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">paused</span>`
+											? html`<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">idle</span>`
 											: null
 							}
 						</div>
