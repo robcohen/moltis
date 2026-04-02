@@ -601,12 +601,22 @@ function SessionList() {
 							<div
 								key=${sess.session_id}
 								class="rounded border p-2 text-xs cursor-pointer transition-colors ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50"}"
-								onClick=${() => {
-									activeSession.value = null;
-									screencasting.value = false;
-									frameData.value = null;
-									selectedHistorySession.value = sess.session_id;
-									fetchActionLog(sess.session_id);
+								onClick=${async () => {
+									if (!sess.url || sess.url === "about:blank") {
+										// No URL to revive — just show log
+										activeSession.value = null;
+										screencasting.value = false;
+										frameData.value = null;
+										selectedHistorySession.value = sess.session_id;
+										fetchActionLog(sess.session_id);
+										return;
+									}
+									// Revive: create new session and navigate to the same URL
+									sessionTab.value = "live";
+									await createSession();
+									if (activeSession.value) {
+										await navigateSession(activeSession.value, sess.url);
+									}
 								}}
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -614,9 +624,26 @@ function SessionList() {
 										<div class="font-mono text-[var(--text-strong)] truncate">${sess.session_id}</div>
 										<div class="text-[var(--muted)] truncate mt-0.5">${sess.url || "(no page)"}</div>
 									</div>
-									<span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface2)] text-[var(--muted)] shrink-0">${sess.closed_at ? "closed" : "lost"}</span>
+									<div class="flex items-center gap-1 shrink-0">
+										<span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface2)] text-[var(--muted)]">${sess.closed_at ? "closed" : "lost"}</span>
+									</div>
 								</div>
-								<div class="text-[var(--muted)] mt-1">${sess.created_at}</div>
+								<div class="flex items-center justify-between mt-1">
+									<span class="text-[var(--muted)]">${sess.created_at}</span>
+									<button
+										class="text-[10px] text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+										onClick=${(e) => {
+											e.stopPropagation();
+											activeSession.value = null;
+											screencasting.value = false;
+											frameData.value = null;
+											selectedHistorySession.value = sess.session_id;
+											fetchActionLog(sess.session_id);
+										}}
+									>
+										View Log
+									</button>
+								</div>
 							</div>
 						`;
 					})}
