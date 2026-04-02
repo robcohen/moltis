@@ -1,0 +1,66 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2201c4b39939",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:01:04.355272Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "109d8daa3f10",
+  "checkpoint_transcript_start": 5336,
+  "transcript_lines_at_start": 5336,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 28000,
+    "cache_read_tokens": 3819360,
+    "output_tokens": 2135,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Debug and fix browser session instability in a multi-session browser automation UI (moltis), specifically sessions dying on click and empty action history, then investigate a freeze/hang reported during scroll while switching sessions.",
+    "outcome": "Two root causes were fixed and pushed: action name matching changed from exact match to starts_with() for mouse_input, and action hook registration was moved inside the manager init closure to fix lazy-init ordering. A third bug (relay task accumulation on session switch) was identified and fixed by skipping start_screencast when a session already has screencasting active.",
+    "learnings": {
+      "repo": [
+        "Action names in moltis_browser are formatted as 'mouse_input(x=..., y=...)' — not bare 'mouse_input' — requiring starts_with() matching rather than exact equality.",
+        "The browser manager uses lazy initialization; hooks registered at startup against a not-yet-initialized manager are silently dropped. Hooks must be applied inside the manager() init closure.",
+        "Each call to start_screencast spawns a new WebSocket relay task; old relay tasks are not automatically stopped on session switch, causing relay task accumulation and UI freeze.",
+        "The sessions API reports 'screencasting: true' on a session, which can be used to guard against redundant start_screencast calls.",
+        "Sandbox execution mode uses browserless/chrome container image; sessions are identified by IDs like 'browser-XXXX'.",
+        "On shutdown, moltis_httpd closes the browser pool with a grace period (grace_secs=5) and stops all containers."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "Session switch logic was unconditionally calling start_screencast; fix adds a guard to skip if session already has screencasting:true, preventing relay task accumulation."
+        }
+      ],
+      "workflow": [
+        "Log evidence of relay accumulation: multiple 'screencast started (viewport resized)' lines for the same session_id across session switches is the diagnostic signal.",
+        "The freeze produced no error logs — only INFO-level repeated get_url/evaluate polling with increasing gaps, making the relay accumulation non-obvious without reading the screencast startup logs carefully."
+      ]
+    },
+    "friction": [
+      "Freeze had no error logs — only inferred from behavioral pattern in INFO logs, requiring careful log analysis.",
+      "Lazy manager initialization silently dropped hooks registered at startup, with no warning or error at hook registration time.",
+      "Action name format ('mouse_input(x=..., y=...)') was not documented or enforced in a way that made the exact-match bug obvious."
+    ],
+    "open_items": [
+      "Relay tasks from previous session switches may still accumulate if start_screencast is called outside the guarded path — audit all screencast call sites.",
+      "No mechanism to explicitly stop/clean up a relay task when switching away from a session; rely cleanup is implicit only.",
+      "The third browser session ('browser-5ba88a24c3990c78') appears in shutdown logs but was not actively used in the logged actions — unclear if it was affected by the same bugs."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:00:36.736571Z",
+    "agent_lines": 10,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 10,
+    "agent_percentage": 100
+  }
+}
