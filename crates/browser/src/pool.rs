@@ -70,7 +70,7 @@ pub(crate) fn low_memory_chrome_args(total_mb: u64, threshold_mb: u64) -> &'stat
 
 /// A pooled browser instance with one or more pages.
 struct BrowserInstance {
-    browser: Browser,
+    browser: Arc<Browser>,
     pages: HashMap<String, Page>,
     last_used: Instant,
     /// When this instance was first created. Used to enforce a hard TTL that
@@ -121,12 +121,55 @@ impl BrowserPool {
         // Treat empty string as None (generate new session ID)
         let session_id = session_id.filter(|s| !s.is_empty());
 
-        // Check if we have an existing instance
+        // Check if we have an existing instance with this session ID
         if let Some(sid) = session_id {
             let instances = self.instances.read().await;
             if instances.contains_key(sid) {
                 debug!(session_id = sid, "reusing existing browser instance");
                 return Ok(sid.to_string());
+            }
+        }
+
+        // If another session with the same profile is already running,
+        // create a new tab in that browser instead of launching a new
+        // container. This shares cookies, local storage, and avoids
+        // Chrome's SingletonLock conflicts.
+        if sandbox {
+            let instances = self.instances.read().await;
+            let existing = instances.iter().find(|(_, inst_arc)| {
+                // Can't await lock here — try_lock to avoid blocking
+                if let Ok(inst) = inst_arc.try_lock() {
+                    inst.profile_id == profile_id && inst.sandboxed
+                } else {
+                    false
+                }
+            });
+            if let Some((_, existing_inst)) = existing {
+                let sid = session_id
+                    .map(String::from)
+                    .unwrap_or_else(generate_session_id);
+                // Clone the browser handle and create a new page (tab)
+                let inst = existing_inst.lock().await;
+                let new_inst = BrowserInstance {
+                    browser: Arc::clone(&inst.browser),
+                    pages: HashMap::new(),
+                    last_used: Instant::now(),
+                    created_at: Instant::now(),
+                    sandboxed: true,
+                    container: None, // shares parent's container
+                    profile_id: profile_id.to_string(),
+                };
+                drop(inst);
+                drop(instances);
+
+                let new_inst = Arc::new(Mutex::new(new_inst));
+                self.instances.write().await.insert(sid.clone(), new_inst);
+
+                info!(
+                    session_id = sid,
+                    profile_id, "created new tab in existing browser (shared cookies)"
+                );
+                return Ok(sid);
             }
         }
 
@@ -521,7 +564,7 @@ impl BrowserPool {
         info!(session_id, "sandboxed browser connected successfully");
 
         Ok(BrowserInstance {
-            browser,
+            browser: Arc::new(browser),
             pages: HashMap::new(),
             last_used: Instant::now(),
             created_at: Instant::now(),
@@ -700,7 +743,7 @@ impl BrowserPool {
         });
 
         Ok(BrowserInstance {
-            browser,
+            browser: Arc::new(browser),
             pages: HashMap::new(),
             last_used: Instant::now(),
             created_at: Instant::now(),
