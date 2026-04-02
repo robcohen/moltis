@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f7b599438e01",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:51:40.415112Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/browser/src/pool.rs",
+    "crates/browser/src/container.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e25d104ddcee",
+  "checkpoint_transcript_start": 5788,
+  "transcript_lines_at_start": 5788,
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 6300,
+    "cache_read_tokens": 10600792,
+    "output_tokens": 2661,
+    "api_call_count": 15
+  },
+  "summary": {
+    "intent": "Fix LinkedIn session cookies not persisting across browser container restarts in the Moltis browser pool.",
+    "outcome": "Added --restore-session-cookies Chrome flag to both the pool.rs launch args and the container.rs CHROME_FLAGS env var, then committed and pushed.",
+    "learnings": {
+      "repo": [
+        "Shared browser profile directory is at ~/.moltis/browser/profile/sandbox/default/",
+        "Container stop uses docker/container stop with SIGTERM and 10s grace period for graceful Chrome shutdown",
+        "The browserless/chrome container accepts Chrome flags via CHROME_FLAGS environment variable, not direct CLI args",
+        "Chrome flags are set in two places: pool.rs (direct launch) and container.rs (containerized launch via env var)"
+      ],
+      "code": [
+        {
+          "path": "crates/browser/src/pool.rs",
+          "finding": "Chrome launch args are configured here; --restore-session-cookies was added"
+        },
+        {
+          "path": "crates/browser/src/container.rs",
+          "finding": "Container launch args including CHROME_FLAGS env var are configured here; --restore-session-cookies was added via CHROME_FLAGS"
+        }
+      ],
+      "workflow": [
+        "Chrome session cookies (used by LinkedIn) only persist if Chrome exits gracefully; force-kill loses them",
+        "--restore-session-cookies flag is required for session cookies to survive Chrome restarts",
+        "Cookie file presence alone is insufficient to confirm persistence — Chrome must exit gracefully to flush session cookies"
+      ]
+    },
+    "friction": [
+      "Chrome flags are split across two files (pool.rs and container.rs), requiring changes in both places for a single behavioral fix",
+      "Diagnosing cookie loss required ruling out multiple causes: force-kill, singleton cleanup, and missing Chrome flags"
+    ],
+    "open_items": [
+      "Verify that Apple Container's stop command actually waits the full 10s grace period for Chrome to flush cookies",
+      "Confirm that --restore-session-cookies flag is correctly passed through CHROME_FLAGS in the browserless/chrome container image"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:51:22.860235Z",
+    "agent_lines": 7,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 7,
+    "agent_percentage": 100
+  }
+}
