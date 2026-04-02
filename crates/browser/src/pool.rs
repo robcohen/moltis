@@ -671,6 +671,29 @@ impl BrowserPool {
             builder = builder.arg(arg);
         }
 
+        // ── Stealth flags to reduce headless browser detection ──
+        // Sites like LinkedIn detect headless Chrome via navigator.webdriver,
+        // user agent strings, missing plugins, etc.
+        builder = builder
+            // Remove navigator.webdriver = true
+            .arg("--disable-blink-features=AutomationControlled")
+            // Use new headless mode (more like real Chrome)
+            .arg("--headless=new")
+            // Disable automation info bar
+            .arg("--disable-infobars")
+            // Realistic window size
+            .arg("--window-size=1440,900")
+            // Disable "Chrome is being controlled" notification
+            .arg("--disable-automation-extension");
+
+        // Set a realistic user agent if not explicitly configured
+        if self.config.user_agent.is_none() {
+            builder = builder.arg(
+                "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
+                 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            );
+        }
+
         // Restore session cookies across browser restarts so logins persist.
         // Without this, cookies marked as "session" (no expiry) are lost
         // when Chrome exits, even with a persistent profile directory.

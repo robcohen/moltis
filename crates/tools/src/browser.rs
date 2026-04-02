@@ -34,6 +34,9 @@ pub struct BrowserTool {
     config: moltis_browser::BrowserConfig,
     manager: Arc<OnceCell<Arc<BrowserManager>>>,
     sandbox_router: Option<Arc<SandboxRouter>>,
+    /// Override sandbox mode for browsers. When Some(false), browsers
+    /// always run on the host regardless of the global sandbox setting.
+    sandbox_override: Option<bool>,
     /// Track the most recent browser session ID per chat/session context.
     /// This prevents pool exhaustion when the LLM forgets to pass session_id,
     /// without reusing a stale browser across different chats.
@@ -55,6 +58,7 @@ impl BrowserTool {
             config,
             manager: Arc::new(OnceCell::new()),
             sandbox_router: None,
+            sandbox_override: None,
             session_ids: RwLock::new(HashMap::new()),
         }
     }
@@ -62,6 +66,13 @@ impl BrowserTool {
     /// Attach a sandbox router for per-session sandbox mode resolution.
     pub fn with_sandbox_router(mut self, router: Arc<SandboxRouter>) -> Self {
         self.sandbox_router = Some(router);
+        self
+    }
+
+    /// Override sandbox mode for browsers. When Some(false), browsers
+    /// always run on the host regardless of the global sandbox setting.
+    pub fn with_sandbox_override(mut self, sandbox: Option<bool>) -> Self {
+        self.sandbox_override = sandbox;
         self
     }
 
@@ -245,15 +256,13 @@ impl AgentTool for BrowserTool {
     async fn execute(&self, params: serde_json::Value) -> anyhow::Result<serde_json::Value> {
         let mut params = params;
 
-        // Browser sandbox mode follows the session sandbox mode from the shared router.
+        // Browser sandbox mode: explicit config override > session sandbox mode.
         let session_key = Self::cache_key(params.get("_session_key").and_then(|v| v.as_str()));
-        let sandbox_mode = if let Some(ref router) = self.sandbox_router {
+        let sandbox_mode = if let Some(forced) = self.sandbox_override {
+            forced
+        } else if let Some(ref router) = self.sandbox_router {
             router.is_sandboxed(&session_key).await
         } else {
-            debug!(
-                session_key = %session_key,
-                "browser running in host mode (no container backend)"
-            );
             false
         };
 

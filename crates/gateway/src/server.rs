@@ -1378,7 +1378,10 @@ pub async fn prepare_gateway_core(
     // Create BrowserTool early so the browser service can share its manager.
     // The tool is registered into the tool_registry later; we just hold it here.
     let browser_tool = moltis_tools::browser::BrowserTool::from_config(&config.tools.browser)
-        .map(|t| t.with_container_prefix(browser_container_prefix));
+        .map(|t| {
+            t.with_container_prefix(browser_container_prefix)
+                .with_sandbox_override(config.tools.browser.sandbox)
+        });
     let browser_svc_ref: Option<Arc<crate::services::RealBrowserService>> =
         if let Some(ref tool) = browser_tool {
             // Browser sandbox: explicit config > global sandbox mode
