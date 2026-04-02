@@ -1,0 +1,126 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b639577544f3",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T16:15:01.456977Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "crates/browser/src/manager.rs",
+    "crates/browser/src/pool.rs",
+    "crates/browser/src/screencast.rs",
+    "crates/browser/src/types.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a5c0e8d29237",
+  "token_usage": {
+    "input_tokens": 4670,
+    "cache_creation_tokens": 4093598,
+    "cache_read_tokens": 477129478,
+    "output_tokens": 321160,
+    "api_call_count": 1144
+  },
+  "summary": {
+    "intent": "Build and iterate on a browser-in-browser feature for the Moltis agent platform, enabling users to view, interact with, and manage browser sessions directly from the settings UI, while agents share the same browser profiles for cookie persistence.",
+    "outcome": "Delivered a fully functional browser viewer with live CDP screencast, mouse/keyboard/scroll interaction, URL autocomplete, session history with action logs (SQLite), per-agent browser profiles with cookie sharing via tab reuse, and comprehensive bug fixes for session stability. 50+ commits merged into PR #531.",
+    "learnings": {
+      "repo": [
+        "BrowserTool and RealBrowserService had separate BrowserManager instances — sessions created by the tool were invisible to the UI service; fixed by sharing an Arc\u003cOnceCell\u003cBrowserManager\u003e\u003e",
+        "CDP Page.startScreencast relay exits when tx.send() finds 0 receivers (drops-on-no-receiver semantics); must use send() that ignores errors instead of returning Err when there are no subscribers",
+        "WebSocket event subscription filter (broadcast.rs:100-102) silently drops events not in the client's subscription list — browser.screencast.frame was missing from websocket.js subscription list",
+        "serde #[serde(default)] only handles missing fields, not explicit null; LLMs like MiniMax send null for all optional fields including u64 types, requiring a null-stripping step before deserialization",
+        "SingletonLock in Chrome profiles is a symlink to the container hostname; exists() follows symlinks and returns false for dangling symlinks, so cleanup requires symlink_metadata() instead",
+        "CDP mouseWheel requires both deltaX and deltaY always present — omitting either field when zero causes 'deltaX and deltaY are expected for mouseWheel event' error",
+        "Screencast frame metadata contains scroll_offset_x/scroll_offset_y and offset_top; offset_top must be added to y-coordinates for accurate click positioning",
+        "Chrome profile locking means only one Chrome process per profile; multiple sessions with the same profile_id should share a single browser instance (tabs) rather than launching new containers",
+        "Action hook on BrowserManager must be registered inside the OnceCell init closure, not at startup — the manager is lazily initialized and the hook would be lost if set before first use",
+        "Container browser sessions hit ERR_NETWORK_CHANGED on first request after startup; retry with the same parameters resolves it",
+        "biome 0.3.3 (npx biome) and biome 2.4.6 (system biome) produce different formatting — local-validate.sh uses the system binary, so always format with the system binary"
+      ],
+      "code": [
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 237,
+          "end_line": 239,
+          "finding": "Original relay task exited when tx.send() returned Err (no receivers), causing 'waiting for first frame' forever — CDP sends first frame before UI subscribes"
+        },
+        {
+          "path": "crates/tools/src/browser.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "null-stripping via obj.retain(|_, v| !v.is_null()) is placed after session_id and sandbox injection in execute()"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "action_name from Display format is 'mouse_input(x=129.7, y=231.5)' not 'mouse_input' — starts_with() required for matching, not exact equality"
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Browser field changed to Arc\u003cBrowser\u003e to enable tab sharing across BrowserInstance entries with the same profile_id"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "default_sandbox flag injected into all UI browser requests via RealBrowserService::request(); configured from config.tools.browser.sandbox"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "line": 1,
+          "end_line": 50,
+          "finding": "canvasRefCallback (ref callback pattern) must be used instead of useEffect([]) for attaching canvas event listeners — the canvas is conditionally rendered, so useEffect with empty deps fires before canvas exists"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "EventFrameNavigated provides URL change events; frame.parent_id is Option but frame itself is not Option in the CDP bindings"
+        }
+      ],
+      "workflow": [
+        "YubiKey GPG signing blocks background git commits; interactive foreground commits work but require user presence",
+        "biome --write only applies fixes when run directly; CI runs biome --check without --write, so fixes must be committed separately",
+        "local-validate.sh 531 is the correct way to validate a PR before pushing; catches biome, fmt, i18n, and install-name issues",
+        "Axum 0.8 changed route parameter syntax from :param to {param}",
+        "Cargo workspace deny(unused-qualifications) and deny(clippy::expect_used) apply in test code too — use unwrap_or_else patterns in tests",
+        "Running cargo clippy on all features fails on CUDA crates on macOS without nvcc; run clippy only on affected crates to avoid noise",
+        "CDP screencast coordinate mapping: use img.naturalWidth/naturalHeight for scale factors, not hardcoded values or metadata device dimensions"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing required multiple retries throughout the session — background tasks timed out waiting for tap, requiring repeated foreground retry attempts",
+      "biome version mismatch (npx biome 0.3.3 vs system biome 2.4.6) caused repeated CI failures after local --write appeared to fix issues",
+      "Session crash bugs had to be diagnosed iteratively through user-reported logs across many iterations before root causes were isolated",
+      "The 'waiting for first frame' bug required 3 separate fixes (relay exit, WebSocket subscription, navigate URL normalization) before it was fully resolved",
+      "Click accuracy required multiple iterations: offsetX/offsetY fix, then aspect ratio fix, then offset_top metadata correction",
+      "GatewayServices initialization order required significant refactoring — browser service created before db_pool, requiring lazy hook registration via OnceCell",
+      "axum route syntax change (:param → {param}) caused a runtime panic only discovered after deploy, not caught at compile time",
+      "Chrome profile SingletonLock as a dangling symlink was not caught by the cleanup code for multiple sessions, causing ~45-second startup timeouts"
+    ],
+    "open_items": [
+      "WebRTC upgrade (neko/GStreamer) for lower latency (\u003c100ms) and better bandwidth efficiency vs CDP JPEG screencast — tracked as future PR",
+      "Container memory/disk usage display in Settings \u003e Containers page — deferred as separate feature",
+      "E2e Playwright tests for full UI interaction flow (session create/switch/close lifecycle, cookie persistence, scroll/click accuracy) — 13 Rust unit tests added but Playwright suite incomplete",
+      "Multiple Chrome profiles in one container for memory efficiency — determined not feasible with Chrome's profile locking model",
+      "Per-session cookie isolation when needed (agents that should NOT share UI cookies) — currently all agents use 'default' profile",
+      "Cookie persistence test for concurrent sessions — logged in session cookies not always visible to new tab if Chrome hasn't flushed to disk",
+      "Scrollbar thumb size and position accuracy depends on evaluate() for scrollHeight — only queried once per navigation, may be stale on dynamic pages",
+      "Browser session history action log UI is minimal — no replay, no screenshots per action, no timeline visualization",
+      "Container health monitoring / memory pressure detection to automatically switch to host mode — config option exists but no automation"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T16:13:58.83349Z",
+    "agent_lines": 225,
+    "human_added": 12,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 237,
+    "agent_percentage": 94.9367088607595
+  }
+}
