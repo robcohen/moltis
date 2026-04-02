@@ -994,13 +994,15 @@ function SessionHistory() {
 		fetchHistory();
 	}, []);
 
-	var closed = sessionHistory.value.filter((s) => s.closed_at);
-	if (closed.length === 0) return null;
+	// Show all past sessions that aren't currently active in the pool
+	var activeIds = new Set(sessions.value.map((s) => s.session_id));
+	var past = sessionHistory.value.filter((s) => !activeIds.has(s.session_id));
+	if (past.length === 0) return null;
 
 	return html`<div class="mt-4">
 		<div class="text-xs font-medium text-[var(--muted)] mb-2">History</div>
 		<div class="flex flex-col gap-1">
-			${closed.map((sess) => {
+			${past.map((sess) => {
 				var isSelected = selectedHistorySession.value === sess.session_id;
 				return html`
 					<div

@@ -224,6 +224,17 @@ impl BrowserManager {
                 action, "browser connection dead, closing stale session"
             );
             let _ = self.pool.close_session(session_id).await;
+            // Notify the action hook so the session is marked closed in history
+            if let Some(hook) = self.action_hook.read().await.as_ref() {
+                hook(
+                    session_id,
+                    "close",
+                    None,
+                    false,
+                    Some("connection lost"),
+                    0,
+                );
+            }
         }
         Error::ConnectionClosed(format!(
             "Browser session {session_id} lost its connection during {action}. \
