@@ -1,0 +1,131 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0db97ecdd06f",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T16:17:57.345335Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/browser.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a5c0e8d29237",
+  "token_usage": {
+    "input_tokens": 4681,
+    "cache_creation_tokens": 4101587,
+    "cache_read_tokens": 485603048,
+    "output_tokens": 324834,
+    "api_call_count": 1155
+  },
+  "summary": {
+    "intent": "Build a full browser-in-browser feature for the Moltis/Rex agent platform, enabling users to create, view, and interact with browser sessions through the UI, with live screencasting, mouse/keyboard input, URL autocomplete, session history, and per-agent cookie isolation.",
+    "outcome": "Successfully shipped 50+ commits implementing live CDP screencasting, full mouse/keyboard/scroll interaction, URL bar with Google autocomplete, SQLite-backed session history and action logs, per-agent browser profiles, tab-sharing within same-profile containers for cookie sharing, and numerous stability fixes around session lifecycle and relay task management.",
+    "learnings": {
+      "repo": [
+        "Biome version mismatch: `npx biome` is v0.3.3 but system `biome` (used by local-validate.sh) is v2.4.6 — always use system biome for formatting",
+        "WebSocket broadcast has a subscription filter in broadcast.rs — new event types must be added to the client subscription list in websocket.js or frames are silently dropped",
+        "BrowserManager uses lazy OnceCell initialization — hooks registered at server startup before first use are never applied; must register inside the init closure",
+        "CDP `Page.startScreencast` relay task exits when `tx.send()` has zero receivers — first CDP frame arrives before UI subscribes, causing permanent 'Waiting for first frame' state",
+        "Chrome SingletonLock is a symlink to container hostname; `exists()` returns false for dangling symlinks, so `symlink_metadata()` is required to detect and clean it",
+        "CDP `Input.dispatchMouseEvent` with type `mouseWheel` requires both `deltaX` and `deltaY` to be present even when zero — omitting either causes CDP to reject the event",
+        "Same `profile_id` reuses existing browser container and creates a new tab (shared cookies); different profiles launch separate containers (isolated cookies)",
+        "Action name Display format includes parameters: `mouse_input(x=129, y=231)` not `mouse_input` — `starts_with()` required for matching, not equality",
+        "CDP `EventFrameNavigated` fires on all frame navigations; filter by `frame.parent_id.is_none()` to get only top-level page navigations",
+        "screencast frame metadata includes `scroll_offset_y` — eliminates need for `evaluate` polling for scroll position"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/browser.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "LLMs (MiniMax) send explicit `null` for all optional parameters; `obj.retain(|_, v| !v.is_null())` must be applied before serde deserialization to let `#[serde(default)]` work"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Relay task must drop frames (not exit) when broadcast channel has zero receivers — first CDP frame arrives before subscribers attach"
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "line": 1338,
+          "end_line": 1358,
+          "finding": "`browser.screencast.frame` was missing from the event subscription list — broadcast filter silently dropped all screencast frames"
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "SingletonLock cleanup must use `symlink_metadata()` not `exists()` — Chrome creates a symlink to container hostname that appears non-existent when container dies"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Non-fatal action errors should not call `cleanup_stale_session` — only navigate retry path should trigger cleanup; screenshot/scroll/keyboard/refresh failures should return errors without killing sessions"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Canvas event listeners must use ref callback (fires on DOM element creation) not `useEffect([])` (runs once on mount when canvas may not exist yet due to conditional rendering)"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "BrowserService action hook must be stored on service and applied inside manager() OnceCell init closure — registering at startup before first browser use means the hook is never set"
+        },
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Added `url: Option\u003cString\u003e` to ScreencastFrame populated from CDP `EventFrameNavigated` (filtered to top-level frames) — eliminates get_url polling entirely"
+        },
+        {
+          "path": "crates/web/src/lib.rs",
+          "line": 123,
+          "end_line": 123,
+          "finding": "axum 0.8 uses `{param}` syntax not `:param` for path captures — panics at startup with 'Path segments must not start with :'"
+        }
+      ],
+      "workflow": [
+        "YubiKey GPG signing cannot be done from background Bash tasks — background commits reliably timeout; always run commits in foreground when YubiKey signature is required",
+        "When multiple relay tasks accumulate (one per session switch), WebSocket floods and UI freezes — always check for existing screencast before calling start_screencast",
+        "CDP coordinate mapping must use `offsetX/offsetY` with `clientWidth/clientHeight` (excludes borders) not `clientX - rect.left` with `rect.width` (includes borders)",
+        "Profile lock conflicts cause parallel browser tests to fail — use `--test-threads=1` or per-test temp profile directories",
+        "Chrome `--restore-session-cookies` flag needed for session cookies (like LinkedIn auth) to persist across container restarts — without it only persistent cookies survive"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing timeouts in background Bash tasks — required multiple manual tap sequences and foreground retries throughout the session",
+      "Biome version mismatch (npx 0.3.3 vs system 2.4.6) caused repeated CI failures after `biome format --write` with wrong version appeared to succeed locally",
+      "CDP `mouseWheel` silently rejects events with missing deltaX/deltaY — no error returned, scrolling just doesn't work",
+      "Apple Container networking occasionally produces `ERR_NETWORK_CHANGED` on first navigate in new containers",
+      "Relay task race condition (frames arrive before subscriber) was invisible — 'Waiting for first frame' with no error logs",
+      "Action hook never firing because it was registered before manager lazy-init — no errors, just silently no history recorded",
+      "Chrome SingletonLock as dangling symlink caused 60+ second Chrome startup timeout with no useful error message",
+      "Rapid screencast stop/start cycles during session switching overwhelmed CDP and crashed Chrome — took multiple sessions to diagnose"
+    ],
+    "open_items": [
+      "WebRTC upgrade (neko architecture with GStreamer + VP8/VP9) for \u003c100ms latency vs current 100-300ms CDP screencast",
+      "Binary WebSocket frames for screencast to eliminate ~33% base64 overhead",
+      "Container memory/disk usage display in Settings \u003e Containers page",
+      "Comprehensive e2e test suite for all fixed regressions (cookie persistence, session lifecycle, screencast relay race, coordinate accuracy)",
+      "Session recording as video file for post-hoc review of agent browser activity",
+      "Per-container memory limits config option for Docker/Podman users (Apple Container handles this via VM pressure)",
+      "Playwright e2e tests currently untested in CI — need server running; marked as manual-run only",
+      "Chrome stability with multiple heavy tabs (LinkedIn) in one container — resource limits or process isolation may be needed for production use"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T16:16:45.784595Z",
+    "agent_lines": 0,
+    "human_added": 177,
+    "human_modified": 17,
+    "human_removed": 0,
+    "total_committed": 177,
+    "agent_percentage": 0
+  }
+}
