@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e42cba470a49",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:48:55.554683Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e25d104ddcee",
+  "checkpoint_transcript_start": 5737,
+  "transcript_lines_at_start": 5737,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 4719,
+    "cache_read_tokens": 7015385,
+    "output_tokens": 2302,
+    "api_call_count": 10
+  },
+  "summary": {
+    "intent": "Eliminate polling-based scroll info retrieval by switching to event-driven updates using CDP screencast frame metadata.",
+    "outcome": "Scroll polling removed entirely; scroll position now sourced from screencast frame metadata (`scroll_offset_y`), and `scrollHeight` is queried once on navigation rather than on an interval. The `urlPollTimer` variable was also cleaned up as dead code.",
+    "learnings": {
+      "repo": [
+        "CDP screencast frame metadata already includes `scroll_offset_x` and `scroll_offset_y`, making polling `window.scrollY` redundant.",
+        "The previous scroll polling used two evaluate calls per interval (scrollY + scrollHeight/innerHeight); only scrollHeight needed a one-time fetch.",
+        "URL updates were already migrated to `Page.frameNavigated` CDP events before this session; scroll was the remaining polling holdover."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "Scrollbar thumb position is now derived from `scroll_offset_y` in screencast frame payloads; `pageHeight` is fetched once via a `pageHeight` signal on navigation, not polled."
+        }
+      ],
+      "workflow": [
+        "After removing polling timers, associated timer variables become dead code and trigger lint errors — clean them up in the same pass.",
+        "Lint was run after each incremental edit to catch issues early before committing."
+      ]
+    },
+    "friction": [
+      "After removing scroll polling, the `urlPollTimer` variable was left as dead code and caused a lint error, requiring an extra edit pass."
+    ],
+    "open_items": [
+      "Scroll height (`scrollHeight`) is now fetched once on navigation — may need revisiting for single-page apps where content height changes dynamically without a navigation event.",
+      "The approach of evaluating `scrollHeight` on navigation rather than including it in the frame relay could be revisited for a fully event-driven solution."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:48:35.926271Z",
+    "agent_lines": 30,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 30,
+    "agent_percentage": 100
+  }
+}

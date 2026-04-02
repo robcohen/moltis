@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e42cba470a49",
+  "strategy": "manual-commit",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e4/2cba470a49/0/metadata.json",
+      "transcript": "/e4/2cba470a49/0/full.jsonl",
+      "context": "/e4/2cba470a49/0/context.md",
+      "content_hash": "/e4/2cba470a49/0/content_hash.txt",
+      "prompt": "/e4/2cba470a49/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 4719,
+    "cache_read_tokens": 7015385,
+    "output_tokens": 2302,
+    "api_call_count": 10
+  }
+}
