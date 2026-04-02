@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7815d593f70b",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:35:39.133092Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b9942e384498",
+  "checkpoint_transcript_start": 5552,
+  "transcript_lines_at_start": 5552,
+  "token_usage": {
+    "input_tokens": 7,
+    "cache_creation_tokens": 2826,
+    "cache_read_tokens": 3411804,
+    "output_tokens": 1920,
+    "api_call_count": 5
+  },
+  "summary": {
+    "intent": "Make clicking a past browser session revive it by loading with the original URL, improving session continuity in the browser viewer.",
+    "outcome": "Added a 'Revive' button to history cards that creates a new session with the same URL; a separate 'View Log' link handles showing the action log.",
+    "learnings": {
+      "repo": [
+        "Screencast input handlers (scroll/click/keyboard) were previously gated on `screencasting.value`, which could be false when switching to a session with an already-running screencast since `sendStartScreencast` is skipped in that case.",
+        "Input handlers now check only `activeSession.value` — any selected session allows input regardless of screencast state."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "History cards needed a Revive action to re-launch sessions with the original URL; card click was repurposed to show the action log via a 'View Log' link."
+        }
+      ],
+      "workflow": [
+        "Lint and commit/push were run as sequential bash steps after the edit."
+      ]
+    },
+    "friction": [],
+    "open_items": [
+      "Revive creates a new session rather than truly restoring state — full session state restoration (beyond URL) may be worth revisiting.",
+      "The screencast signal fix (activeSession vs screencasting gate) was shipped just prior; edge cases around session switching and screencast lifecycle may warrant further testing."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:35:23.557942Z",
+    "agent_lines": 35,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 35,
+    "agent_percentage": 100
+  }
+}
