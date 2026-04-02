@@ -354,17 +354,20 @@ impl BrowserManager {
             },
         };
 
-        // Detect stale connections — but don't kill sessions for transient
-        // input event failures. Mouse/keyboard events are fire-and-forget;
-        // a single timeout shouldn't destroy the entire session.
-        // Note: action_name includes params (e.g. "mouse_input(x=1, y=2)")
-        // so we must use starts_with, not exact match.
-        let is_input_event = action_name.starts_with("mouse_input")
+        // Don't kill sessions for transient failures. Only truly fatal
+        // actions (navigate retry, close, snapshot) should trigger cleanup.
+        // Everything else is either fire-and-forget (mouse, keyboard) or
+        // viewer-related (screenshot, screencast) and shouldn't be fatal.
+        let is_non_fatal = action_name.starts_with("mouse_input")
             || action_name.starts_with("keyboard_input")
             || action_name.starts_with("evaluate")
-            || matches!(action_name.as_str(), "get_url" | "get_title");
+            || action_name.starts_with("screenshot")
+            || matches!(
+                action_name.as_str(),
+                "get_url" | "get_title" | "start_screencast" | "stop_screencast"
+            );
         match result {
-            Err(ref e) if e.is_connection_error() && !is_input_event => {
+            Err(ref e) if e.is_connection_error() && !is_non_fatal => {
                 let sid = session_id.unwrap_or("unknown");
                 Err(self.cleanup_stale_session(sid, &action_name).await)
             },
