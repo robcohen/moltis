@@ -1,0 +1,67 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "72716eae41b2",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:44:31.474852Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/browser/src/screencast.rs",
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7640a8f2fce8",
+  "checkpoint_transcript_start": 5578,
+  "transcript_lines_at_start": 5578,
+  "token_usage": {
+    "input_tokens": 40,
+    "cache_creation_tokens": 14495,
+    "cache_read_tokens": 26296443,
+    "output_tokens": 8748,
+    "api_call_count": 38
+  },
+  "summary": {
+    "intent": "Replace polling-based URL tracking in the browser viewer with event-driven URL updates using CDP navigation events to reduce unnecessary get_url calls.",
+    "outcome": "Implemented CDP EventFrameNavigated listener in the screencast relay to broadcast URL changes only when navigation occurs; removed get_url polling and the associated urlPollSuppressUntil suppression logic from the JS frontend.",
+    "learnings": {
+      "repo": [
+        "The screencast relay is in crates/browser/src/screencast.rs and handles both frame broadcasting and now URL change events via CDP.",
+        "Browser actions (get_url, evaluate) are logged at INFO level in moltis_browser::manager, making polling visible in logs.",
+        "chromiumoxide CDP bindings expose EventFrameNavigated with a non-optional Frame field; Frame.parent_id is Option but frame itself is not Option."
+      ],
+      "code": [
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "finding": "ScreencastFrame struct gained an optional url field, populated only on navigation events rather than per-frame to avoid overhead."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "URL display now reads from WebSocket frame metadata instead of a polling interval; urlPollSuppressUntil variable and its usage in navigateSession were removed entirely."
+        }
+      ],
+      "workflow": [
+        "CDP EventFrameNavigated is the correct event for URL change detection in chromiumoxide; checking the generated bindings with grep was necessary to confirm the exact struct shape.",
+        "Test fixtures referencing structs with new fields need updating when fields are added without defaults."
+      ]
+    },
+    "friction": [
+      "EventFrameNavigated struct shape was not known upfront — initial edit assumed frame was Option\u003cFrame\u003e but it is Frame directly, requiring a compile-check-and-fix cycle.",
+      "A test with a ScreencastFrame literal broke due to the new url field, requiring a second fix pass.",
+      "JS lint flagged urlPollSuppressUntil as unused after the polling was removed, requiring cleanup of both the variable declaration and its reference in navigateSession."
+    ],
+    "open_items": [
+      "Scroll info still uses a polling interval — could potentially be replaced with a MutationObserver or scroll event listener for consistency.",
+      "No deduplication guard on EventFrameNavigated for same-URL navigations (e.g. hash changes or reloads) — may broadcast redundant URL updates."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:44:09.456826Z",
+    "agent_lines": 52,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 52,
+    "agent_percentage": 100
+  }
+}
