@@ -1,0 +1,66 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "da2f35c55cc4",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T10:29:15.868949Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7284a5f2acd8",
+  "checkpoint_transcript_start": 5523,
+  "transcript_lines_at_start": 5523,
+  "token_usage": {
+    "input_tokens": 6,
+    "cache_creation_tokens": 19883,
+    "cache_read_tokens": 4063700,
+    "output_tokens": 1727,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Fix scroll freeze after switching browser sessions in the Moltis browser viewing feature, where wheel events were not being relayed to the active session.",
+    "outcome": "Removed redundant `screencasting.value` guard from wheel/mouse event handlers (keeping only `activeSession.value` check), committed and pushed the fix.",
+    "learnings": {
+      "repo": [
+        "Screencasting state (`screencasting.value`) is only set to true inside `sendStartScreencast`; when a session already has a screencast running, this call is skipped, leaving the flag potentially false.",
+        "Canvas wheel listeners are attached via `canvasRefCallback`; Preact may reuse DOM nodes without re-firing the ref callback when the active session changes, causing stale event listeners.",
+        "Signal values captured in event handler closures may be stale (not reactive), making guards on signals inside non-reactive closures unreliable."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "relayWheelEvent guarded on both `activeSession.value \u0026\u0026 screencasting.value`; `screencasting.value` was unreliable in this context. Guard simplified to `activeSession.value` only."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "flushWheel checks `activeSession.value` before flushing batched wheel events (50ms batch interval)."
+        }
+      ],
+      "workflow": [
+        "Checking browser logs for expected event types (wheel vs mouse_input) was the key diagnostic step that narrowed the bug to the JS layer before the WebSocket relay.",
+        "Lint and commit/push were run as a combined final step after the fix."
+      ]
+    },
+    "friction": [
+      "Initial hypothesis about `screencasting.value` being false was incorrect — the flag was being set correctly in the `else` branch, requiring re-reading the code carefully.",
+      "Multiple candidate root causes had to be ruled out sequentially (screencasting flag, race with session list, canvas ref not re-attaching, signal staleness in closures) before landing on the fix.",
+      "No wheel events appeared in logs at all, making it hard to distinguish between 'events not fired', 'events captured by outer container', and 'events suppressed by guard'."
+    ],
+    "open_items": [
+      "Canvas ref callback may still not re-attach listeners correctly when Preact reuses DOM nodes across session switches — the fix works around this but the underlying re-attachment behavior is unverified.",
+      "Race condition where `sessInfo` is null or stale during session switching could still trigger spurious `sendStartScreencast` calls, potentially spawning extra relays."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T10:28:53.048876Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}
