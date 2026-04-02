@@ -40,7 +40,7 @@ pub mod types;
 
 pub use {
     error::Error,
-    manager::BrowserManager,
+    manager::{ActionHook, BrowserManager},
     pool::BrowserSessionInfo,
     screencast::{ScreencastFrame, ScreencastRegistry},
     types::{

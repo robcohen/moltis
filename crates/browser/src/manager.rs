@@ -39,11 +39,16 @@ fn require_session(session_id: Option<&str>, action: &str) -> Result<String, Err
         .ok_or_else(|| Error::InvalidAction(format!("{action} requires a session_id")))
 }
 
+/// Callback invoked after each browser action for logging/audit.
+pub type ActionHook = Arc<dyn Fn(&str, &str, Option<&str>, bool, Option<&str>, u64) + Send + Sync>;
+
 /// Manage Chrome/Chromium instances with CDP.
 pub struct BrowserManager {
     pool: Arc<BrowserPool>,
     config: BrowserConfig,
     screencasts: Arc<ScreencastRegistry>,
+    /// Optional hook called after each action: (session_id, action, url, success, error, duration_ms)
+    action_hook: tokio::sync::RwLock<Option<ActionHook>>,
 }
 
 impl Default for BrowserManager {
@@ -77,7 +82,14 @@ impl BrowserManager {
             pool: Arc::new(BrowserPool::new(config.clone())),
             config,
             screencasts: Arc::new(ScreencastRegistry::new()),
+            action_hook: tokio::sync::RwLock::new(None),
         }
+    }
+
+    /// Register a hook called after each browser action for logging/audit.
+    /// Arguments: (session_id, action, url, success, error, duration_ms).
+    pub async fn set_action_hook(&self, hook: ActionHook) {
+        *self.action_hook.write().await = Some(hook);
     }
 
     /// Check if browser support is enabled.
@@ -120,8 +132,9 @@ impl BrowserManager {
 
         let start = Instant::now();
         let timeout_duration = Duration::from_millis(request.timeout_ms);
+        let action_for_hook = format!("{}", request.action);
 
-        match timeout(
+        let resp = match timeout(
             timeout_duration,
             self.execute_action(
                 request.session_id.as_deref(),
@@ -172,7 +185,34 @@ impl BrowserManager {
                     request.timeout_ms,
                 )
             },
+        };
+
+        // Call action hook for logging/audit (skip high-frequency events)
+        if !action_for_hook.starts_with("mouse_input")
+            && !action_for_hook.starts_with("keyboard_input")
+            && !matches!(
+                action_for_hook.as_str(),
+                "start_screencast"
+                    | "stop_screencast"
+                    | "get_url"
+                    | "get_title"
+                    | "screenshot"
+                    | "evaluate"
+            )
+        {
+            if let Some(hook) = self.action_hook.read().await.as_ref() {
+                hook(
+                    &resp.session_id,
+                    &action_for_hook,
+                    resp.url.as_deref(),
+                    resp.success,
+                    resp.error.as_deref(),
+                    resp.duration_ms,
+                );
+            }
         }
+
+        resp
     }
 
     /// Clean up a session whose CDP connection has died and return an

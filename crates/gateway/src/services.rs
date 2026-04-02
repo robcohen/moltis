@@ -1347,6 +1347,11 @@ impl RealBrowserService {
         self
     }
 
+    /// Get the manager if already initialized (for hook registration).
+    pub fn manager_if_ready(&self) -> Option<Arc<moltis_browser::BrowserManager>> {
+        self.manager_if_initialized()
+    }
+
     /// Set the persistent session store (called after database initialization).
     pub fn set_session_store(&self, pool: sqlx::SqlitePool) {
         let _ = self

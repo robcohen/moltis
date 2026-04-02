@@ -1611,9 +1611,41 @@ pub async fn prepare_gateway_core(
         .await
         .expect("failed to run vault migrations");
 
-    // Wire browser session store after DB is ready.
+    // Wire browser session store and action hook after DB is ready.
+    // The hook runs on every browser action (from both tool and UI paths)
+    // so agent-initiated sessions are also logged to history.
     if let Some(ref svc) = browser_svc_ref {
         svc.set_session_store(db_pool.clone());
+        let store = crate::browser_session_store::BrowserSessionStore::new(db_pool.clone());
+        if let Some(manager) = svc.manager_if_ready() {
+            manager
+                .set_action_hook(Arc::new(
+                    move |sid, action, url, success, error, duration_ms| {
+                        let store = store.clone();
+                        let sid = sid.to_string();
+                        let action = action.to_string();
+                        let url = url.map(String::from);
+                        let error = error.map(String::from);
+                        tokio::spawn(async move {
+                            let _ = store.start_session(&sid, false).await;
+                            let _ = store
+                                .log_action(
+                                    &sid,
+                                    &action,
+                                    url.as_deref(),
+                                    success,
+                                    error.as_deref(),
+                                    duration_ms,
+                                )
+                                .await;
+                            if action == "close" {
+                                let _ = store.close_session(&sid).await;
+                            }
+                        });
+                    },
+                ))
+                .await;
+        }
     }
 
     // Migrate plugins data into unified skills system (idempotent, non-fatal).
