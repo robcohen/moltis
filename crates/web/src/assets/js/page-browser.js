@@ -415,7 +415,7 @@ function canvasCoords(e, canvas) {
 var lastMoveTime = 0;
 
 function relayMouseEvent(e, canvas) {
-	if (!(activeSession.value && screencasting.value)) return;
+	if (!activeSession.value) return;
 	e.preventDefault();
 
 	if (e.type === "mousemove") {
@@ -482,7 +482,7 @@ function flushWheel() {
 }
 
 function relayWheelEvent(e, canvas) {
-	if (!(activeSession.value && screencasting.value)) return;
+	if (!activeSession.value) return;
 	e.preventDefault();
 
 	var coords = canvasCoords(e, canvas);
@@ -499,7 +499,7 @@ function relayWheelEvent(e, canvas) {
 }
 
 function relayKeyEvent(e) {
-	if (!(activeSession.value && screencasting.value)) return;
+	if (!activeSession.value) return;
 
 	// Let Cmd+V / Ctrl+V through to trigger the paste event
 	if ((e.metaKey || e.ctrlKey) && e.key === "v") return;
