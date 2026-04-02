@@ -651,7 +651,7 @@ impl Default for BrowserConfig {
             device_scale_factor: 1.0,
             max_instances: 0, // 0 = unlimited, limited by memory
             memory_limit_percent: 90,
-            idle_timeout_secs: 7200,
+            idle_timeout_secs: 86400,
             navigation_timeout_ms: 30000,
             user_agent: None,
             chrome_args: Vec::new(),

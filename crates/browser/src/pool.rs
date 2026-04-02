@@ -24,7 +24,9 @@ use crate::{
     types::{BrowserConfig, BrowserPreference},
 };
 
-pub(crate) const MAX_BROWSER_INSTANCE_LIFETIME: Duration = Duration::from_secs(2 * 60 * 60);
+/// Containers now host multiple tabs with shared cookies — keep them
+/// alive for a full day so logins persist and tabs aren't disrupted.
+pub(crate) const MAX_BROWSER_INSTANCE_LIFETIME: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Information about an active browser session.
 #[derive(Debug, Clone, serde::Serialize)]
