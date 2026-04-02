@@ -190,14 +190,11 @@ impl BrowserManager {
         // Call action hook for logging/audit (skip high-frequency events)
         if !action_for_hook.starts_with("mouse_input")
             && !action_for_hook.starts_with("keyboard_input")
+            && !action_for_hook.starts_with("evaluate")
+            && !action_for_hook.starts_with("screenshot")
             && !matches!(
                 action_for_hook.as_str(),
-                "start_screencast"
-                    | "stop_screencast"
-                    | "get_url"
-                    | "get_title"
-                    | "screenshot"
-                    | "evaluate"
+                "start_screencast" | "stop_screencast" | "get_url" | "get_title"
             )
         {
             if let Some(hook) = self.action_hook.read().await.as_ref() {
@@ -349,10 +346,12 @@ impl BrowserManager {
         // Detect stale connections — but don't kill sessions for transient
         // input event failures. Mouse/keyboard events are fire-and-forget;
         // a single timeout shouldn't destroy the entire session.
-        let is_input_event = matches!(
-            action_name.as_str(),
-            "mouse_input" | "keyboard_input" | "get_url" | "get_title" | "evaluate"
-        );
+        // Note: action_name includes params (e.g. "mouse_input(x=1, y=2)")
+        // so we must use starts_with, not exact match.
+        let is_input_event = action_name.starts_with("mouse_input")
+            || action_name.starts_with("keyboard_input")
+            || action_name.starts_with("evaluate")
+            || matches!(action_name.as_str(), "get_url" | "get_title");
         match result {
             Err(ref e) if e.is_connection_error() && !is_input_event => {
                 let sid = session_id.unwrap_or("unknown");

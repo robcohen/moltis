@@ -1312,6 +1312,8 @@ pub struct RealBrowserService {
     /// Persistent session history store for action logging.
     /// Set after database initialization via `set_session_store`.
     session_store: tokio::sync::OnceCell<crate::browser_session_store::BrowserSessionStore>,
+    /// Action hook to register on the manager when it initializes.
+    action_hook: tokio::sync::OnceCell<moltis_browser::ActionHook>,
 }
 
 impl RealBrowserService {
@@ -1323,6 +1325,7 @@ impl RealBrowserService {
             manager: Arc::new(tokio::sync::OnceCell::new()),
             default_sandbox: false,
             session_store: tokio::sync::OnceCell::new(),
+            action_hook: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -1338,6 +1341,7 @@ impl RealBrowserService {
             manager,
             default_sandbox: false,
             session_store: tokio::sync::OnceCell::new(),
+            action_hook: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -1347,16 +1351,45 @@ impl RealBrowserService {
         self
     }
 
-    /// Get the manager if already initialized (for hook registration).
-    pub fn manager_if_ready(&self) -> Option<Arc<moltis_browser::BrowserManager>> {
-        self.manager_if_initialized()
-    }
-
     /// Set the persistent session store (called after database initialization).
     pub fn set_session_store(&self, pool: sqlx::SqlitePool) {
         let _ = self
             .session_store
-            .set(crate::browser_session_store::BrowserSessionStore::new(pool));
+            .set(crate::browser_session_store::BrowserSessionStore::new(
+                pool.clone(),
+            ));
+        // Pre-build the action hook so it's ready when the manager initializes.
+        let store = crate::browser_session_store::BrowserSessionStore::new(pool);
+        let _ = self.action_hook.set(Arc::new(
+            move |sid: &str,
+                  action: &str,
+                  url: Option<&str>,
+                  success: bool,
+                  error: Option<&str>,
+                  duration_ms: u64| {
+                let store = store.clone();
+                let sid = sid.to_string();
+                let action = action.to_string();
+                let url = url.map(String::from);
+                let error = error.map(String::from);
+                tokio::spawn(async move {
+                    let _ = store.start_session(&sid, false).await;
+                    let _ = store
+                        .log_action(
+                            &sid,
+                            &action,
+                            url.as_deref(),
+                            success,
+                            error.as_deref(),
+                            duration_ms,
+                        )
+                        .await;
+                    if action == "close" {
+                        let _ = store.close_session(&sid).await;
+                    }
+                });
+            },
+        ));
     }
 
     pub fn from_config(
@@ -1370,13 +1403,11 @@ impl RealBrowserService {
     }
 
     async fn manager(&self) -> Arc<moltis_browser::BrowserManager> {
-        Arc::clone(
+        let manager = Arc::clone(
             self.manager
                 .get_or_init(|| async {
                     let config = self.config.clone();
-                    match tokio::task::spawn_blocking(move || {
-                        // Browser detection and stale-container cleanup can block;
-                        // run these off the async runtime worker threads.
+                    let mgr = match tokio::task::spawn_blocking(move || {
                         moltis_browser::detect::check_and_warn(config.chrome_path.as_deref());
                         Arc::new(moltis_browser::BrowserManager::new(config))
                     })
@@ -1392,10 +1423,16 @@ impl RealBrowserService {
                             moltis_browser::detect::check_and_warn(config.chrome_path.as_deref());
                             Arc::new(moltis_browser::BrowserManager::new(config))
                         },
+                    };
+                    // Register action hook for session logging if available
+                    if let Some(hook) = self.action_hook.get() {
+                        mgr.set_action_hook(Arc::clone(hook)).await;
                     }
+                    mgr
                 })
                 .await,
-        )
+        );
+        manager
     }
 
     fn manager_if_initialized(&self) -> Option<Arc<moltis_browser::BrowserManager>> {
