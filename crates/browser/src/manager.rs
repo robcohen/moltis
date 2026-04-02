@@ -226,14 +226,7 @@ impl BrowserManager {
             let _ = self.pool.close_session(session_id).await;
             // Notify the action hook so the session is marked closed in history
             if let Some(hook) = self.action_hook.read().await.as_ref() {
-                hook(
-                    session_id,
-                    "close",
-                    None,
-                    false,
-                    Some("connection lost"),
-                    0,
-                );
+                hook(session_id, "close", None, false, Some("connection lost"), 0);
             }
         }
         Error::ConnectionClosed(format!(
@@ -354,25 +347,12 @@ impl BrowserManager {
             },
         };
 
-        // Don't kill sessions for transient failures. Only truly fatal
-        // actions (navigate retry, close, snapshot) should trigger cleanup.
-        // Everything else is either fire-and-forget (mouse, keyboard) or
-        // viewer-related (screenshot, screencast) and shouldn't be fatal.
-        let is_non_fatal = action_name.starts_with("mouse_input")
-            || action_name.starts_with("keyboard_input")
-            || action_name.starts_with("evaluate")
-            || action_name.starts_with("screenshot")
-            || matches!(
-                action_name.as_str(),
-                "get_url" | "get_title" | "start_screencast" | "stop_screencast"
-            );
-        match result {
-            Err(ref e) if e.is_connection_error() && !is_non_fatal => {
-                let sid = session_id.unwrap_or("unknown");
-                Err(self.cleanup_stale_session(sid, &action_name).await)
-            },
-            other => other,
-        }
+        // Never kill sessions from execute_action errors. The navigate
+        // method has its own retry-with-fresh-session logic for connection
+        // errors. All other actions just return the error — Chrome may
+        // recover on the next request. Sessions are only cleaned up by
+        // explicit close, idle timeout, or navigate retry failure.
+        result
     }
 
     /// Navigate to a URL.
