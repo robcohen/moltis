@@ -551,6 +551,8 @@ function relayPasteEvent(e) {
 
 // ── Components ──────────────────────────────────────────────
 
+var sessionTab = signal("live"); // "live" | "history"
+
 function SessionList() {
 	useEffect(() => {
 		fetchSessions();
@@ -559,17 +561,77 @@ function SessionList() {
 	}, []);
 
 	var s = sessions.value;
-	if (loading.value && s.length === 0) {
-		return html`<div class="text-xs text-[var(--muted)] p-3">Loading sessions...</div>`;
-	}
+	var activeIds = new Set(s.map((x) => x.session_id));
+	var past = sessionHistory.value.filter((x) => !activeIds.has(x.session_id));
+	var tab = sessionTab.value;
 
-	if (s.length === 0) {
-		return html`<div class="text-xs text-[var(--muted)] p-3">
-			No active browser sessions. Click "New Session" to create one, or sessions will appear here when the agent uses the browser tool.
-		</div>`;
-	}
+	return html`<div class="flex flex-col gap-3">
+		<div class="flex border-b border-[var(--border)]">
+			<button
+				class="px-3 py-1.5 text-xs font-medium transition-colors ${tab === "live" ? "text-[var(--text-strong)] border-b-2 border-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--text)]"}"
+				style="border-top: none; border-left: none; border-right: none; background: none; cursor: pointer;"
+				onClick=${() => {
+					sessionTab.value = "live";
+				}}
+			>
+				Live ${s.length > 0 ? `(${s.length})` : ""}
+			</button>
+			<button
+				class="px-3 py-1.5 text-xs font-medium transition-colors ${tab === "history" ? "text-[var(--text-strong)] border-b-2 border-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--text)]"}"
+				style="border-top: none; border-left: none; border-right: none; background: none; cursor: pointer;"
+				onClick=${() => {
+					sessionTab.value = "history";
+					fetchHistory();
+				}}
+			>
+				History ${past.length > 0 ? `(${past.length})` : ""}
+			</button>
+		</div>
 
-	return html`<div class="flex flex-col gap-2">
+		${
+			tab === "history"
+				? html`
+			${
+				past.length === 0
+					? html`<div class="text-xs text-[var(--muted)] p-3">No past sessions.</div>`
+					: html`<div class="flex flex-col gap-1">
+					${past.map((sess) => {
+						var isSelected = selectedHistorySession.value === sess.session_id;
+						return html`
+							<div
+								key=${sess.session_id}
+								class="rounded border p-2 text-xs cursor-pointer transition-colors ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50"}"
+								onClick=${() => {
+									activeSession.value = null;
+									screencasting.value = false;
+									frameData.value = null;
+									selectedHistorySession.value = sess.session_id;
+									fetchActionLog(sess.session_id);
+								}}
+							>
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex-1 min-w-0">
+										<div class="font-mono text-[var(--text-strong)] truncate">${sess.session_id}</div>
+										<div class="text-[var(--muted)] truncate mt-0.5">${sess.url || "(no page)"}</div>
+									</div>
+									<span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface2)] text-[var(--muted)] shrink-0">${sess.closed_at ? "closed" : "lost"}</span>
+								</div>
+								<div class="text-[var(--muted)] mt-1">${sess.created_at}</div>
+							</div>
+						`;
+					})}
+				</div>`
+			}
+		`
+				: html`
+			${
+				s.length === 0
+					? html`<div class="text-xs text-[var(--muted)] p-3">
+					No active sessions. Click "New Session" to create one.
+				</div>`
+					: null
+			}
+			<div class="flex flex-col gap-2">
 		${s.map((sess) => {
 			var isActive = activeSession.value === sess.session_id;
 			return html`
@@ -622,6 +684,9 @@ function SessionList() {
 				</div>
 			`;
 		})}
+		</div>
+		`
+		}
 	</div>`;
 }
 
@@ -989,49 +1054,6 @@ function BrowserCanvas() {
 	</div>`;
 }
 
-function SessionHistory() {
-	useEffect(() => {
-		fetchHistory();
-	}, []);
-
-	// Show all past sessions that aren't currently active in the pool
-	var activeIds = new Set(sessions.value.map((s) => s.session_id));
-	var past = sessionHistory.value.filter((s) => !activeIds.has(s.session_id));
-	if (past.length === 0) return null;
-
-	return html`<div class="mt-4">
-		<div class="text-xs font-medium text-[var(--muted)] mb-2">History</div>
-		<div class="flex flex-col gap-1">
-			${past.map((sess) => {
-				var isSelected = selectedHistorySession.value === sess.session_id;
-				return html`
-					<div
-						key=${sess.session_id}
-						class="rounded border p-2 text-xs cursor-pointer transition-colors ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50"}"
-						onClick=${() => {
-							// Deselect live session, show history
-							activeSession.value = null;
-							screencasting.value = false;
-							frameData.value = null;
-							selectedHistorySession.value = sess.session_id;
-							fetchActionLog(sess.session_id);
-						}}
-					>
-						<div class="flex items-center justify-between gap-2">
-							<div class="flex-1 min-w-0">
-								<div class="font-mono text-[var(--text-strong)] truncate">${sess.session_id}</div>
-								<div class="text-[var(--muted)] truncate mt-0.5">${sess.url || "(no page loaded)"}</div>
-							</div>
-							<span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface2)] text-[var(--muted)] shrink-0">closed</span>
-						</div>
-						<div class="text-[var(--muted)] mt-1">${sess.created_at}</div>
-					</div>
-				`;
-			})}
-		</div>
-	</div>`;
-}
-
 function ActionLogPanel() {
 	var sid = selectedHistorySession.value;
 	if (!sid) return null;
@@ -1188,7 +1210,6 @@ function BrowserPage() {
 		<div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
 			<div class="lg:w-80 shrink-0 overflow-y-auto">
 				<${SessionList} />
-				<${SessionHistory} />
 			</div>
 			<div class="flex-1 flex flex-col min-w-0">
 				${
