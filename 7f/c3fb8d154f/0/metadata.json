@@ -1,0 +1,64 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7fc3fb8d154f",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T14:40:38.59681Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/browser/src/manager.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9de514f918d3",
+  "checkpoint_transcript_start": 5854,
+  "transcript_lines_at_start": 5854,
+  "token_usage": {
+    "input_tokens": 9,
+    "cache_creation_tokens": 718982,
+    "cache_read_tokens": 4296435,
+    "output_tokens": 2027,
+    "api_call_count": 7
+  },
+  "summary": {
+    "intent": "Persist LinkedIn session cookies across browser container restarts so users don't need to re-authenticate when starting new sessions.",
+    "outcome": "Fixed a session crash caused by `screenshot` not being in the non-fatal error list; identified that cookie sharing between concurrent sessions is architecturally impossible due to Chrome's profile directory locking.",
+    "learnings": {
+      "repo": [
+        "Chrome's `--restore-session-cookies` flag enables persistence of session cookies (no-expiry cookies like LinkedIn auth) across sequential restarts.",
+        "Chrome locks its profile directory, preventing two containers from sharing the same Cookies database simultaneously — cookies only persist across sequential (not concurrent) sessions.",
+        "Browser sessions run in VM-isolated apple-container sandbox with browserless/chrome image.",
+        "Session IDs follow the pattern `browser-\u003chex\u003e` and map to container IDs like `moltis-browser-\u003chex\u003e`."
+      ],
+      "code": [
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "`screenshot`, `start_screencast`, and `stop_screencast` were not in the non-fatal error list, causing session termination when these viewer actions encountered errors. Fixed by adding them to the non-fatal list."
+        }
+      ],
+      "workflow": [
+        "Browser connection death is logged as WARN `browser connection dead, closing stale session` before the pool closes it.",
+        "Containerized Chrome startup takes ~2s (642ms for process start + ~1.5s for Chrome readiness)."
+      ]
+    },
+    "friction": [
+      "Session cookie persistence fix (--restore-session-cookies) was implemented but didn't work for the user's test case because they opened a *concurrent* second session, not a sequential restart — the root cause differed from what was initially addressed.",
+      "Session killed itself mid-test due to `screenshot` action not being in the non-fatal list, interrupting the manual verification flow.",
+      "No e2e tests exist to verify session cookie persistence, making it hard to confirm the fix works without manual testing."
+    ],
+    "open_items": [
+      "Write e2e tests for session cookie persistence: log in, restart session, verify still logged in (sequential access pattern).",
+      "Document the concurrent-session cookie sharing limitation — two simultaneous sessions cannot share cookies due to Chrome profile directory locking.",
+      "Consider whether a cookie-sharing mechanism (e.g., copy/sync cookies between containers at startup) is worth implementing for multi-session use cases."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T14:40:15.733537Z",
+    "agent_lines": 11,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 11,
+    "agent_percentage": 100
+  }
+}
