@@ -1282,18 +1282,22 @@ export function initBrowser(container) {
 				selectSession(targetSession);
 				return;
 			}
-			// After a few checks, try history — revive the dead session
+			// After a few checks, try history — revive directly with the URL
 			if (attempts >= 3) {
 				clearInterval(checkInterval);
 				await fetchHistory();
 				var hist = sessionHistory.value.find((s) => s.session_id === targetSession);
 				if (hist?.url && hist.url !== "about:blank") {
-					// Revive: create new session with the same URL
 					sessionTab.value = "live";
-					await createSession();
-					if (activeSession.value) {
-						await navigateSession(activeSession.value, hist.url);
-					}
+					try {
+						var res = await browserAction({ action: "navigate", url: hist.url });
+						if (res.session_id) {
+							await fetchSessions();
+							activeSession.value = res.session_id;
+							currentUrl.value = res.url || hist.url;
+							await sendStartScreencast(res.session_id);
+						}
+					} catch {}
 				}
 			}
 		}, 500);
