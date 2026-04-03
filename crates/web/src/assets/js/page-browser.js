@@ -1249,15 +1249,28 @@ function BrowserPage() {
 
 // ── Init / Teardown ─────────────────────────────────────────
 
+// Module-level pending session to auto-select on init.
+// Set by navigateToBrowserSession() before routing.
+var pendingSelectSession = null;
+
+/** Navigate to the browser settings page and auto-select a session. */
+export function navigateToBrowserSession(sessionId) {
+	pendingSelectSession = sessionId;
+}
+
 export function initBrowser(container) {
 	containerEl = container;
 	render(html`<${BrowserPage} />`, container);
 
-	// Auto-select session from URL parameter (e.g. /settings/browser?session=browser-xxx)
-	var fullUrl = window.location.pathname + window.location.search + (window.location.hash || "");
-	var sessionMatch = fullUrl.match(/[?&]session=([^&]+)/);
-	if (sessionMatch) {
-		var targetSession = decodeURIComponent(sessionMatch[1]);
+	// Auto-select session from pending navigation or URL
+	var targetSession = pendingSelectSession;
+	pendingSelectSession = null;
+	if (!targetSession) {
+		var fullUrl = window.location.pathname + window.location.search;
+		var sessionMatch = fullUrl.match(/[?&]session=([^&]+)/);
+		if (sessionMatch) targetSession = decodeURIComponent(sessionMatch[1]);
+	}
+	if (targetSession) {
 		// Wait for sessions to load, then select
 		var checkInterval = setInterval(() => {
 			var found = sessions.value.find((s) => s.session_id === targetSession);

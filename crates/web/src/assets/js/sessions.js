@@ -28,6 +28,7 @@ import {
 } from "./helpers.js";
 import { attachMessageVoiceControl } from "./message-voice.js";
 import { restoreNodeSelection } from "./nodes-selector.js";
+import { navigateToBrowserSession } from "./page-browser.js";
 import { updateSessionProjectSelect } from "./project-combo.js";
 import { currentPrefix, navigate, sessionPath } from "./router.js";
 import { settingsPath } from "./routes.js";
@@ -808,12 +809,13 @@ function renderHistoryToolResult(msg) {
 		// "View browser session" link for browser tool results
 		if (msg.result.session_id && msg.result.session_id.startsWith("browser-")) {
 			var viewLink = document.createElement("a");
-			viewLink.href = `/settings/browser?session=${encodeURIComponent(msg.result.session_id)}`;
+			viewLink.href = "/settings/browser";
 			viewLink.className = "text-xs text-[var(--accent)] hover:underline mt-1 inline-block";
 			viewLink.textContent = "\u{1F310} View browser session";
 			viewLink.onclick = (e) => {
 				e.preventDefault();
-				navigate(`/settings/browser?session=${encodeURIComponent(msg.result.session_id)}`);
+				navigateToBrowserSession(msg.result.session_id);
+				navigate("/settings/browser");
 			};
 			card.appendChild(viewLink);
 		}
