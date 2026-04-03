@@ -1,0 +1,17 @@
+Can you look if ~/code/openclaw is using https://github.com/firecrawl/firecrawl and how it uses it, and how I could add this in moltis.
+
+---
+
+Please implement it yes, add a new feature gate for people who want to disable it
+
+---
+
+commit, push, create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/541 and resolve conversations
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/541
