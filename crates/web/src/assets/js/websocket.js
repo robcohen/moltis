@@ -33,7 +33,7 @@ import { fetchModels } from "./models.js";
 import { prefetchChannels } from "./page-channels.js";
 import { maybeRefreshFullContext, renderCompactCard } from "./page-chat.js";
 import { fetchProjects } from "./projects.js";
-import { currentPage, currentPrefix, mount, navigate } from "./router.js";
+import { currentPage, currentPrefix, mount, navigate, navigate } from "./router.js";
 import {
 	appendLastMessageTimestamp,
 	bumpSessionCount,
@@ -289,9 +289,13 @@ function appendToolResult(toolCard, result, eventSession) {
 	// "View browser session" link for browser tool results
 	if (result.session_id && result.session_id.startsWith("browser-")) {
 		var viewLink = document.createElement("a");
-		viewLink.href = `#/settings/browser?session=${encodeURIComponent(result.session_id)}`;
+		viewLink.href = `/settings/browser?session=${encodeURIComponent(result.session_id)}`;
 		viewLink.className = "text-xs text-[var(--accent)] hover:underline mt-1 inline-block";
 		viewLink.textContent = "\u{1F310} View browser session";
+		viewLink.onclick = (e) => {
+			e.preventDefault();
+			navigate(`/settings/browser?session=${encodeURIComponent(result.session_id)}`);
+		};
 		toolCard.appendChild(viewLink);
 	}
 	// Document card (send_document tool)

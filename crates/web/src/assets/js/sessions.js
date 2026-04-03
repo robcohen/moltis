@@ -29,7 +29,7 @@ import {
 import { attachMessageVoiceControl } from "./message-voice.js";
 import { restoreNodeSelection } from "./nodes-selector.js";
 import { updateSessionProjectSelect } from "./project-combo.js";
-import { currentPrefix, navigate, sessionPath } from "./router.js";
+import { currentPrefix, navigate, navigate, sessionPath } from "./router.js";
 import { settingsPath } from "./routes.js";
 import { updateSandboxImageUI, updateSandboxUI } from "./sandbox.js";
 import * as S from "./state.js";
@@ -808,9 +808,13 @@ function renderHistoryToolResult(msg) {
 		// "View browser session" link for browser tool results
 		if (msg.result.session_id && msg.result.session_id.startsWith("browser-")) {
 			var viewLink = document.createElement("a");
-			viewLink.href = `#/settings/browser?session=${encodeURIComponent(msg.result.session_id)}`;
+			viewLink.href = `/settings/browser?session=${encodeURIComponent(msg.result.session_id)}`;
 			viewLink.className = "text-xs text-[var(--accent)] hover:underline mt-1 inline-block";
 			viewLink.textContent = "\u{1F310} View browser session";
+			viewLink.onclick = (e) => {
+				e.preventDefault();
+				navigate(`/settings/browser?session=${encodeURIComponent(msg.result.session_id)}`);
+			};
 			card.appendChild(viewLink);
 		}
 		// Render persisted document from the media API.
