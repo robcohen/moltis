@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "69a850e1dc61",
+  "session_id": "287bd3d0-f0f4-4ecd-af78-62ce9cd31514",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T14:42:41.873699Z",
+  "branch": "woolly-rise",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "3db3f174b4cb",
+  "token_usage": {
+    "input_tokens": 33,
+    "cache_creation_tokens": 74781,
+    "cache_read_tokens": 1439965,
+    "output_tokens": 10336,
+    "api_call_count": 29
+  },
+  "summary": {
+    "intent": "Investigate GitHub issue #556 about vision support being silently broken for Mistral and Qwen models, and implement a fix if the bug was confirmed.",
+    "outcome": "Bug confirmed and fixed: `supports_vision_for_model()` was rewritten from a default-deny allowlist to a default-allow denylist approach, with all 12 related tests passing and clippy/format clean. Commit created.",
+    "learnings": {
+      "repo": [
+        "Vision support is gated by `supports_vision_for_model()` in `crates/providers/src/lib.rs` (lines 776-808), which was a prefix-based allowlist — Mistral and Qwen were missing.",
+        "When vision is unsupported, `tool_result_to_content()` in `runner.rs:728-732` calls `sanitize_tool_result()` which silently strips image data — no error is surfaced to the user.",
+        "The project uses a 'beads' issue tracker (separate from GitHub) that requires claiming issues before working on them.",
+        "GLM models use a naming convention where 'v' in the model ID suffix indicates vision capability (e.g., glm-4v vs glm-4)."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "line": 776,
+          "end_line": 808,
+          "finding": "supports_vision_for_model() was a default-deny allowlist; rewritten to default-allow with a denylist of known text-only models (codestral, kimi-, non-v GLM variants)."
+        },
+        {
+          "path": "crates/providers/src/lib.rs",
+          "line": 728,
+          "end_line": 732,
+          "finding": "tool_result_to_content() checks supports_vision and calls sanitize_tool_result() to strip images — this is the silent failure point when vision is incorrectly denied."
+        }
+      ],
+      "workflow": [
+        "Default-deny capability flags are dangerous for silently degrading UX; default-allow with a known-bad denylist produces visible API errors that are easier to diagnose.",
+        "The 'beads' issue tracker can be flaky/rate-limited, requiring retry logic or waiting before closing issues."
+      ]
+    },
+    "friction": [
+      "The beads issue tracker was unresponsive/down during the session — multiple retries to close the issue all failed, requiring the close to be deferred.",
+      "Multiple rounds of grepping for `supports_vision` were needed across different contexts before getting a complete picture of the call chain."
+    ],
+    "open_items": [
+      "Close the beads issue once the tracker is back online.",
+      "Consider expanding the MISTRAL_MODELS list in lib.rs to surface more Mistral vision-capable models in the UI."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T14:42:27.682593Z",
+    "agent_lines": 86,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 86,
+    "agent_percentage": 100
+  }
+}
