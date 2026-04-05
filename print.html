@@ -910,6 +910,11 @@ env = { GITHUB_TOKEN = "ghp_..." }
 transport = "sse"
 url = "https://mcp.example.com/mcp?api_key=$REMOTE_MCP_KEY"
 headers = { Authorization = "Bearer ${REMOTE_MCP_TOKEN}" }
+
+[mcp.servers.remote_http]
+transport = "streamable-http"
+url = "https://mcp.example.com/mcp"
+headers = { Authorization = "Bearer ${API_KEY}" }
 </code></pre>
 <p>Remote MCP URLs and headers support <code>$NAME</code> or <code>${NAME}</code> placeholders. For live remote servers, values resolve from Moltis-managed env overrides, either <code>[env]</code> in config or <strong>Settings</strong> → <strong>Environment Variables</strong>.</p>
 <h2 id="telegram-integration"><a class="header" href="#telegram-integration">Telegram Integration</a></h2>
@@ -1510,6 +1515,11 @@ request_timeout_secs = 90
 transport = "sse"
 url = "https://mcp.example.com/mcp?api_key=$REMOTE_MCP_KEY"
 headers = { Authorization = "Bearer ${REMOTE_MCP_TOKEN}" }
+
+[mcp.servers.remote_http]
+transport = "streamable-http"
+url = "https://mcp.example.com/mcp"
+headers = { Authorization = "Bearer ${API_KEY}" }
 </code></pre>
 <p>Remote URLs and headers support <code>$NAME</code> and <code>${NAME}</code> placeholders. For live remote servers, placeholder values resolve from Moltis-managed env overrides, either <code>[env]</code> in config or <strong>Settings</strong> → <strong>Environment Variables</strong>.</p>
 <h2 id="popular-mcp-servers"><a class="header" href="#popular-mcp-servers">Popular MCP Servers</a></h2>
@@ -1540,8 +1550,8 @@ env = { API_KEY = "secret", DEBUG = "true" }
 request_timeout_secs = 90
 
 # Optional: remote transport
-transport = "sse"               # "stdio" (default) or "sse"
-url = "https://mcp.example.com/mcp"  # Required when transport = "sse"
+transport = "sse"               # "stdio" (default), "sse", or "streamable-http"
+url = "https://mcp.example.com/mcp"  # Required when transport = "sse" or "streamable-http"
 headers = { "x-api-key" = "$REMOTE_MCP_KEY" }  # Optional request headers
 </code></pre>
 <h2 id="request-timeouts"><a class="header" href="#request-timeouts">Request Timeouts</a></h2>
@@ -1550,7 +1560,7 @@ headers = { "x-api-key" = "$REMOTE_MCP_KEY" }  # Optional request headers
 <li><code>mcp.request_timeout_secs</code> sets the global default for every MCP server</li>
 <li><code>mcp.servers.&lt;name&gt;.request_timeout_secs</code> optionally overrides that default for a specific server</li>
 </ul>
-<p>This is useful when most local MCP servers respond quickly, but one remote SSE server or one expensive tool server needs a longer timeout.</p>
+<p>This is useful when most local MCP servers respond quickly, but one remote server or one expensive tool server needs a longer timeout.</p>
 <pre><code class="language-toml">[mcp]
 request_timeout_secs = 30
 
@@ -1560,8 +1570,8 @@ url = "https://mcp.example.com/mcp"
 request_timeout_secs = 120
 </code></pre>
 <p>In the web UI, the MCP settings page lets you edit both the global default timeout and the optional timeout override for each configured server.</p>
-<h2 id="remote-sse-secrets-and-placeholders"><a class="header" href="#remote-sse-secrets-and-placeholders">Remote SSE Secrets and Placeholders</a></h2>
-<p>Remote MCP servers often expect API keys or bearer tokens in the URL query string or request headers. Moltis supports both patterns.</p>
+<h2 id="remote-server-secrets-and-placeholders"><a class="header" href="#remote-server-secrets-and-placeholders">Remote Server Secrets and Placeholders</a></h2>
+<p>Remote MCP servers (SSE or Streamable HTTP) often expect API keys or bearer tokens in the URL query string or request headers. Moltis supports both patterns.</p>
 <pre><code class="language-toml">[mcp.servers.linear_remote]
 transport = "sse"
 url = "https://mcp.example.com/mcp?api_key=$REMOTE_MCP_KEY"
