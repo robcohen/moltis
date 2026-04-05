@@ -1,0 +1,17 @@
+Analyze https://github.com/moltis-org/moltis/issues/552 and plan for a fix
+
+---
+
+proceed
+
+---
+
+bd is back, proceed
+
+---
+
+commit push and create a PR
+
+---
+
+Fix comments from https://github.com/moltis-org/moltis/pull/557 and resolbe conversations
