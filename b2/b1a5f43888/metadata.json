@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b2b1a5f43888",
+  "strategy": "manual-commit",
+  "branch": "unmarred-hawthorn",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/providers.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b2/b1a5f43888/0/metadata.json",
+      "transcript": "/b2/b1a5f43888/0/full.jsonl",
+      "context": "/b2/b1a5f43888/0/context.md",
+      "content_hash": "/b2/b1a5f43888/0/content_hash.txt",
+      "prompt": "/b2/b1a5f43888/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 51,
+    "cache_creation_tokens": 73644,
+    "cache_read_tokens": 2395282,
+    "output_tokens": 12722,
+    "api_call_count": 45
+  }
+}
