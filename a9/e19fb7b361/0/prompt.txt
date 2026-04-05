@@ -1,0 +1,241 @@
+/m/moltis main [?] ❯ ./scripts/local-validate.sh
+Detected macOS without nvcc; forcing non-CUDA local validation commands (no --all-features).
+Override with LOCAL_VALIDATE_LINT_CMD / LOCAL_VALIDATE_TEST_CMD / LOCAL_VALIDATE_BUILD_CMD / LOCAL_VALIDATE_COVERAGE_CMD if needed.
+Local-only validation (34dbd45) — no statuses will be published
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-873236a1dfb48105
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-f74545218f48e070
+cargo +nightly-2025-11-30 fmt --all -- --check
+Checking .deb filename pattern...
+  ok: .deb filename: no revision suffix (matches cargo-deb output)
+Checking .rpm filename pattern...
+  ok: .rpm filename: has -1 revision (matches cargo-generate-rpm output)
+Checking .pkg.tar.zst (Arch) filename pattern...
+  ok: .pkg.tar.zst filename: has -1 revision (matches release workflow)
+Checking binary tarball filename pattern...
+  ok: binary tarball: matches release workflow pattern
+Checking release_tag() logic...
+🌈 zizmor v1.22.0
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 13 install package name checks passed
+[local/install-names] passed in 0s
+i18n parity OK: 3 locales, 18 namespaces.
+[local/i18n] passed in 0s
+crates/web/src/assets/js/providers.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+     831  831 │                                 }
+     832  832 │                                 if (modelTimedOut) {
+     833      │ - → → → → → console.warn("models.test·timed·out·for",·modelForTest,·"—·saving·model·anyway·(local·servers·may·need·longer·to·load)");
+          833 │ + → → → → → console.warn(
+          834 │ + → → → → → → "models.test·timed·out·for",
+          835 │ + → → → → → → modelForTest,
+          836 │ + → → → → → → "—·saving·model·anyway·(local·servers·may·need·longer·to·load)",
+          837 │ + → → → → → );
+     834  838 │                                 }
+     835  839 │                                 await sendRpc("providers.save_model", { provider: savedProviderName, model: modelForStorage });
+
+
+Checked 133 files in 78ms. No fixes applied.
+Found 1 error.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+[local/biome] failed in 0s
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (28 suppressed)
+[local/zizmor] passed in 0s
+[local/fmt] passed in 1s
+[local/fmt] total 1s
+[local/biome] total 0s
+[local/i18n] total 0s
+[local/install-names] total 0s
+One or more parallel local checks failed.
+~/t/m/moltis main [?] ❯
+
+---
+
+commit and push
+
+---
+
+push a new release
+
+---
+
+[Request interrupted by user]
+
+---
+
+push a new release, I merged another one
+
+---
+
+option 1
+
+---
+
+Look at https://github.com/moltis-org/moltis/discussions/442 and the main code where I think I added this, and post a comment to the discussion explaining what was changed following up his request
+
+---
+
+Fix those:
+
+  ✓  224 [auth] › e2e/specs/auth.spec.js:46:2 › Authentication › API endpoints work without auth on localhost (27ms)
+  ✘  225 [auth] › e2e/specs/auth.spec.js:52:2 › Authentication › sealed vault does not hide unencrypted session list (10.3s)
+  ✓  226 [auth] › e2e/specs/auth.spec.js:139:2 › Authentication › auth disabled banner not shown on localhost (316ms)
+  ✓  227 [auth] › e2e/specs/auth.spec.js:153:2 › Authentication › localhost bypass hides logout and explains sign-out behavior (260ms)
+  ✓  228 [auth] › e2e/specs/auth.spec.js:207:2 › Authentication › setup page is accessible (797ms)
+  ✓  229 [auth] › e2e/specs/auth.spec.js:232:2 › Authentication › security settings page shows auth options (805ms)
+  ✓  230 [auth] › e2e/specs/auth.spec.js:253:2 › Authentication › reset-auth localhost state keeps classic security controls (257ms)
+  ✓  231 [auth] › e2e/specs/auth.spec.js:313:2 › Authentication › setting password after reset shows recovery key before login (323ms)
+  ✓  232 [auth] › e2e/specs/auth.spec.js:405:2 › Authentication › logout button updates after runtime auth status change (244ms)
+  ✓  233 [auth] › e2e/specs/auth.spec.js:450:2 › Authentication › page title omits identity emoji and favicon uses it (800ms)
+  ✓  234 [auth] › e2e/specs/auth.spec.js:521:2 › Login page › login page is a standalone page without app chrome (168ms)
+  ✓  235 [auth] › e2e/specs/auth.spec.js:536:2 › Login page › login page renders password form (171ms)
+  ✓  236 [auth] › e2e/specs/auth.spec.js:549:2 › Login page › login page title omits emoji and favicon uses it from gon data (168ms)
+  ✓  237 [auth] › e2e/specs/auth.spec.js:577:2 › Login page › login page shows subtitle (172ms)
+  ✓  238 [auth] › e2e/specs/auth.spec.js:587:2 › Login page › login page shows sealed vault banner when vault is locked (163ms)
+  ✓  239 [auth] › e2e/specs/auth.spec.js:614:2 › Login page › login page shows both methods when password and passkeys are set (177ms)
+  ✓  240 [auth] › e2e/specs/auth.spec.js:627:2 › Login page › login page shows only passkey when no password is set (146ms)
+  ✓  241 [auth] › e2e/specs/auth.spec.js:639:2 › Login page › login page shows error on wrong password (191ms)
+  ✓  242 [auth] › e2e/specs/auth.spec.js:682:2 › Login page › login page shows retry countdown and disables submit when rate limited (5.0s)
+  ✓  243 [auth] › e2e/specs/auth.spec.js:745:2 › Login page › login page redirects to / when already authenticated (246ms)
+  ✓  244 [auth] › e2e/specs/auth.spec.js:754:2 › Login page › auth status API provides required fields for login page (20ms)
+
+
+  1) [auth] › e2e/specs/auth.spec.js:52:2 › Authentication › sealed vault does not hide unencrypted session list
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('Main chat', { exact: true })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByText('Main chat', { exact: true })
+        2 × locator resolved to <span title="" class="chat-session-name">Main chat</span>
+          - unexpected value "hidden"
+
+
+      132 |             await page.goto("/chats/main");
+      133 |             await expectPageContentMounted(page);
+    > 134 |             await expect(page.getByText("Main chat", { exact: true })).toBeVisible();
+          |                                                                        ^
+      135 |             await expect(page.getByText("Vault is sealed", { exact: true })).toHaveCount(0);
+      136 |             expect(pageErrors).toEqual([]);
+      137 |     });
+        at /Users/penso/tmp/molt/moltis/crates/web/ui/e2e/specs/auth.spec.js:134:62
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/auth-Authentication-sealed-b0426-de-unencrypted-session-list-auth/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: error-context (text/markdown) ───────────────────────────────────────────────────
+    ## Error Context
+
+    **Test**: sealed vault does not hide unencrypted session list
+    **Status**: failed
+
+    ### Page 1: AutoBotNameA
+    - **URL**: http://127.0.0.1:56864/chats/main
+
+    ```
+    🐙 AutoBotNameA
+    229MB · 16GB free / 68GB
+    Settings
+    Changelog
+    Report issue
+    +
+    Sessions
+    Cron
+    1
+    main
+    10:28 AM
+    hello
+    openai::babbag...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/auth-Authentication-sealed-b0426-de-unencrypted-session-list-auth/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/auth-Authentication-sealed-b0426-de-unencrypted-session-list-auth/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/auth-Authentication-sealed-b0426-de-unencrypted-session-list-auth/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [auth] › e2e/specs/auth.spec.js:52:2 › Authentication › sealed vault does not hide unencrypted session list
+  1 skipped
+  242 passed (2.7m)
+[local/e2e] failed in 167s
+~/t/m/moltis main [!?] ❯ git pull
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+~/t/m/moltis main [!?] ❯ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   apps/ios/GraphQL/Schema/schema.graphqls
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        .polyphony/
+        WORKFLOW.md
+        polyphony.toml
+
+no changes added to commit (use "git add" and/or "git commit -a")
+~/t/m/moltis main [!?] ❯ git diff apps/ios/GraphQL/Schema/schema.graphqls
+
+Δ apps/ios/GraphQL/Schema/schema.graphqls
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────┐
+• 183: type ConfigQuery { │
+──────────────────────────┘
+│ 183│type ContextFile {                                              │ 183│type ContextFile {
+│ 184│        path: String                                            │ 184│        path: String
+│ 185│        content: String                                         │ 185│        content: String
+│    │                                                                │ 186│        kind: String
+│    │                                                                │ 187│        warnings: [ContextWarning!]
+│    │                                                                │ 188│}
+│    │                                                                │ 189│
+│    │                                                                │ 190│type ContextWarning {
+│    │                                                                │ 191│        code: String
+│    │                                                                │ 192│        severity: String
+│    │                                                                │ 193│        message: String
+│ 186│}                                                               │ 194│}
+│ 187│                                                                │ 195│
+│ 188│type CronJob {                                                  │ 196│type CronJob {
+~/t/m/moltis main [!?] ❯
+
+---
+
+commit all changes and push
