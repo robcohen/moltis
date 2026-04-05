@@ -1,0 +1,220 @@
+Look at my teams channel implementation, then compare with ~/code/openclaw implementation and give me a list of missing features and how to improve my implementation
+
+---
+
+Please implement all P0/P1/P2 and anything missing.
+
+---
+
+Can you figure anything else to add or fix compared to others like openclaw?
+
+---
+
+Improve the onboarding, web ui and documentation how how to add teams, where to create token and the bot.
+
+---
+
+Anything else to improve?
+
+---
+
+Anything else to improve?
+
+---
+
+Adding the GraphQL API methods as agent tool seems like a good idea indeed.
+
+---
+
+merge main to this branch, solve conflicts.
+
+---
+
+create a PR
+
+---
+
+It feels weird because Teams seems to require a public endpoint, but in the onboarding we did not ask for public endpoints yet (did not configure tailscale + outside routing) but the channel onboarding asks for it:
+
+Import
+LLM
+Voice
+4
+Channel
+5
+Identity
+6
+Summary
+Connect a Channel
+Connect a messaging channel so you can chat from your phone or team workspace. You can set this up later in Channels.
+How to create a Teams bot
+Option A: Teams Developer Portal (easiest)
+1. Open Teams Developer Portal → Bot Management
+2. Click + New Bot, give it a name, and click Add
+3. Go to Configure — copy the Bot ID (this is your App ID)
+4. Under Client secrets, click Add a client secret and copy the value
+Option B: Azure Portal
+1. Go to Azure Portal → Create Azure Bot
+2. Create the bot, then go to Configuration to find the App ID
+3. Click Manage Password → New client secret to get the App Password
+After creating the bot, generate the endpoint below and paste it as the Messaging endpoint in your bot settings.
+App ID (Bot ID from Azure)
+
+App Password (client secret from Azure)
+
+Webhook Secret (optional — auto-generated if blank)
+
+Public Base URL (your server’s HTTPS address)
+
+Teams requires HTTPS. For local dev, use ngrok or Cloudflare Tunnel.
+Generate Endpoint
+
+We should change that, if Teams requires a public endpoint (can we do without one?) then we should have a first step before channel about allowing moltis instance to be public.
+
+---
+
+<task-notification>
+<task-id>b06dn8lkf</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/cc80b4cc-7ce0-4760-ade8-ffd73779df0d/tasks/b06dn8lkf.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/cc80b4cc-7ce0-4760-ade8-ffd73779df0d/tasks/b06dn8lkf.output
+
+---
+
+Can Teams bot work without a public endpoint tho? Look at teams documentation.
+
+---
+
+Requires public URL is ugly inside the teams button, you can display it only after like you already do
+
+---
+
+<task-notification>
+<task-id>b2za3usmb</task-id>
+<tool-use-id>toolu_01PGSBnNfiZc6t6pcYki2oFS</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/cc80b4cc-7ce0-4760-ade8-ffd73779df0d/tasks/b2za3usmb.output</output-file>
+<status>completed</status>
+<summary>Background command "Fix, commit, push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/cc80b4cc-7ce0-4760-ade8-ffd73779df0d/tasks/b2za3usmb.output
+
+---
+
+I'll do it in another PR, thanks.
+
+---
+
+Merge main to this branch, I added ngrok/tailscale in onboarding before the channels, so it'll be easier to add teams now.
+
+---
+
+<task-notification>
+<task-id>bk264sq4b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/fb496bc0-ff21-4d3d-ab65-c9e9383d9654/tasks/bk264sq4b.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glistening-amazonsaurus/fb496bc0-ff21-4d3d-ab65-c9e9383d9654/tasks/bk264sq4b.output
+
+---
+
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-ec8009d4b719ab43
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-fc24fad7b664a08b
+crates/web/src/assets/js/page-channels.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+     639  639 │             title="Connect Microsoft Teams">
+     640  640 │             <div class="channel-form">
+     641      │ - → ······${!tsLoading.value·&&·!(tsStatus.value?.mode·===·"funnel"·&&·tsStatus.value?.url)·&&·html`
+          641 │ + → ······${
+          642 │ + → → → → → !tsLoading.value·&&
+          643 │ + → → → → → !(tsStatus.value?.mode·===·"funnel"·&&·tsStatus.value?.url)·&&
+          644 │ + → → → → → html`
+     642  645 │                 <div class="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs flex flex-col gap-2">
+     643  646 │                   <span class="font-medium text-[var(--text-strong)]">Public URL required</span>
+     644  647 │                   <span class="text-[var(--muted)]">Teams sends messages to your server via webhook. Your Moltis instance must be reachable over HTTPS.</span>
+     645      │ - → ··········${tsStatus.value?.installed·&&·tsStatus.value?.tailscale_up
+     646      │ - → → → → → → → ?·html`<div·class="flex·flex-col·gap-2">
+          648 │ + → ··········${
+          649 │ + → → → → → → → tsStatus.value?.installed·&&·tsStatus.value?.tailscale_up
+          650 │ + → → → → → → → → ?·html`<div·class="flex·flex-col·gap-2">
+     647  651 │                       <span class="text-[var(--muted)]">Tailscale is connected. Enable <strong>Fu1nmcargo +nightly-2025-11-30 fmt --all -- --checkn
+el</strong> to make it publicly reachable:</span>
+     648  652 │                       <button type="button" class="provider-btn provider-btn-sm" onClick=${onEnableFunnel} disabled=${enablingFunnel.value}>
+    ········· │
+     650  654 │                       </button>
+     651  655 │                     </div>`
+     652      │ - → → → → → → → :·html`<span·class="text-[var(--muted)]">Enable·<strong>Tailscale·Funnel</strong>·in·Settings,·or·use·<a·href="https://ngrok.com/"·target="_blank"·class="text-[var(--accent)]·underline">ngrok</a>·/·<a·href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"·target="_blank"·class="text-[var(--accent)]·underline">Cloudflare·Tunnel</a>.</span>`
+          656 │ + → → → → → → → → :·html`<span·class="text-[var(--muted)]">Enable·<strong>Tailscale·Funnel</strong>·in·Settings,·or·use·<a·href="https://ngrok.com/"·target="_blank"·class="text-[var(--accent)]·underline">ngrok</a>·/·<a·href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"·target="_blank"·class="text-[var(--accent)]·underline">Cloudflare·Tunnel</a>.</span>`
+     653  657 │                                                 }
+     654  658 │                 </div>
+     655      │ - → ······`}
+     656      │ - → ······${tsStatus.value?.mode·===·"funnel"·&&·tsStatus.value?.url·&&·html`
+          659 │ + → ······`
+          660 │ + → → → → }
+          661 │ + → ······${
+          662 │ + → → → → → tsStatus.value?.mode·===·"funnel"·&&
+          663 │ + → → → → → tsStatus.value?.url·&&
+          664 │ + → → → → → html`
+     657  665 │                 <div class="rounded-md border border-green-500/30 bg-green-500/5 p-3 text-xs flex items-center gap-2">
+     658  666 │                   <span class="text-green-600">\u2713</span>
+     659  667 │                   <span class="text-[var(--muted)]">Tailscale Funnel active \u2014 publicly reachable at <strong>${tsStatus.value.url}</strong></span>
+     660  668 │                 </div>
+     661      │ - → ······`}
+          669 │ + → ······`
+          670 │ + → → → → }
+     662  671 │               <div class="channel-card">
+     663  672 │                 <div class="flex flex-col gap-1">
+
+
+Checked 133 files in 106ms. No fixes applied.
+Found 1 error.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+i18n parity OK: 3 locales, 18 namespaces.
+🌈 zizmor v1.22.0
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+Checking .deb filename pattern...
+  ok: .deb filename: no revision suffix (matches cargo-deb output)
+Checking .rpm filename pattern...
+  ok: .rpm filename: has -1 revision (matches cargo-generate-rpm output)
+Checking .pkg.tar.zst (Arch) filename pattern...
+  ok: .pkg.tar.zst filename: has -1 revision (matches release workflow)
+Checking binary tarball filename pattern...
+  ok: binary tarball: matches release workflow pattern
+Checking release_tag() logic...
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 13 install package name checks passed
+[local/biome] failed in 1s
+[local/i18n] passed in 1s
+[local/install-names] passed in 2s
+[local/fmt] passed in 3s
+[local/fmt] total 3s
+[local/biome] total 2s
+[local/i18n] total 2s
+[local/install-names] total 3s
+One or more parallel local checks failed.
+~/.s/w/m/glistening-amazonsaurus glistening-amazonsaurus ❯  INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.y
+
+---
+
+main changed a lot, merge main to this branch and solve conflicts.

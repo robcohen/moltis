@@ -1,0 +1,103 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5b500c0adc70",
+  "session_id": "cc80b4cc-7ce0-4760-ade8-ffd73779df0d",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T19:18:13.863794Z",
+  "branch": "glistening-amazonsaurus",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Cargo.toml",
+    "crates/channels/src/plugin.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/gateway/src/server.rs",
+    "crates/msteams/src/plugin.rs",
+    "crates/web/src/assets/js/page-channels.js",
+    "docs/src/SUMMARY.md",
+    "docs/src/channels.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9ba0f18854f7",
+  "token_usage": {
+    "input_tokens": 6154,
+    "cache_creation_tokens": 1627585,
+    "cache_read_tokens": 68701017,
+    "output_tokens": 131319,
+    "api_call_count": 287
+  },
+  "summary": {
+    "intent": "Bring the Moltis Microsoft Teams channel implementation up to parity with the openclaw reference implementation, then improve onboarding, documentation, and web UI for Teams setup.",
+    "outcome": "Implemented 20+ missing features (JWT auth, retry/backoff, Adaptive Cards, edit-in-place streaming, Graph API tools, attachment handling, per-channel config overrides), added full documentation, integrated Tailscale/ngrok public URL detection into the Teams setup flow, and kept the branch current through three merges from main.",
+    "learnings": {
+      "repo": [
+        "Credentials use secrecy::Secret\u003cString\u003e throughout; moltis_msteams is notably stricter than openclaw which uses plain strings in some places",
+        "HTTP clients are created via moltis_common::http_client::build_default_http_client(), not reqwest::Client::new() directly — main added this convention mid-session causing a merge conflict",
+        "Channel plugins implement trait boundaries in crates/channels/src/plugin.rs; descriptor flags like supports_threads/supports_reactions/supports_interactive control gateway behavior",
+        "Config validation in validate.rs uses Map(Box::new(Leaf)) for channel account configs — semantic validation happens at serde deserialization time, not in the validator",
+        "The gateway tool registry is populated in crates/gateway/src/server.rs; tools hold Arc\u003cRwLock\u003cPlugin\u003e\u003e references for account resolution",
+        "JS formatting is enforced by biome; Rust formatting by rustfmt via cargo +nightly-2025-11-30 fmt — both run as pre-push CI checks",
+        "The onboarding has a step ordering: Import → LLM → Voice → Channel → Identity → Summary; Remote Access (Tailscale/ngrok) was added to main before Channel, fixing the Teams public URL chicken-and-egg problem",
+        "preferredPublicBaseUrl() is a shared JS helper added by main that aggregates tunnel status across Tailscale and ngrok"
+      ],
+      "code": [
+        {
+          "path": "crates/msteams/src/config.rs",
+          "finding": "RedactedConfig had hardcoded field count of 9 but actually had 14 always-present fields — would cause runtime serialization panics when API returns channel config"
+        },
+        {
+          "path": "crates/msteams/src/plugin.rs",
+          "finding": "std::sync::RwLockWriteGuard held across .await points in welcomed_conversations handling — makes the future non-Send, breaking tokio::spawn. Must scope the guard to drop before any await"
+        },
+        {
+          "path": "crates/httpd/src/server.rs",
+          "finding": "Teams webhook handler must return 202 Accepted immediately and process in tokio::spawn to avoid Teams retry storms on slow LLM responses (~15s timeout before Teams retries)"
+        },
+        {
+          "path": "crates/msteams/src/chunking.rs",
+          "finding": "rfind(' ') in chunk splitter returns the space position (e.g. 5 for 'word1 word2'), not the end of the word — test expectations must account for this off-by-one"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-channels.js",
+          "finding": "The channels page (not onboarding) has no Remote Access step, so Tailscale Funnel detection logic must be kept inline in the AddTeamsModal; the simplification applied to onboarding-view.js does not apply here"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "Default offered channels list required updating to include 'msteams'; test assertions checked the exact list and needed updating in parallel"
+        }
+      ],
+      "workflow": [
+        "Parallel subagent exploration (one per codebase) is effective for comparison tasks — avoids context window pollution from large codebases",
+        "Running cargo check on the specific crate first (not the full workspace) gives faster feedback during iterative fixes",
+        "biome check --write must be run on JS files before committing; a missed run caused a CI failure that was caught only after push",
+        "Clippy's unwrap_used lint fires on test code — suppress with #[allow(clippy::unwrap_used)] on test functions rather than changing test logic",
+        "When resolving merge conflicts in JS files, conflicts are often additive (both sides adding new signals/state) and can be kept together rather than choosing one side",
+        "pub(crate) methods that are API surface but not yet called from outside generate dead_code warnings — suppress with #[allow(dead_code)] rather than removing the methods"
+      ]
+    },
+    "friction": [
+      "Three separate merge-from-main operations were needed during the session; the third had 5 conflicts across 5 files requiring careful manual resolution",
+      "tokio::spawn Send bounds caught late — the RwLockWriteGuard-across-await issue only surfaced when compiling the httpd crate, not the msteams crate",
+      "Biome formatting failure in CI after a push where biome was not run on page-channels.js post-merge — required a follow-up fix commit",
+      "RedactedConfig hardcoded field count was a silent bug that would only manifest at runtime — no compile-time or test coverage caught it",
+      "The Tailscale-in-TeamsForm vs preferredPublicBaseUrl() from main caused duplicated logic after the second merge that needed cleanup",
+      "Multiple rounds of clippy fixes required a subagent dispatch because the issue count was large enough to risk missing items"
+    ],
+    "open_items": [
+      "ngrok native Rust SDK integration (ngrok crate) as a public access option alongside Tailscale Funnel — intentionally deferred to a separate PR",
+      "Localization (fr/zh) for Teams-specific UI strings — all channels share this gap, not Teams-specific",
+      "E2E Playwright tests for Teams channel setup flow — no channel currently has these",
+      "Wiring teams_search_messages, teams_pin_message, teams_member_info tools to actual agent invocation paths — tools are registered but not yet surfaced in agent prompts",
+      "Graph API permissions documentation (Chat.Read.All, User.Read.All, Chat.ReadWrite.All) not yet reflected in the CLI bootstrap output or web UI setup checklist"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T19:17:23.549635Z",
+    "agent_lines": 0,
+    "human_added": 16236,
+    "human_modified": 46,
+    "human_removed": 0,
+    "total_committed": 16236,
+    "agent_percentage": 0
+  }
+}
