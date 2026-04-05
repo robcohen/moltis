@@ -1049,6 +1049,79 @@ command = "./hooks/audit.sh"
 events = ["BeforeToolCall"]
 timeout = 5
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="upstream-proxy"><a class="header" href="#upstream-proxy">Upstream Proxy</a></h1>
+<p>Moltis can route all outbound HTTP traffic through an upstream proxy. This is
+useful when running behind a corporate firewall, in a restricted network, or
+when you need to audit/filter outbound connections.</p>
+<h2 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h2>
+<p>Add <code>upstream_proxy</code> to the top level of your <code>moltis.toml</code>:</p>
+<pre><code class="language-toml">upstream_proxy = "http://proxy.corp.example.com:8080"
+</code></pre>
+<h3 id="supported-schemes"><a class="header" href="#supported-schemes">Supported schemes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Scheme</th><th>Example</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>http://</code></td><td><code>http://proxy:8080</code></td><td>HTTP CONNECT proxy (most common)</td></tr>
+<tr><td><code>https://</code></td><td><code>https://proxy:8443</code></td><td>TLS-encrypted proxy connection</td></tr>
+<tr><td><code>socks5://</code></td><td><code>socks5://proxy:1080</code></td><td>SOCKS5 proxy (DNS resolved locally)</td></tr>
+<tr><td><code>socks5h://</code></td><td><code>socks5h://proxy:1080</code></td><td>SOCKS5 proxy (DNS resolved by proxy)</td></tr>
+</tbody></table>
+</div>
+<h3 id="proxy-authentication"><a class="header" href="#proxy-authentication">Proxy authentication</a></h3>
+<p>Include credentials in the URL:</p>
+<pre><code class="language-toml">upstream_proxy = "http://user:password@proxy.corp.example.com:8080"
+</code></pre>
+<h3 id="what-is-proxied"><a class="header" href="#what-is-proxied">What is proxied</a></h3>
+<p>When <code>upstream_proxy</code> is set, the following traffic routes through the proxy:</p>
+<ul>
+<li><strong>LLM provider API calls</strong> (Anthropic, OpenAI, Gemini, etc.)</li>
+<li><strong>Tool HTTP requests</strong> (web fetch, web search, Firecrawl)</li>
+<li><strong>OAuth flows</strong> (device auth, token exchange)</li>
+<li><strong>MCP server auth</strong> (OAuth for remote MCP servers)</li>
+<li><strong>Channel outbound</strong> (Slack streaming, MS Teams API calls)</li>
+</ul>
+<p>Localhost and loopback addresses (<code>127.0.0.1</code>, <code>::1</code>, <code>localhost</code>) are
+automatically excluded from the proxy (<code>no_proxy</code>).</p>
+<h3 id="slack-caveat"><a class="header" href="#slack-caveat">Slack caveat</a></h3>
+<p>Slack streaming messages (progressive edits) are proxied via reqwest.
+However, regular <code>chat.postMessage</code> calls go through the <code>slack-morphism</code>
+library’s built-in hyper connector, which does <strong>not</strong> use the upstream
+proxy. If you need full Slack proxy coverage, also set the <code>HTTPS_PROXY</code>
+environment variable.</p>
+<h3 id="telegram-caveat"><a class="header" href="#telegram-caveat">Telegram caveat</a></h3>
+<p>Telegram uses <a href="https://github.com/teloxide/teloxide">teloxide</a> which bundles
+its own HTTP client (reqwest 0.11). The <code>upstream_proxy</code> config does not apply
+to Telegram traffic directly. To proxy Telegram, set the standard
+<code>HTTPS_PROXY</code> environment variable, which teloxide’s reqwest honours:</p>
+<pre><code class="language-bash">export HTTPS_PROXY=http://proxy.corp.example.com:8080
+moltis
+</code></pre>
+<p>Or use the <code>env</code> section in <code>moltis.toml</code>:</p>
+<pre><code class="language-toml">[env]
+HTTPS_PROXY = "http://proxy.corp.example.com:8080"
+</code></pre>
+<h2 id="environment-variable-fallback"><a class="header" href="#environment-variable-fallback">Environment variable fallback</a></h2>
+<p>When <code>upstream_proxy</code> is <strong>not</strong> set in <code>moltis.toml</code>, reqwest automatically
+honours the standard proxy environment variables:</p>
+<ul>
+<li><code>HTTP_PROXY</code> / <code>http_proxy</code></li>
+<li><code>HTTPS_PROXY</code> / <code>https_proxy</code></li>
+<li><code>ALL_PROXY</code> / <code>all_proxy</code></li>
+<li><code>NO_PROXY</code> / <code>no_proxy</code></li>
+</ul>
+<p>Setting <code>upstream_proxy</code> in the config takes precedence over these variables
+for all traffic except Telegram (see caveat above).</p>
+<h2 id="interaction-with-trusted-network"><a class="header" href="#interaction-with-trusted-network">Interaction with Trusted Network</a></h2>
+<p>If you use both <code>upstream_proxy</code> and
+<a href="trusted-network.html">trusted network mode</a> (<code>network = "trusted"</code>), they
+serve different purposes:</p>
+<ul>
+<li><strong>Trusted network proxy</strong> is a local domain-filtering proxy for sandbox
+tool execution. It controls <em>which</em> domains tools can reach.</li>
+<li><strong>Upstream proxy</strong> routes traffic through your corporate/network proxy to
+<em>reach</em> the internet.</li>
+</ul>
+<p>When both are active, tool traffic routes through the trusted-network proxy
+(which enforces domain allowlists), while provider and channel traffic routes
+through the upstream proxy.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="local-validation"><a class="header" href="#local-validation">Local Validation</a></h1>
 <p>Moltis provides a local validation script that runs the same checks as CI
 (format, lint, test, e2e), plus a native macOS app build check on macOS hosts.</p>
@@ -1211,7 +1284,7 @@ api_key = "..."
 base_url = "https://my-service.example.com/v1"
 models = ["my-model"]
 </code></pre>
-<h2 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h2>
+<h2 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h2>
 <h3 id="via-web-ui-recommended"><a class="header" href="#via-web-ui-recommended">Via Web UI (Recommended)</a></h3>
 <ol>
 <li>Open Moltis in your browser.</li>
@@ -1926,7 +1999,7 @@ Source: memory/notes.md#42
 <li>LLM evaluates each result’s relevance (0.0-1.0 score)</li>
 <li>Results are reordered by combined score (70% LLM, 30% original)</li>
 </ol>
-<h2 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h2>
+<h2 id="configuration-3"><a class="header" href="#configuration-3">Configuration</a></h2>
 <p>Memory settings can be configured in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[memory]
 # Backend: "builtin" (default) or "qmd"
@@ -2258,7 +2331,7 @@ normal conversation</li>
 <tr><td><strong>Fallback</strong></td><td>Keyword-only if no embeddings</td><td>BM25-only if no embeddings</td></tr>
 </tbody></table>
 </div>
-<h3 id="configuration-3"><a class="header" href="#configuration-3">Configuration</a></h3>
+<h3 id="configuration-4"><a class="header" href="#configuration-4">Configuration</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Setting</th><th>Moltis (<code>moltis.toml</code>)</th><th>OpenClaw (<code>openclaw.json</code>)</th></tr></thead><tbody>
 <tr><td><strong>Backend</strong></td><td><code>memory.backend = "builtin"</code></td><td><code>memory.backend = "builtin"</code></td></tr>
 <tr><td><strong>Provider</strong></td><td><code>memory.provider = "local"</code></td><td>Auto-detect from available keys</td></tr>
@@ -2764,7 +2837,7 @@ are specifically optimized for M1/M2/M3/M4 chips.</p>
 </div>
 <p>Moltis automatically detects your system memory and suggests appropriate models
 in the UI.</p>
-<h2 id="configuration-4"><a class="header" href="#configuration-4">Configuration</a></h2>
+<h2 id="configuration-5"><a class="header" href="#configuration-5">Configuration</a></h2>
 <h3 id="via-web-ui-recommended-1"><a class="header" href="#via-web-ui-recommended-1">Via Web UI (Recommended)</a></h3>
 <ol>
 <li>Navigate to <strong>Providers</strong> in the sidebar</li>
@@ -3039,7 +3112,7 @@ deadline (Tier 2 only)</li>
 <li><strong>Memory</strong>: <code>wasm_config.memory_reservation(bytes)</code> — Wasmtime memory limits
 (Tier 2 only)</li>
 </ul>
-<h3 id="configuration-5"><a class="header" href="#configuration-5">Configuration</a></h3>
+<h3 id="configuration-6"><a class="header" href="#configuration-6">Configuration</a></h3>
 <pre><code class="language-toml">[tools.exec.sandbox]
 backend = "wasm"
 
@@ -3218,7 +3291,7 @@ you explicitly trust.</p>
 │  = proxy:18791                      │  Filter    │       └──────────────┘
 └──────────────┘                      └────────────┘
 </code></pre>
-<h2 id="configuration-6"><a class="header" href="#configuration-6">Configuration</a></h2>
+<h2 id="configuration-7"><a class="header" href="#configuration-7">Configuration</a></h2>
 <p>Enable trusted network mode in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[tools.exec.sandbox]
 network = "trusted"
@@ -3451,7 +3524,7 @@ voice = ["dep:moltis-voice"]
 </tbody></table>
 </div>
 <p><em>More voice providers are coming soon.</em></p>
-<h3 id="configuration-7"><a class="header" href="#configuration-7">Configuration</a></h3>
+<h3 id="configuration-8"><a class="header" href="#configuration-8">Configuration</a></h3>
 <p>Set API keys via environment variables:</p>
 <pre><code class="language-bash">export ELEVENLABS_API_KEY=your-key-here
 export OPENAI_API_KEY=your-key-here
@@ -3636,7 +3709,7 @@ endpoint = "http://localhost:5002"
 </tbody></table>
 </div>
 <p><em>More voice providers are coming soon.</em></p>
-<h3 id="configuration-8"><a class="header" href="#configuration-8">Configuration</a></h3>
+<h3 id="configuration-9"><a class="header" href="#configuration-9">Configuration</a></h3>
 <pre><code class="language-toml">[voice.stt]
 enabled = true
 # provider = "whisper"  # Omit to auto-select the first configured provider
@@ -4136,7 +4209,7 @@ logs, but your <code>moltis.toml</code> file is plain text on disk. Consider usi
 <a href="vault.html">Vault</a> for encryption at rest.</p>
 </div>
 </div>
-<h2 id="configuration-9"><a class="header" href="#configuration-9">Configuration</a></h2>
+<h2 id="configuration-10"><a class="header" href="#configuration-10">Configuration</a></h2>
 <p>Add a <code>[channels.telegram.&lt;account-id&gt;]</code> section to your <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[channels.telegram.my-bot]
 token = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
@@ -4390,7 +4463,7 @@ logs, but your <code>moltis.toml</code> file is plain text on disk. Consider usi
 <a href="vault.html">Vault</a> for encryption at rest.</p>
 </div>
 </div>
-<h2 id="configuration-10"><a class="header" href="#configuration-10">Configuration</a></h2>
+<h2 id="configuration-11"><a class="header" href="#configuration-11">Configuration</a></h2>
 <p>Add a <code>[channels.discord.&lt;account-id&gt;]</code> section to your <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[channels.discord.my-bot]
 token = "MTIzNDU2Nzg5.example.bot-token"
@@ -4750,7 +4823,7 @@ commit them to version control. Moltis stores them with <code>secrecy::Secret</c
 redacts them from logs.</p>
 </div>
 </div>
-<h2 id="configuration-11"><a class="header" href="#configuration-11">Configuration</a></h2>
+<h2 id="configuration-12"><a class="header" href="#configuration-12">Configuration</a></h2>
 <p>Add a <code>[channels.slack.&lt;account-id&gt;]</code> section to your <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[channels.slack.my-bot]
 bot_token = "xoxb-your-bot-token"
@@ -5312,7 +5385,7 @@ faster and more lightweight.</p>
 <li><strong>BrowserPool</strong> (<code>crates/browser/src/pool.rs</code>) - Chrome instance management</li>
 <li><strong>Snapshot</strong> (<code>crates/browser/src/snapshot.rs</code>) - DOM element extraction</li>
 </ul>
-<h2 id="configuration-12"><a class="header" href="#configuration-12">Configuration</a></h2>
+<h2 id="configuration-13"><a class="header" href="#configuration-13">Configuration</a></h2>
 <p>Browser automation is <strong>enabled by default</strong>. To customize, add to your <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[tools.browser]
 enabled = true              # Enable browser support
@@ -5706,7 +5779,7 @@ agent gains a <code>caldav</code> tool that can list calendars, query events, an
 update, or delete entries on your behalf.</p>
 <p>The feature is compiled in by default (the <code>caldav</code> cargo feature) and can be
 disabled at build time with <code>--no-default-features</code>.</p>
-<h2 id="configuration-13"><a class="header" href="#configuration-13">Configuration</a></h2>
+<h2 id="configuration-14"><a class="header" href="#configuration-14">Configuration</a></h2>
 <p>Add a <code>[caldav]</code> section to your <code>moltis.toml</code> (usually <code>~/.moltis/moltis.toml</code>):</p>
 <pre><code class="language-toml">[caldav]
 enabled = true
@@ -6500,7 +6573,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 }
 </code></pre>
 <p>Clicking a notification will open or focus the app and navigate to the relevant chat.</p>
-<h2 id="configuration-14"><a class="header" href="#configuration-14">Configuration</a></h2>
+<h2 id="configuration-15"><a class="header" href="#configuration-15">Configuration</a></h2>
 <h3 id="feature-flag-3"><a class="header" href="#feature-flag-3">Feature Flag</a></h3>
 <p>Push notifications are controlled by the <code>push-notifications</code> feature flag, which is enabled by default. To disable:</p>
 <pre><code class="language-toml"># In your Cargo.toml or when building
@@ -9968,7 +10041,7 @@ pub mod my_feature {
 
 counter!(my_feature::OPERATIONS_TOTAL).increment(1);
 <span class="boring">}</span></code></pre></pre>
-<h2 id="configuration-15"><a class="header" href="#configuration-15">Configuration</a></h2>
+<h2 id="configuration-16"><a class="header" href="#configuration-16">Configuration</a></h2>
 <p>Metrics configuration in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[metrics]
 enabled = true              # Enable metrics collection (default: true)
@@ -10067,7 +10140,7 @@ tools grouped by origin.</p>
 With many MCP servers this can burn 15,000+ tokens per turn. <strong>Lazy mode</strong>
 replaces all tool schemas with a single <code>tool_search</code> meta-tool that the model
 uses to discover and activate tools on demand.</p>
-<h3 id="configuration-16"><a class="header" href="#configuration-16">Configuration</a></h3>
+<h3 id="configuration-17"><a class="header" href="#configuration-17">Configuration</a></h3>
 <pre><code class="language-toml">[tools]
 registry_mode = "lazy"   # default: "full"
 </code></pre>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Local Validation - Moltis Documentation</title>
+        <title>Upstream Proxy - Moltis Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -149,7 +149,7 @@
                         <a href="https://github.com/moltis-org/moltis" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/moltis-org/moltis/edit/main/docs/src/src/local-validation.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/moltis-org/moltis/edit/main/docs/src/src/upstream-proxy.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -183,73 +183,89 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="local-validation"><a class="header" href="#local-validation">Local Validation</a></h1>
-<p>Moltis provides a local validation script that runs the same checks as CI
-(format, lint, test, e2e), plus a native macOS app build check on macOS hosts.</p>
-<h2 id="why-this-exists"><a class="header" href="#why-this-exists">Why this exists</a></h2>
-<ul>
-<li>Faster feedback for Rust-heavy branches (no long runner queues for every push)</li>
-<li>Better parity with a developer’s local environment while iterating</li>
-<li>Clear visibility in the PR UI (<code>fmt</code>, <code>biome</code>, <code>zizmor</code>, <code>clippy</code>, <code>test</code>, <code>macos-app</code>, <code>e2e</code>)</li>
-</ul>
-<h2 id="run-local-validation"><a class="header" href="#run-local-validation">Run local validation</a></h2>
-<p>Run all checks on your current checkout:</p>
-<pre><code class="language-bash">./scripts/local-validate.sh
+                        <h1 id="upstream-proxy"><a class="header" href="#upstream-proxy">Upstream Proxy</a></h1>
+<p>Moltis can route all outbound HTTP traffic through an upstream proxy. This is
+useful when running behind a corporate firewall, in a restricted network, or
+when you need to audit/filter outbound connections.</p>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p>Add <code>upstream_proxy</code> to the top level of your <code>moltis.toml</code>:</p>
+<pre><code class="language-toml">upstream_proxy = "http://proxy.corp.example.com:8080"
 </code></pre>
-<p>When working on a pull request, pass the PR number to also publish commit
-statuses to GitHub:</p>
-<pre><code class="language-bash">./scripts/local-validate.sh 63
+<h3 id="supported-schemes"><a class="header" href="#supported-schemes">Supported schemes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Scheme</th><th>Example</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>http://</code></td><td><code>http://proxy:8080</code></td><td>HTTP CONNECT proxy (most common)</td></tr>
+<tr><td><code>https://</code></td><td><code>https://proxy:8443</code></td><td>TLS-encrypted proxy connection</td></tr>
+<tr><td><code>socks5://</code></td><td><code>socks5://proxy:1080</code></td><td>SOCKS5 proxy (DNS resolved locally)</td></tr>
+<tr><td><code>socks5h://</code></td><td><code>socks5h://proxy:1080</code></td><td>SOCKS5 proxy (DNS resolved by proxy)</td></tr>
+</tbody></table>
+</div>
+<h3 id="proxy-authentication"><a class="header" href="#proxy-authentication">Proxy authentication</a></h3>
+<p>Include credentials in the URL:</p>
+<pre><code class="language-toml">upstream_proxy = "http://user:password@proxy.corp.example.com:8080"
 </code></pre>
-<p>The script runs these checks:</p>
+<h3 id="what-is-proxied"><a class="header" href="#what-is-proxied">What is proxied</a></h3>
+<p>When <code>upstream_proxy</code> is set, the following traffic routes through the proxy:</p>
 <ul>
-<li><code>local/fmt</code></li>
-<li><code>local/biome</code></li>
-<li><code>local/zizmor</code></li>
-<li><code>local/lockfile</code> — verifies <code>Cargo.lock</code> is in sync (<code>cargo fetch --locked</code>)</li>
-<li><code>local/lint</code></li>
-<li><code>local/test</code></li>
-<li><code>local/macos-app</code> — validates the native Swift macOS app build (<code>Darwin</code> only)</li>
-<li><code>local/e2e</code> — runs gateway UI Playwright coverage</li>
+<li><strong>LLM provider API calls</strong> (Anthropic, OpenAI, Gemini, etc.)</li>
+<li><strong>Tool HTTP requests</strong> (web fetch, web search, Firecrawl)</li>
+<li><strong>OAuth flows</strong> (device auth, token exchange)</li>
+<li><strong>MCP server auth</strong> (OAuth for remote MCP servers)</li>
+<li><strong>Channel outbound</strong> (Slack streaming, MS Teams API calls)</li>
 </ul>
-<p>In PR mode, the PR workflow verifies these contexts and surfaces them as
-checks in the PR.</p>
-<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<p>Localhost and loopback addresses (<code>127.0.0.1</code>, <code>::1</code>, <code>localhost</code>) are
+automatically excluded from the proxy (<code>no_proxy</code>).</p>
+<h3 id="slack-caveat"><a class="header" href="#slack-caveat">Slack caveat</a></h3>
+<p>Slack streaming messages (progressive edits) are proxied via reqwest.
+However, regular <code>chat.postMessage</code> calls go through the <code>slack-morphism</code>
+library’s built-in hyper connector, which does <strong>not</strong> use the upstream
+proxy. If you need full Slack proxy coverage, also set the <code>HTTPS_PROXY</code>
+environment variable.</p>
+<h3 id="telegram-caveat"><a class="header" href="#telegram-caveat">Telegram caveat</a></h3>
+<p>Telegram uses <a href="https://github.com/teloxide/teloxide">teloxide</a> which bundles
+its own HTTP client (reqwest 0.11). The <code>upstream_proxy</code> config does not apply
+to Telegram traffic directly. To proxy Telegram, set the standard
+<code>HTTPS_PROXY</code> environment variable, which teloxide’s reqwest honours:</p>
+<pre><code class="language-bash">export HTTPS_PROXY=http://proxy.corp.example.com:8080
+moltis
+</code></pre>
+<p>Or use the <code>env</code> section in <code>moltis.toml</code>:</p>
+<pre><code class="language-toml">[env]
+HTTPS_PROXY = "http://proxy.corp.example.com:8080"
+</code></pre>
+<h2 id="environment-variable-fallback"><a class="header" href="#environment-variable-fallback">Environment variable fallback</a></h2>
+<p>When <code>upstream_proxy</code> is <strong>not</strong> set in <code>moltis.toml</code>, reqwest automatically
+honours the standard proxy environment variables:</p>
 <ul>
-<li>The script requires a clean working tree (no uncommitted or untracked
-changes). Commit or stash local changes before running.</li>
-<li>On macOS without CUDA (<code>nvcc</code>), the script automatically falls back to
-non-CUDA test/coverage defaults for local runs.</li>
-<li>On Linux, <code>local/lint</code> and <code>local/test</code> use <code>--all-features</code>. If you want
-the opt-in Vulkan path covered locally, install the Vulkan development
-packages first, for example <code>libvulkan-dev</code> and <code>glslang-tools</code> on Debian/Ubuntu
-(on Ubuntu 22.04, install <code>glslang-tools</code> from the LunarG Vulkan SDK).</li>
-<li><code>local/lint</code> uses the same clippy flags as CI and release:
-<code>cargo +nightly-2025-11-30 clippy -Z unstable-options --workspace --all-features --all-targets --timings -- -D warnings</code>.</li>
-<li><code>zizmor</code> is installed automatically (Homebrew on macOS, apt on Linux) when
-not already available.</li>
-<li><code>zizmor</code> is advisory in local runs and does not block lint/test execution.</li>
-<li>Test output is suppressed unless tests fail.</li>
-<li><code>local/macos-app</code> runs only on macOS; on Linux it is marked skipped.</li>
-<li>Override or disable macOS app validation with:
-<code>LOCAL_VALIDATE_MACOS_APP_CMD</code> and <code>LOCAL_VALIDATE_SKIP_MACOS_APP=1</code>.</li>
-<li><code>local/e2e</code> auto-runs <code>npm ci</code> only when <code>crates/web/ui/node_modules</code>
-is missing, then runs <code>npm run e2e:install</code> and <code>npm run e2e</code>. Override with
-<code>LOCAL_VALIDATE_E2E_CMD</code>.</li>
+<li><code>HTTP_PROXY</code> / <code>http_proxy</code></li>
+<li><code>HTTPS_PROXY</code> / <code>https_proxy</code></li>
+<li><code>ALL_PROXY</code> / <code>all_proxy</code></li>
+<li><code>NO_PROXY</code> / <code>no_proxy</code></li>
 </ul>
-<h2 id="merge-and-release-safety"><a class="header" href="#merge-and-release-safety">Merge and release safety</a></h2>
-<p>This local-first flow is for pull requests. Full CI still runs on GitHub
-runners for non-PR events (for example push to <code>main</code>, scheduled runs, and
-release paths).</p>
+<p>Setting <code>upstream_proxy</code> in the config takes precedence over these variables
+for all traffic except Telegram (see caveat above).</p>
+<h2 id="interaction-with-trusted-network"><a class="header" href="#interaction-with-trusted-network">Interaction with Trusted Network</a></h2>
+<p>If you use both <code>upstream_proxy</code> and
+<a href="trusted-network.html">trusted network mode</a> (<code>network = "trusted"</code>), they
+serve different purposes:</p>
+<ul>
+<li><strong>Trusted network proxy</strong> is a local domain-filtering proxy for sandbox
+tool execution. It controls <em>which</em> domains tools can reach.</li>
+<li><strong>Upstream proxy</strong> routes traffic through your corporate/network proxy to
+<em>reach</em> the internet.</li>
+</ul>
+<p>When both are active, tool traffic routes through the trusted-network proxy
+(which enforces domain allowlists), while provider and channel traffic routes
+through the upstream proxy.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="upstream-proxy.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="e2e-testing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="local-validation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -259,11 +275,11 @@ release paths).</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="upstream-proxy.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="e2e-testing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="local-validation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
