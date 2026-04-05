@@ -1,0 +1,21 @@
+Analyze https://github.com/moltis-org/moltis/issues/551 and plan for a fix
+
+---
+
+Proceed
+
+---
+
+commit and push
+
+---
+
+Fix comments from the PR
+
+---
+
+Fix new comments from the PR
+
+---
+
+fix those yes
