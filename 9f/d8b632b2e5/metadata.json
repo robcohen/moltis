@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9fd8b632b2e5",
+  "strategy": "manual-commit",
+  "branch": "cut-holiday",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs",
+    "crates/gateway/src/server.rs",
+    "crates/providers/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9f/d8b632b2e5/0/metadata.json",
+      "transcript": "/9f/d8b632b2e5/0/full.jsonl",
+      "context": "/9f/d8b632b2e5/0/context.md",
+      "content_hash": "/9f/d8b632b2e5/0/content_hash.txt",
+      "prompt": "/9f/d8b632b2e5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 32972,
+    "cache_read_tokens": 7224688,
+    "output_tokens": 13725,
+    "api_call_count": 50
+  }
+}

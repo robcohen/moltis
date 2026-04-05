@@ -1,0 +1,78 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9fd8b632b2e5",
+  "session_id": "d2f500fc-4c9b-4465-bef4-e1d4b9e5c814",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T15:47:16.168991Z",
+  "branch": "cut-holiday",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/lib.rs",
+    "crates/chat/src/lib.rs",
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "8513be036b83",
+  "checkpoint_transcript_start": 777,
+  "transcript_lines_at_start": 777,
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 32972,
+    "cache_read_tokens": 7224688,
+    "output_tokens": 13725,
+    "api_call_count": 50
+  },
+  "summary": {
+    "intent": "Address three PR review comments on model rediscovery: move Ollama probes outside a write lock, make runtime API keys visible during rediscovery, and remove dead code.",
+    "outcome": "All three issues fixed: introduced `RediscoveryResult` struct to pre-fetch Ollama probes before acquiring locks, switched `LiveModelService` env_overrides to `Arc\u003cRwLock\u003cHashMap\u003e\u003e` for runtime updates, removed dead `rediscover_models` method. All 307 tests passing.",
+    "learnings": {
+      "repo": [
+        "Ollama probes (`probe_ollama_models_batch`) are I/O-bound and must not be called while holding the model registry write lock — fetch results beforehand and pass them in.",
+        "`LiveModelService` previously snapshotted env overrides at construction time; runtime UI-stored API keys must be wired through `Arc\u003cRwLock\u003cHashMap\u003e\u003e` updated in `server.rs` after MCP env overrides are computed.",
+        "`LiveProviderSetupService` already solved the env_overrides sharing pattern and serves as the reference implementation.",
+        "Model registration logic lives in `register_rediscovered_models`; discovery logic lives in `fetch_discoverable_models` — these are intentionally separate in `crates/providers/src/lib.rs`."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/lib.rs",
+          "finding": "New `RediscoveryResult` struct bundles discovered models and pre-fetched Ollama probes so callers can pass a single value to `register_rediscovered_models`, keeping Ollama internals (`OllamaShowResponse`) private."
+        },
+        {
+          "path": "crates/providers/src/lib.rs",
+          "finding": "Added `probe_ollama_models_batch_async` alongside the existing sync `probe_ollama_models_batch`; async version is called from `fetch_discoverable_models` before the lock is acquired."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "finding": "`LiveModelService.env_overrides` changed from owned `HashMap` to `Arc\u003cRwLock\u003cHashMap\u003e\u003e` so the gateway can push runtime updates post-construction."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Runtime env overrides (from `CredentialStore`/MCP) must be explicitly synced into the model service's `Arc\u003cRwLock\u003e` after the MCP env overrides update — this wiring was missing before."
+        }
+      ],
+      "workflow": [
+        "Keeping `RediscoveryResult` opaque (not exposing `OllamaShowResponse` publicly) avoids leaking provider-internal types across crate boundaries.",
+        "Using a local empty `HashMap` is simpler than a `static` when you need a fallback reference for an optional map field.",
+        "Compile → fmt → clippy → test sequence confirmed all clean before committing review fixes."
+      ]
+    },
+    "friction": [
+      "Multiple rounds of file reads were needed to locate `register_rediscovered_models` and `rediscover_models` because grep patterns were iteratively refined.",
+      "Visibility of `OllamaShowResponse` caused a mid-implementation pivot: initially tried making it `pub`, then restructured to keep it private by making `RediscoveryResult` opaque.",
+      "Finding the correct call-site in `server.rs` to wire the runtime env override update required re-reading a large file multiple times."
+    ],
+    "open_items": [
+      "The sync `probe_ollama_models_batch` function remains; consider removing it if it has no remaining callers after this change.",
+      "Tests were updated to use `RediscoveryResult` but the transcript does not confirm edge-case tests for the new async probe path or the runtime env override update path specifically."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T15:46:49.229075Z",
+    "agent_lines": 120,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 120,
+    "agent_percentage": 100
+  }
+}
