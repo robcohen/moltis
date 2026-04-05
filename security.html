@@ -611,10 +611,15 @@ rate_limit_window_secs = 300  # 5 per 5 minutes
 <p>Subscribe to security advisories and update promptly when vulnerabilities are
 disclosed.</p>
 <h2 id="release-signing-and-verification"><a class="header" href="#release-signing-and-verification">Release Signing and Verification</a></h2>
-<p>All release artifacts are signed with two independent methods:</p>
+<p>All release artifacts are signed with three independent methods:</p>
 <ol>
+<li><strong><a href="https://github.com/moltis-org/moltis/attestations">GitHub artifact attestations</a></strong>
+(automated in CI) — cryptographic provenance records tied to the repository,
+workflow, and commit SHA; provides SLSA v1.0 Build Level 2 guarantees;
+verifiable with <code>gh attestation verify</code></li>
 <li><strong>Sigstore keyless signing</strong> (automated in CI) — proves the artifact was
-built by the <code>moltis-org/moltis</code> GitHub Actions pipeline</li>
+built by the <code>moltis-org/moltis</code> GitHub Actions pipeline; recorded in
+Sigstore’s Rekor transparency log</li>
 <li><strong>GPG signing</strong> (maintainer’s YubiKey hardware key) — proves a specific
 maintainer authorized the release</li>
 </ol>
