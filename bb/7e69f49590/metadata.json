@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "bb7e69f49590",
+  "strategy": "manual-commit",
+  "branch": "feat/matrix-channel",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/settings-nav.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bb/7e69f49590/0/metadata.json",
+      "transcript": "/bb/7e69f49590/0/full.jsonl",
+      "context": "/bb/7e69f49590/0/context.md",
+      "content_hash": "/bb/7e69f49590/0/content_hash.txt",
+      "prompt": "/bb/7e69f49590/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 8746,
+    "cache_read_tokens": 741201,
+    "output_tokens": 2314,
+    "api_call_count": 12
+  }
+}
