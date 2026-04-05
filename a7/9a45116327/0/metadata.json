@@ -1,0 +1,98 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a79a45116327",
+  "session_id": "ee0d7a1d-23ae-43bd-b4da-7d6057789e5f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T16:02:21.874477Z",
+  "branch": "fir-author",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/src/upstream-proxy.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b0155d84cb6b",
+  "token_usage": {
+    "input_tokens": 222,
+    "cache_creation_tokens": 314017,
+    "cache_read_tokens": 20971081,
+    "output_tokens": 48751,
+    "api_call_count": 208
+  },
+  "summary": {
+    "intent": "Implement application-level HTTP/SOCKS5 proxy support for the moltis project (issue #548), allowing users behind corporate firewalls to route all outbound traffic through a configured proxy.",
+    "outcome": "Full upstream proxy support implemented across providers, tools, OAuth, MCP auth, Slack, and MS Teams via a new `upstream_proxy` config field (typed as `Secret\u003cString\u003e`). PR #561 created, reviewed, and iterated on with fixes for credential redaction in logs and `rfind('@')` correctness.",
+    "learnings": {
+      "repo": [
+        "Two shared HTTP clients exist: `moltis_tools::shared_http_client()` (had proxy plumbing for sandbox) and `moltis_providers::shared_http_client()` (used plain `Client::new()`). ~30+ places also created `reqwest::Client::new()` independently.",
+        "teloxide (Telegram) bundles reqwest 0.11 internally while the workspace uses reqwest 0.12 — `Bot::with_client()` expects a 0.11 Client, making cross-version proxy injection impossible without unsafe code.",
+        "Workspace lint denies `unsafe_code` (`unsafe_code = \"deny\"` at workspace level), so `std::env::set_var` cannot be used as a workaround in Rust 2024 edition.",
+        "The `just lint` and `just test` recipes use `--all-features` which pulls in CUDA/llama-cpp features that fail to build on macOS — pre-existing issue, not introduced here.",
+        "taplo auto-sorts Cargo.toml feature arrays alphabetically on format.",
+        "Secret fields use `deserialize_option_secret`/`serialize_option_secret` serde helpers — pattern already established in the codebase for other credential fields.",
+        "Slack's `chat.postMessage` uses `slack-morphism`'s hyper connector internally, which bypasses reqwest-based proxy injection entirely.",
+        "`build_schema_map()` in validate.rs defines the TOML schema for validation — new top-level config fields must be registered there.",
+        "The trusted-network (sandbox) proxy and upstream (corporate) proxy serve different purposes: sandbox proxy handles domain allowlisting for tools, upstream proxy handles external network routing for all clients."
+      ],
+      "code": [
+        {
+          "path": "crates/common/src/http_client.rs",
+          "line": 1,
+          "end_line": 80,
+          "finding": "New module added to moltis-common housing build_http_client(), set_upstream_proxy_url(), upstream_proxy_url() global accessor, and redact_proxy_url() — shared by both moltis-tools and moltis-providers."
+        },
+        {
+          "path": "crates/common/src/http_client.rs",
+          "line": 45,
+          "end_line": 55,
+          "finding": "redact_proxy_url() must use rfind('@') not find('@') to correctly handle passwords containing literal '@' characters."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Gateway startup is the correct place to initialize both shared HTTP clients and set the global proxy URL — happens before channels/tasks spawn."
+        },
+        {
+          "path": "crates/telegram/src/bot.rs",
+          "line": 1,
+          "end_line": 30,
+          "finding": "Telegram proxy injection is impossible at the code level due to reqwest 0.11/0.12 version mismatch with teloxide. Users must set HTTPS_PROXY env var manually."
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "line": 1,
+          "end_line": 20,
+          "finding": "upstream_proxy field typed as Option\u003cSecret\u003cString\u003e\u003e with deserialize_option_secret serde attribute to prevent credential leakage in debug output."
+        }
+      ],
+      "workflow": [
+        "When reqwest is used by a vendored dependency at a different version (0.11 vs 0.12), you cannot inject types (like Proxy) across the version boundary — must fall back to env var approach or document the gap.",
+        "For shared utility functions needed by multiple crates without circular dependencies, adding to moltis-common is the right home — but requires adding reqwest as a dep to common.",
+        "PR review cycles caught: (1) credentials in log output, (2) missing Secret\u003c\u003e wrapping, (3) find vs rfind for '@' in URL redaction, (4) undocumented hyper connector bypass in Slack.",
+        "Greptile bot provides automated code review and surfaces issues missed in human review — worth checking its summary comments for P2 items after addressing P1 comments."
+      ]
+    },
+    "friction": [
+      "teloxide's reqwest 0.11 vs workspace reqwest 0.12 version mismatch made Telegram proxy injection impossible — required multiple failed attempts (unsafe set_var, OnceLock, ClientBuilder proxy methods) before accepting the limitation.",
+      "Rust 2024 edition + workspace `unsafe_code = deny` blocked the simplest workaround (std::env::set_var) for the Telegram env var approach.",
+      "`just lint` and `just test` fail on macOS due to CUDA feature inclusion — had to run crate-specific clippy commands manually.",
+      "The `build_schema_map()` validation schema required manually matching the TOML key names — no derive macro or automatic sync with the config struct."
+    ],
+    "open_items": [
+      "Per-channel proxy support deferred — the application-level proxy covers the 90% case; per-channel config can layer on top in a follow-up.",
+      "Telegram proxy support requires either teloxide upgrading to reqwest 0.12 or a separate proxy mechanism — currently users must set HTTPS_PROXY env var manually.",
+      "Slack's chat.postMessage via slack-morphism's hyper connector bypasses the reqwest proxy — would require patching slack-morphism or using a different client approach.",
+      "The `just lint`/`just test` CUDA build failure on macOS is a pre-existing issue unrelated to this PR but encountered during development.",
+      "build_http_client() silently falls back on bad proxy URLs (logs warn but continues) — could be made more strict in a future pass."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T16:01:42.923355Z",
+    "agent_lines": 0,
+    "human_added": 37,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 37,
+    "agent_percentage": 0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a79a45116327",
+  "strategy": "manual-commit",
+  "branch": "fir-author",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/src/upstream-proxy.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a7/9a45116327/0/metadata.json",
+      "transcript": "/a7/9a45116327/0/full.jsonl",
+      "context": "/a7/9a45116327/0/context.md",
+      "content_hash": "/a7/9a45116327/0/content_hash.txt",
+      "prompt": "/a7/9a45116327/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 222,
+    "cache_creation_tokens": 314017,
+    "cache_read_tokens": 20971081,
+    "output_tokens": 48751,
+    "api_call_count": 208
+  }
+}
