@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "92227d9adeb5",
+  "strategy": "manual-commit",
+  "branch": "woolly-rise",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/92/227d9adeb5/0/metadata.json",
+      "transcript": "/92/227d9adeb5/0/full.jsonl",
+      "context": "/92/227d9adeb5/0/context.md",
+      "content_hash": "/92/227d9adeb5/0/content_hash.txt",
+      "prompt": "/92/227d9adeb5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 53,
+    "cache_creation_tokens": 88907,
+    "cache_read_tokens": 2430105,
+    "output_tokens": 13206,
+    "api_call_count": 43
+  }
+}
