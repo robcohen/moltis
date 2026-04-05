@@ -4009,6 +4009,7 @@ capabilities that control what features are available.</p>
 <div class="table-wrapper"><table><thead><tr><th>Channel</th><th>Inbound Mode</th><th>Public URL Required</th><th>Key Capabilities</th></tr></thead><tbody>
 <tr><td>Telegram</td><td>Polling</td><td>No</td><td>Streaming, voice ingest, reactions, OTP, location</td></tr>
 <tr><td>Discord</td><td>Gateway (WebSocket)</td><td>No</td><td>Streaming, interactive messages, threads, reactions</td></tr>
+<tr><td>Matrix</td><td>Gateway (sync loop)</td><td>No</td><td>Streaming, voice ingest, interactive polls, threads, reactions, OTP, location, encrypted chats, device verification, ownership bootstrap</td></tr>
 <tr><td>Microsoft Teams</td><td>Webhook</td><td>Yes</td><td>Streaming, interactive messages, threads</td></tr>
 <tr><td>WhatsApp</td><td>Gateway (WebSocket)</td><td>No</td><td>Streaming, voice ingest, OTP, pairing, location</td></tr>
 <tr><td>Slack</td><td>Socket Mode</td><td>No</td><td>Streaming, interactive messages, threads, reactions</td></tr>
@@ -4020,8 +4021,8 @@ capabilities that control what features are available.</p>
 or open port is needed. Used by Telegram.</p>
 <h3 id="gateway--websocket"><a class="header" href="#gateway--websocket">Gateway / WebSocket</a></h3>
 <p>The bot opens a persistent outbound WebSocket connection to the platform and
-receives events in real time. No public URL needed. Used by Discord and
-WhatsApp.</p>
+receives events in real time, or uses a persistent sync loop over outbound HTTP.
+No public URL needed. Used by Discord, Matrix, and WhatsApp.</p>
 <h3 id="socket-mode"><a class="header" href="#socket-mode">Socket Mode</a></h3>
 <p>Similar to a gateway connection, but uses the platform’s Socket Mode protocol.
 No public URL needed. Used by Slack.</p>
@@ -4047,7 +4048,23 @@ integrations (e.g. email, SMS).</p>
 </tbody></table>
 </div>
 <h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
-<p>Each channel is configured in <code>moltis.toml</code> under <code>[channels]</code>:</p>
+<p>Channels can be configured in two places:</p>
+<ul>
+<li>In <code>moltis.toml</code> under <code>[channels]</code>, for file-managed setups</li>
+<li>In the web UI under <strong>Settings -&gt; Channels</strong>, which stores channel accounts in the internal <code>channels</code> table inside <code>data_dir()/moltis.db</code></li>
+</ul>
+<p>The web UI does not write channel settings back into <code>moltis.toml</code>. It includes an advanced JSON config editor so channel-specific settings remain reachable even when a dedicated form field has not been added yet.</p>
+<p>Channel configs stored through the web UI currently live as JSON records in the
+internal <code>channels</code> table in <code>data_dir()/moltis.db</code>. They are not currently
+wrapped by the Moltis vault, so treat local access to that database as access
+to the configured channel credentials.</p>
+<p>Some channel integrations also have platform-specific limits. For Matrix,
+encrypted chats require password auth. Access-token auth is only suitable for
+plain Matrix traffic because Moltis cannot import an existing device’s private
+E2EE keys from an access token alone. See <a href="./matrix.html">Matrix</a> for the full
+setup, ownership, verification, and troubleshooting flow.</p>
+<p><code>moltis.toml</code> and the web UI are both loaded at startup. If the same <code>(channel_type, account_id)</code> exists in both, the <code>moltis.toml</code> entry wins.</p>
+<p>Manual file configuration looks like this:</p>
 <pre><code class="language-toml">[channels.telegram.my_bot]
 token = "123456:ABC-DEF..."
 dm_policy = "allowlist"
@@ -4064,13 +4081,24 @@ token = "..."
 bot_token = "xoxb-..."
 app_token = "xapp-..."
 
+[channels.matrix.my_matrix_bot]
+homeserver = "https://matrix.example.com"
+access_token = "syt_..."
+user_id = "@bot:example.com"
+
 [channels.whatsapp.my_wa]
 dm_policy = "open"
 </code></pre>
 <p>For detailed configuration, see the per-channel pages:
 <a href="telegram.html">Telegram</a>, <a href="discord.html">Discord</a>, <a href="slack.html">Slack</a>,
-<a href="whatsapp.html">WhatsApp</a>.</p>
-<p>You can also use the web UI’s <strong>Channels</strong> tab for guided setup with each platform.</p>
+<a href="matrix.html">Matrix</a>, <a href="whatsapp.html">WhatsApp</a>.</p>
+<p>You can also use the web UI’s <strong>Channels</strong> tab for guided setup with each platform. Web-added channels do not get written back into <code>moltis.toml</code>.</p>
+<p>For Matrix specifically, the web UI now supports the full normal setup flow:</p>
+<ul>
+<li>password auth is the default because it unlocks encrypted chats</li>
+<li>dedicated bot accounts default to <code>moltis_owned</code> so Moltis can bootstrap cross-signing and recovery</li>
+<li>older Matrix accounts that need one external approval expose that approval flow in the channel card instead of failing silently</li>
+</ul>
 <h2 id="proactive-outbound-messaging"><a class="header" href="#proactive-outbound-messaging">Proactive Outbound Messaging</a></h2>
 <p>Agents are not limited to replying in the current chat. Moltis supports three
 main outbound patterns:</p>
@@ -4087,8 +4115,7 @@ main outbound patterns:</p>
   "text": "Deployment finished successfully."
 }
 </code></pre>
-<p><code>account_id</code> is the configured channel account name from <code>moltis.toml</code>, and
-<code>to</code> is the destination chat, peer, or room identifier for that platform.</p>
+<p><code>account_id</code> is the configured channel account name, either from <code>moltis.toml</code> or from a channel account stored through the web UI, and <code>to</code> is the destination chat, peer, or room identifier for that platform.</p>
 <p>Example <code>update_channel_settings</code> tool call:</p>
 <pre><code class="language-json">{
   "account_id": "my-telegram-bot",
@@ -4134,7 +4161,8 @@ switches to open access. Add user IDs/usernames to <code>allowlist</code> or set
 </tbody></table>
 </div>
 <p>The group allowlist field name varies by channel: <code>group_allowlist</code> (Telegram,
-WhatsApp, MS Teams), <code>guild_allowlist</code> (Discord), <code>channel_allowlist</code> (Slack).</p>
+WhatsApp, MS Teams), <code>guild_allowlist</code> (Discord), <code>channel_allowlist</code> (Slack),
+<code>room_allowlist</code> (Matrix).</p>
 <h3 id="mention-mode"><a class="header" href="#mention-mode">Mention Mode</a></h3>
 <p>Controls when the bot responds in groups (does not apply to DMs).</p>
 <div class="table-wrapper"><table><thead><tr><th>Value</th><th>Behavior</th></tr></thead><tbody>
@@ -4152,7 +4180,7 @@ WhatsApp, MS Teams), <code>guild_allowlist</code> (Discord), <code>channel_allow
 <li><strong>Multiple identifiers</strong> — both the user’s numeric ID and username are checked (where applicable)</li>
 </ul>
 <h3 id="otp-self-approval"><a class="header" href="#otp-self-approval">OTP Self-Approval</a></h3>
-<p>Channels that support OTP (Telegram, Discord, WhatsApp) allow non-allowlisted
+<p>Channels that support OTP (Telegram, Discord, Matrix, WhatsApp) allow non-allowlisted
 users to self-approve by entering a 6-digit code. The code appears in the web UI
 under <strong>Channels &gt; Senders</strong>. See each channel’s page for details.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th><th>Description</th></tr></thead><tbody>
@@ -4950,12 +4978,455 @@ is in <code>allowlist</code></li>
 <li>Check <code>channel_allowlist</code> — if non-empty, the channel must be listed</li>
 <li>Ensure the bot is a member of the channel (invite it with <code>/invite @botname</code>)</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="matrix"><a class="header" href="#matrix">Matrix</a></h1>
+<p>Moltis can connect to Matrix as a bot account using a homeserver URL plus
+either an access token or a username/password login. The integration runs as an
+outbound sync loop, so it does not require a public webhook URL, port
+forwarding, or TLS termination on your side.</p>
+<div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
+<div class="admonition-title">
+<div id="admonition-warning-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="matrix.html#admonition-warning"></a>
+</div>
+<div>
+<p>Matrix encrypted chats require password auth.</p>
+<p>Access-token auth can connect for plain Matrix traffic, but it reuses an
+existing Matrix session without that device’s local private encryption keys.
+That means Moltis cannot reliably decrypt encrypted rooms when you connect with
+an access token copied out of Element.</p>
+<p>Use password auth so Moltis logs in as its own Matrix device and persists its
+own E2EE keys locally. After that:</p>
+<ul>
+<li>If Element starts verification, Moltis accepts it automatically</li>
+<li>Moltis posts emoji confirmation instructions in the Matrix chat</li>
+<li>Reply <code>verify yes</code>, <code>verify no</code>, <code>verify show</code>, or <code>verify cancel</code> in Matrix</li>
+<li>Older encrypted history may remain unreadable until keys are shared</li>
+</ul>
+<p>For dedicated bot accounts, the web UI now defaults to <strong>Let Moltis own this
+Matrix account</strong>. In that mode Moltis bootstraps cross-signing and recovery for
+the bot account so its own device can be verified automatically. If you want to
+open the same bot account in Element yourself, switch the channel to
+user-managed mode instead.</p>
+</div>
+</div>
+<h2 id="feature-set"><a class="header" href="#feature-set">Feature Set</a></h2>
+<p>Matrix is no longer a minimal transport. The current integration supports the
+full day-to-day bot flow, including encrypted chats when you connect with
+password auth.</p>
+<div class="table-wrapper"><table><thead><tr><th>Area</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Web UI setup and editing</td><td>Supported</td><td>Add, edit, remove, and retry Matrix channels from <strong>Settings -&gt; Channels</strong></td></tr>
+<tr><td>Direct messages and rooms</td><td>Supported</td><td>DM policy, room policy, allowlists, mention gating, and auto-join</td></tr>
+<tr><td>End-to-end encrypted chats</td><td>Supported with password auth</td><td>Moltis creates and persists its own Matrix device and crypto state</td></tr>
+<tr><td>Device verification</td><td>Supported</td><td>Moltis accepts Element verification and you confirm with <code>verify yes</code>, <code>verify no</code>, <code>verify show</code>, or <code>verify cancel</code></td></tr>
+<tr><td>Cross-signing / recovery ownership</td><td>Supported</td><td>Password auth defaults to <code>moltis_owned</code>; older accounts may require one browser approval before takeover</td></tr>
+<tr><td>Streaming replies</td><td>Supported</td><td>Edit-in-place streaming for text responses</td></tr>
+<tr><td>Thread-aware replies and context</td><td>Supported</td><td>Replies stay in threads and context fetch follows the thread root</td></tr>
+<tr><td>Voice and audio messages</td><td>Supported</td><td>Matrix audio is downloaded and sent through the normal transcription pipeline</td></tr>
+<tr><td>Interactive actions</td><td>Supported</td><td>Short action lists are sent as native Matrix polls</td></tr>
+<tr><td>Reactions</td><td>Supported</td><td>Ack reactions and normal reaction flows work</td></tr>
+<tr><td>Location</td><td>Supported</td><td>Inbound location shares update user location and outbound location sends are supported</td></tr>
+<tr><td>OTP sender approval</td><td>Supported</td><td>Unknown DM senders can self-approve through the shared OTP flow</td></tr>
+<tr><td>Model routing overrides</td><td>Supported</td><td>Per-room and per-user model/provider overrides</td></tr>
+</tbody></table>
+</div>
+<p>The main remaining Matrix-specific limitations are:</p>
+<ul>
+<li>access-token auth is still plain-traffic-only, encrypted chats need password auth</li>
+<li>existing Matrix accounts with old crypto state may require one browser approval before Moltis can take over ownership</li>
+<li>Matrix interactive actions are poll-based, not arbitrary button/select UIs</li>
+<li>older encrypted history may remain unreadable until the missing room keys are shared with the Moltis device</li>
+<li>arbitrary remote-media fetch and reupload for outbound URLs is still limited</li>
+</ul>
+<h2 id="how-it-works-7"><a class="header" href="#how-it-works-7">How It Works</a></h2>
+<pre><code>┌──────────────────────────────────────────────────────┐
+│                 Matrix homeserver                     │
+│          (/sync, send, relations, room APIs)         │
+└──────────────────┬───────────────────────────────────┘
+                   │  outbound HTTPS requests
+                   ▼
+┌──────────────────────────────────────────────────────┐
+│                moltis-matrix crate                    │
+│  ┌────────────┐  ┌────────────┐  ┌────────────────┐  │
+│  │  Handler   │  │  Outbound  │  │     Plugin     │  │
+│  │ (inbound)  │  │ (replies)  │  │  (lifecycle)   │  │
+│  └────────────┘  └────────────┘  └────────────────┘  │
+└──────────────────┬───────────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────────┐
+│                 Moltis Gateway                        │
+│         (chat dispatch, tools, memory)                │
+└──────────────────────────────────────────────────────┘
+</code></pre>
+<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
+<p>Before configuring Moltis, you need a Matrix bot account:</p>
+<ol>
+<li>Create or choose a Matrix account for the bot on your homeserver</li>
+<li>Keep the account password available if you want encrypted Matrix chats</li>
+<li>Optionally obtain an access token if you only need plain, unencrypted Matrix traffic</li>
+<li>Note the full user ID, for example <code>@bot:example.com</code></li>
+<li>Optionally pick a stable <code>device_id</code> for session restore</li>
+</ol>
+<div id="admonition-warning-1" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-1-title">
+<div class="admonition-title">
+<div id="admonition-warning-1-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="matrix.html#admonition-warning-1"></a>
+</div>
+<div>
+<p>Matrix credentials are secrets. Treat access tokens and passwords like
+passwords, never commit them to version control. Moltis stores them with
+<code>secrecy::Secret</code> and redacts them from logs and API responses.</p>
+</div>
+</div>
+<h2 id="getting-an-access-token"><a class="header" href="#getting-an-access-token">Getting an Access Token</a></h2>
+<p>If you want to use access-token auth, Element can show the token for the
+currently logged-in account:</p>
+<ol>
+<li>Sign into the dedicated Matrix bot account in Element</li>
+<li>Open <code>Settings</code></li>
+<li>Open <code>Help &amp; About</code></li>
+<li>Expand <code>Advanced</code></li>
+<li>Click <code>Access Token</code></li>
+</ol>
+<p>Use that token as <code>access_token</code> in the Matrix channel config.</p>
+<div id="admonition-warning-2" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-2-title">
+<div class="admonition-title">
+<div id="admonition-warning-2-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="matrix.html#admonition-warning-2"></a>
+</div>
+<div>
+<p>Access-token auth does <strong>not</strong> support encrypted Matrix chats.</p>
+<p>Why: the token authenticates an already-existing Matrix device/session, but it
+does not transfer that device’s local private E2EE keys into Moltis. For
+encrypted rooms, use <code>user_id</code> + <code>password</code> so Moltis creates and persists its
+own Matrix device.</p>
+</div>
+</div>
+<p>If you want encrypted Matrix chats, use password login instead. In that case,
+set <code>user_id</code> and <code>password</code>.</p>
+<h2 id="why-password-auth-is-required-for-encryption"><a class="header" href="#why-password-auth-is-required-for-encryption">Why Password Auth Is Required For Encryption</a></h2>
+<p>For encrypted Matrix chats, Moltis must behave like its own Matrix device with
+its own persistent crypto state.</p>
+<p>Password auth works for that flow because Moltis logs in as a fresh Matrix
+device, generates its own E2EE identity and one-time keys, stores that device
+state locally, and can then complete normal Element verification.</p>
+<p>Access-token auth is different. It authenticates an already-existing Matrix
+session, often one created by Element, but Moltis does not receive that
+existing device’s private encryption keys just by knowing the token. That is
+why access-token auth works for plain Matrix traffic but is not a reliable way
+to support encrypted rooms.</p>
+<p>Two related Matrix recovery tools often cause confusion:</p>
+<ul>
+<li>The Element recovery key helps a Matrix client unlock server-backed secret
+storage and backups.</li>
+<li>Exported room keys let another Matrix client import some historical Megolm
+room keys from a file.</li>
+</ul>
+<p>Moltis does not currently implement recovery-key entry or room-key import, and
+neither feature would make access-token auth equivalent to a proper dedicated
+Moltis device anyway. The supported path for encrypted Matrix chats is still:</p>
+<ol>
+<li>Add the Matrix account with <code>user_id</code> + <code>password</code></li>
+<li>Let Moltis create its own Matrix device</li>
+<li>Complete Element verification with that Moltis device</li>
+<li>Send new encrypted messages after verification</li>
+</ol>
+<h2 id="ownership-modes"><a class="header" href="#ownership-modes">Ownership Modes</a></h2>
+<p>When you add a password-based Matrix account, Moltis offers two ownership modes:</p>
+<h3 id="moltis_owned"><a class="header" href="#moltis_owned"><code>moltis_owned</code></a></h3>
+<p>This is the default for dedicated bot accounts. Moltis tries to become the
+owner of the account’s Matrix crypto state so the bot can verify its own device
+properly.</p>
+<p>In this mode Moltis will:</p>
+<ul>
+<li>create or restore its own Matrix device</li>
+<li>bootstrap or recover secret storage and cross-signing when possible</li>
+<li>self-sign the Moltis device after takeover succeeds</li>
+<li>show encryption ownership status directly in <strong>Settings -&gt; Channels</strong></li>
+</ul>
+<p>For fresh bot accounts, this is usually automatic.</p>
+<p>For older accounts with pre-existing Matrix crypto state, Matrix may require one
+browser approval before Moltis is allowed to reset and take over cross-signing.
+When that happens, the Channels page shows:</p>
+<ul>
+<li>an <strong>Open approval page for @user:server</strong> button</li>
+<li>a retry button after you finish the reset in the browser</li>
+</ul>
+<h3 id="user_managed"><a class="header" href="#user_managed"><code>user_managed</code></a></h3>
+<p>Use this when you want to manage the same bot account yourself in Element or
+another Matrix client.</p>
+<p>In this mode Moltis still connects and can chat, but it does not try to take
+ownership of cross-signing or recovery. The Channels page shows the homeserver,
+user ID, device ID, and device name you need if you want to log into that bot
+account in your own Matrix app.</p>
+<h2 id="configuration-13"><a class="header" href="#configuration-13">Configuration</a></h2>
+<p>Matrix can be configured either:</p>
+<ul>
+<li>manually in <code>moltis.toml</code></li>
+<li>through the web UI in <strong>Settings -&gt; Channels</strong></li>
+</ul>
+<p>Web UI channel accounts are stored in the internal <code>channels</code> table in <code>data_dir()/moltis.db</code>. They are not written back into <code>moltis.toml</code>. If you need a Matrix setting that does not have a dedicated field yet, use the advanced JSON config editor in the channel form.</p>
+<div id="admonition-warning-3" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-3-title">
+<div class="admonition-title">
+<div id="admonition-warning-3-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="matrix.html#admonition-warning-3"></a>
+</div>
+<div>
+<p>Web-managed Matrix credentials are not currently wrapped by the Moltis vault.</p>
+<p>Today, channel configs are stored as JSON in the internal <code>channels</code> table in
+<code>data_dir()/moltis.db</code>. Matrix secrets are still handled as secrets in code,
+redacted from logs, and redacted from API responses, but they are not yet
+encrypted-at-rest by the vault layer.</p>
+</div>
+</div>
+<p>Manual file configuration uses a <code>[channels.matrix.&lt;account-id&gt;]</code> section in <code>moltis.toml</code>.
+If you want encrypted Matrix chats, use password auth:</p>
+<pre><code class="language-toml">[channels.matrix.my-bot]
+homeserver = "https://matrix.example.com"
+user_id = "@bot:example.com"
+password = "correct horse battery staple"
+ownership_mode = "moltis_owned"
+device_display_name = "Moltis Matrix Bot"
+</code></pre>
+<p>If you only need plain, unencrypted Matrix traffic, access-token auth still
+works:</p>
+<pre><code class="language-toml">[channels.matrix.my-bot]
+homeserver = "https://matrix.example.com"
+access_token = "syt_..."
+user_id = "@bot:example.com"
+</code></pre>
+<p>To show Matrix in the channel picker, include <code>"matrix"</code> in <code>channels.offered</code>:</p>
+<pre><code class="language-toml">[channels]
+offered = ["telegram", "discord", "slack", "matrix"]
+</code></pre>
+<h3 id="configuration-fields-3"><a class="header" href="#configuration-fields-3">Configuration Fields</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Required</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>homeserver</code></td><td><strong>yes</strong></td><td>—</td><td>Base URL of the Matrix homeserver</td></tr>
+<tr><td><code>access_token</code></td><td>no</td><td>—</td><td>Access token for the bot account, for plain and unencrypted Matrix traffic only</td></tr>
+<tr><td><code>password</code></td><td>no</td><td>—</td><td>Password for the bot account, required for encrypted Matrix chats</td></tr>
+<tr><td><code>user_id</code></td><td>no</td><td>—</td><td>Bot user ID, for example <code>@bot:example.com</code>, auto-detected via <code>whoami</code> when omitted</td></tr>
+<tr><td><code>device_id</code></td><td>no</td><td>—</td><td>Optional device ID used for session restore</td></tr>
+<tr><td><code>device_display_name</code></td><td>no</td><td>—</td><td>Optional device display name used for password-based logins</td></tr>
+<tr><td><code>ownership_mode</code></td><td>no</td><td><code>"user_managed"</code></td><td>Who manages cross-signing and recovery: <code>"moltis_owned"</code> or <code>"user_managed"</code></td></tr>
+<tr><td><code>dm_policy</code></td><td>no</td><td><code>"allowlist"</code></td><td>Who can DM the bot: <code>"open"</code>, <code>"allowlist"</code>, or <code>"disabled"</code></td></tr>
+<tr><td><code>room_policy</code></td><td>no</td><td><code>"allowlist"</code></td><td>Which rooms can talk to the bot: <code>"open"</code>, <code>"allowlist"</code>, or <code>"disabled"</code></td></tr>
+<tr><td><code>mention_mode</code></td><td>no</td><td><code>"mention"</code></td><td>When the bot responds in rooms: <code>"always"</code>, <code>"mention"</code>, or <code>"none"</code></td></tr>
+<tr><td><code>room_allowlist</code></td><td>no</td><td><code>[]</code></td><td>Matrix room IDs or aliases allowed to interact with the bot</td></tr>
+<tr><td><code>user_allowlist</code></td><td>no</td><td><code>[]</code></td><td>Matrix user IDs allowed to DM the bot</td></tr>
+<tr><td><code>auto_join</code></td><td>no</td><td><code>"always"</code></td><td>Invite handling: <code>"always"</code>, <code>"allowlist"</code>, or <code>"off"</code></td></tr>
+<tr><td><code>model</code></td><td>no</td><td>—</td><td>Override the default model for this account</td></tr>
+<tr><td><code>model_provider</code></td><td>no</td><td>—</td><td>Provider for the overridden model</td></tr>
+<tr><td><code>stream_mode</code></td><td>no</td><td><code>"edit_in_place"</code></td><td>How streaming replies are sent: <code>"edit_in_place"</code> or <code>"off"</code></td></tr>
+<tr><td><code>edit_throttle_ms</code></td><td>no</td><td><code>500</code></td><td>Minimum milliseconds between edit-in-place streaming updates</td></tr>
+<tr><td><code>stream_min_initial_chars</code></td><td>no</td><td><code>30</code></td><td>Minimum buffered characters before the first streamed send</td></tr>
+<tr><td><code>channel_overrides</code></td><td>no</td><td><code>{}</code></td><td>Per-room model/provider overrides</td></tr>
+<tr><td><code>user_overrides</code></td><td>no</td><td><code>{}</code></td><td>Per-user model/provider overrides</td></tr>
+<tr><td><code>reply_to_message</code></td><td>no</td><td><code>true</code></td><td>Send threaded/rich replies when possible</td></tr>
+<tr><td><code>ack_reaction</code></td><td>no</td><td><code>"👀"</code></td><td>Emoji reaction added while processing, omit to disable</td></tr>
+<tr><td><code>otp_self_approval</code></td><td>no</td><td><code>true</code></td><td>Enable OTP self-approval for non-allowlisted DM users</td></tr>
+<tr><td><code>otp_cooldown_secs</code></td><td>no</td><td><code>300</code></td><td>Cooldown in seconds after 3 failed OTP attempts</td></tr>
+</tbody></table>
+</div>
+<h3 id="web-ui-notes"><a class="header" href="#web-ui-notes">Web UI Notes</a></h3>
+<p>When you add Matrix through the web UI:</p>
+<ul>
+<li>the homeserver field defaults to <code>https://matrix.org</code></li>
+<li>Moltis auto-generates the internal <code>account_id</code></li>
+<li>the saved account lives in <code>data_dir()/moltis.db</code>, not in <code>moltis.toml</code></li>
+<li>the web UI defaults to password auth because encrypted Matrix chats require it</li>
+<li>password-based channels default to <strong>Let Moltis own this Matrix account</strong></li>
+<li>Matrix channels can be added, edited, removed, and retried entirely from <strong>Settings -&gt; Channels</strong></li>
+<li>access-token auth is for plain Matrix traffic only, because Moltis cannot import the existing device’s private E2EE keys from an access token</li>
+<li>if you switch a channel to user-managed mode, the Channels page shows the homeserver, user ID, device ID, and device name you need to open that bot account in Element</li>
+<li>if an older Matrix account needs one external approval before takeover, the channel card shows an approval link plus a retry action so you do not need to rebuild the channel config manually</li>
+<li>if Element starts device verification, Moltis accepts it and posts emoji confirmation instructions in the room</li>
+<li>send <code>verify yes</code>, <code>verify no</code>, <code>verify show</code>, or <code>verify cancel</code> as normal messages in that same Matrix chat to finish or inspect the verification flow</li>
+<li>older encrypted history may still be unreadable if this Moltis device joined after those keys were created</li>
+</ul>
+<p>If you want to inspect web-added channels directly, query the SQLite database:</p>
+<pre><code class="language-bash">sqlite3 ~/.moltis/moltis.db 'select channel_type, account_id, config from channels;'
+</code></pre>
+<p>If you use <code>MOLTIS_DATA_DIR</code> or <code>--data-dir</code>, check that directory instead of <code>~/.moltis</code>.</p>
+<h3 id="full-example-3"><a class="header" href="#full-example-3">Full Example</a></h3>
+<pre><code class="language-toml">[channels]
+offered = ["matrix"]
+
+[channels.matrix.my-bot]
+homeserver = "https://matrix.example.com"
+user_id = "@bot:example.com"
+password = "correct horse battery staple"
+ownership_mode = "moltis_owned"
+device_id = "MOLTISBOT"
+device_display_name = "Moltis Matrix Bot"
+dm_policy = "allowlist"
+room_policy = "allowlist"
+mention_mode = "mention"
+room_allowlist = ["!ops:example.com", "#support:example.com"]
+user_allowlist = ["@alice:example.com", "@bob:example.com"]
+auto_join = "allowlist"
+model = "gpt-4.1"
+model_provider = "openai"
+stream_mode = "edit_in_place"
+edit_throttle_ms = 500
+stream_min_initial_chars = 30
+reply_to_message = true
+ack_reaction = "👀"
+otp_self_approval = true
+otp_cooldown_secs = 300
+
+[channels.matrix.my-bot.channel_overrides."!ops:example.com"]
+model = "claude-sonnet-4-20250514"
+model_provider = "anthropic"
+
+[channels.matrix.my-bot.user_overrides."@alice:example.com"]
+model = "o3"
+model_provider = "openai"
+</code></pre>
+<h2 id="access-control-4"><a class="header" href="#access-control-4">Access Control</a></h2>
+<p>Matrix uses the same gating model as the other channel integrations.</p>
+<h3 id="dm-policy-4"><a class="header" href="#dm-policy-4">DM Policy</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Behavior</th></tr></thead><tbody>
+<tr><td><code>"allowlist"</code></td><td>Only users in <code>user_allowlist</code> can DM the bot (default)</td></tr>
+<tr><td><code>"open"</code></td><td>Anyone can DM the bot</td></tr>
+<tr><td><code>"disabled"</code></td><td>DMs are silently ignored</td></tr>
+</tbody></table>
+</div>
+<h3 id="room-policy"><a class="header" href="#room-policy">Room Policy</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Behavior</th></tr></thead><tbody>
+<tr><td><code>"allowlist"</code></td><td>Only rooms in <code>room_allowlist</code> are allowed (default)</td></tr>
+<tr><td><code>"open"</code></td><td>Any joined room can interact with the bot</td></tr>
+<tr><td><code>"disabled"</code></td><td>Room messages are silently ignored</td></tr>
+</tbody></table>
+</div>
+<h3 id="mention-mode-4"><a class="header" href="#mention-mode-4">Mention Mode</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Behavior</th></tr></thead><tbody>
+<tr><td><code>"mention"</code></td><td>Bot only responds when explicitly mentioned in a room (default)</td></tr>
+<tr><td><code>"always"</code></td><td>Bot responds to every message in allowed rooms</td></tr>
+<tr><td><code>"none"</code></td><td>Bot never responds in rooms</td></tr>
+</tbody></table>
+</div>
+<p>When <code>mention_mode = "mention"</code>, Moltis checks Matrix intentional mentions
+(<code>m.mentions</code>) and also falls back to a literal MXID mention in the plain body.</p>
+<h2 id="invite-handling"><a class="header" href="#invite-handling">Invite Handling</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Behavior</th></tr></thead><tbody>
+<tr><td><code>"always"</code></td><td>Auto-join every invite (default)</td></tr>
+<tr><td><code>"allowlist"</code></td><td>Auto-join only when the inviter is in <code>user_allowlist</code> or the room is already in <code>room_allowlist</code></td></tr>
+<tr><td><code>"off"</code></td><td>Never auto-join invites</td></tr>
+</tbody></table>
+</div>
+<h2 id="threads-and-replies"><a class="header" href="#threads-and-replies">Threads and Replies</a></h2>
+<p>Matrix replies now preserve thread context when the referenced event belongs to
+an existing thread. When <code>reply_to_message = true</code>, Moltis sends a rich reply
+and keeps the reply inside the thread when appropriate.</p>
+<p>For thread context injection, Moltis resolves the inbound event to the thread
+root and fetches prior <code>m.thread</code> relations so the LLM sees the room thread
+history instead of just the last message.</p>
+<h2 id="voice-and-location-messages"><a class="header" href="#voice-and-location-messages">Voice and Location Messages</a></h2>
+<p>Matrix audio messages are downloaded through the homeserver media API and
+transcribed with the same voice pipeline used by the other voice-enabled
+channels. If voice transcription is not configured, Moltis replies with setup
+guidance instead of silently dropping the message.</p>
+<p>Inbound Matrix location shares now update the stored user location and also
+resolve pending tool-triggered location requests. If there is no pending
+location request, the coordinates are forwarded to the chat session so the LLM
+can acknowledge them naturally.</p>
+<h2 id="interactive-actions"><a class="header" href="#interactive-actions">Interactive Actions</a></h2>
+<p>When Moltis needs to ask the user to choose from a short list of actions, the
+Matrix integration sends a native poll instead of a plain text fallback. The
+selected poll answer is fed back into the same interaction callback path used by
+the other channel integrations.</p>
+<p>Matrix poll answers are single-choice and capped by the protocol at 20 options.
+If a generated interactive message exceeds that limit, Moltis falls back to a
+plain numbered text list.</p>
+<h2 id="otp-self-approval-3"><a class="header" href="#otp-self-approval-3">OTP Self-Approval</a></h2>
+<p>When <code>dm_policy = "allowlist"</code> and <code>otp_self_approval = true</code>, unknown DM users
+can self-approve:</p>
+<ol>
+<li>User sends a DM to the bot</li>
+<li>Moltis generates a 6-digit OTP challenge</li>
+<li>The code appears in the web UI under <strong>Channels &gt; Senders</strong></li>
+<li>The bot owner shares the code out-of-band</li>
+<li>User replies with the code in Matrix</li>
+<li>On success, the sender is approved</li>
+</ol>
+<p>After 3 failed attempts, the sender is locked out for <code>otp_cooldown_secs</code>
+seconds.</p>
+<h2 id="troubleshooting-8"><a class="header" href="#troubleshooting-8">Troubleshooting</a></h2>
+<h3 id="bot-does-not-connect"><a class="header" href="#bot-does-not-connect">Bot does not connect</a></h3>
+<ul>
+<li>Verify <code>homeserver</code> is correct and reachable</li>
+<li>Verify the access token or password is valid</li>
+<li>Set <code>user_id</code> explicitly if startup auto-detection is unreliable</li>
+<li>Look at logs: <code>RUST_LOG=moltis_matrix=debug moltis</code></li>
+</ul>
+<h3 id="element-shows-the-room-as-encrypted"><a class="header" href="#element-shows-the-room-as-encrypted">Element shows the room as encrypted</a></h3>
+<ul>
+<li>That is fine, encrypted rooms are supported</li>
+<li>Make sure the Matrix account was added with password auth, not access-token auth</li>
+<li>If the Moltis device is new, start a fresh Element verification with the bot</li>
+<li>Moltis will accept the request and post emoji instructions in the chat</li>
+<li>Send <code>verify yes</code> as a normal chat message if the emojis match, <code>verify no</code> if they do not</li>
+<li>If older encrypted history still does not decrypt, resend the message after verification</li>
+</ul>
+<h3 id="access-token-auth-connects-but-encrypted-messages-do-not-decrypt"><a class="header" href="#access-token-auth-connects-but-encrypted-messages-do-not-decrypt">Access-token auth connects but encrypted messages do not decrypt</a></h3>
+<ul>
+<li>That is expected with the current implementation</li>
+<li>Access-token auth is for plain Matrix traffic only</li>
+<li>Remove the Matrix account from Moltis</li>
+<li>Re-add it with <code>user_id</code> + <code>password</code></li>
+<li>Verify the new Moltis device in Element</li>
+<li>Resend a brand new encrypted message after verification</li>
+</ul>
+<h3 id="element-says-it-is-waiting-for-moltis-to-accept-verification"><a class="header" href="#element-says-it-is-waiting-for-moltis-to-accept-verification">Element says it is waiting for Moltis to accept verification</a></h3>
+<ul>
+<li>Moltis should accept Matrix verification requests automatically</li>
+<li>Watch the chat for the emoji confirmation prompt</li>
+<li>If the prompt scrolled away, send <code>verify show</code> as a normal message in that same Matrix chat</li>
+<li>If an older stale verification request was replayed from sync history, start a fresh verification in Element and then use the <code>verify ...</code> commands</li>
+<li>If nothing happens, check the Matrix logs for verification events and try starting verification again</li>
+</ul>
+<h3 id="channels-page-says-ownership-approval-required"><a class="header" href="#channels-page-says-ownership-approval-required">Channels page says <code>Ownership approval required</code></a></h3>
+<ul>
+<li>This means Moltis connected, but Matrix wants one explicit browser approval before cross-signing can be reset for this older account</li>
+<li>Use the <strong>Open approval page for @user:server</strong> button in the Matrix channel card</li>
+<li>Make sure the browser page is signed into that exact Matrix account, not your personal one</li>
+<li>After approving the reset, use the retry button in the same channel card so Moltis can finish ownership bootstrap</li>
+<li>Until that finishes, the bot may still chat, but the device can remain <code>unverified</code></li>
+</ul>
+<h3 id="bot-can-chat-but-the-channels-page-still-says-device-not-yet-verified-by-owner"><a class="header" href="#bot-can-chat-but-the-channels-page-still-says-device-not-yet-verified-by-owner">Bot can chat, but the Channels page still says <code>Device not yet verified by owner</code></a></h3>
+<ul>
+<li>Matrix encryption and Matrix cross-signing are related, but not identical</li>
+<li>A Matrix device can already send and receive messages before it is verified by the account owner</li>
+<li>If you are using <code>moltis_owned</code>, let Moltis finish ownership bootstrap or complete the approval flow above</li>
+<li>If you are using <code>user_managed</code>, verify the Moltis device from your own Matrix client instead</li>
+</ul>
+<h3 id="bot-does-not-respond-in-rooms"><a class="header" href="#bot-does-not-respond-in-rooms">Bot does not respond in rooms</a></h3>
+<ul>
+<li>Check <code>room_policy</code></li>
+<li>Check <code>room_allowlist</code></li>
+<li>Check <code>mention_mode</code>, especially if it is <code>"mention"</code> or <code>"none"</code></li>
+<li>Make sure the bot has joined the room, or enable <code>auto_join</code></li>
+</ul>
+<h3 id="bot-does-not-respond-in-dms"><a class="header" href="#bot-does-not-respond-in-dms">Bot does not respond in DMs</a></h3>
+<ul>
+<li>Check <code>dm_policy</code></li>
+<li>Check <code>user_allowlist</code></li>
+<li>If OTP is enabled, look in <strong>Channels &gt; Senders</strong> for a pending challenge</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="whatsapp-channel"><a class="header" href="#whatsapp-channel">WhatsApp Channel</a></h1>
 <p>Moltis supports WhatsApp as a messaging channel using the WhatsApp Linked Devices
 protocol. Your WhatsApp account connects as a linked device (like WhatsApp Web),
 so no separate phone number or WhatsApp Business API is needed — you pair your
 existing personal or business WhatsApp by scanning a QR code.</p>
-<h2 id="how-it-works-7"><a class="header" href="#how-it-works-7">How It Works</a></h2>
+<h2 id="how-it-works-8"><a class="header" href="#how-it-works-8">How It Works</a></h2>
 <pre><code>┌────────────────┐   QR pair   ┌─────────────────┐   Signal   ┌──────────────┐
 │  Your Phone    │ ──────────► │  Moltis Gateway  │ ◄────────► │  WhatsApp    │
 │  (WhatsApp)    │             │  (linked device)  │            │  Servers     │
@@ -5085,7 +5556,7 @@ model_provider = "anthropic"
 <tr><td><code>otp_cooldown_secs</code></td><td>int</td><td><code>300</code></td><td>Cooldown seconds after 3 failed OTP attempts</td></tr>
 </tbody></table>
 </div>
-<h3 id="full-example-3"><a class="header" href="#full-example-3">Full Example</a></h3>
+<h3 id="full-example-4"><a class="header" href="#full-example-4">Full Example</a></h3>
 <pre><code class="language-toml">[channels.whatsapp."personal"]
 paired = true
 display_name = "John's iPhone"
@@ -5106,7 +5577,7 @@ group_allowlist = ["120363456789@g.us"]
 model = "openai/gpt-4.1"
 model_provider = "openai"
 </code></pre>
-<h2 id="access-control-4"><a class="header" href="#access-control-4">Access Control</a></h2>
+<h2 id="access-control-5"><a class="header" href="#access-control-5">Access Control</a></h2>
 <p>WhatsApp uses the same access control model as Telegram channels.</p>
 <h3 id="dm-policies"><a class="header" href="#dm-policies">DM Policies</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Policy</th><th>Behavior</th></tr></thead><tbody>
@@ -5122,7 +5593,7 @@ model_provider = "openai"
 <tr><td><code>disabled</code></td><td>Bot ignores all group messages</td></tr>
 </tbody></table>
 </div>
-<h3 id="otp-self-approval-3"><a class="header" href="#otp-self-approval-3">OTP Self-Approval</a></h3>
+<h3 id="otp-self-approval-4"><a class="header" href="#otp-self-approval-4">OTP Self-Approval</a></h3>
 <p>When <code>dm_policy = "allowlist"</code> and <code>otp_self_approval = true</code> (the default),
 users not on the allowlist can request access:</p>
 <ol>
@@ -5293,7 +5764,7 @@ the bot replies asking the user to send a text message instead.</p>
 <li><strong>Approve</strong> or <strong>Deny</strong> users directly</li>
 <li>View pending OTP challenges with the code displayed</li>
 </ul>
-<h2 id="troubleshooting-8"><a class="header" href="#troubleshooting-8">Troubleshooting</a></h2>
+<h2 id="troubleshooting-9"><a class="header" href="#troubleshooting-9">Troubleshooting</a></h2>
 <h3 id="whatsapp-not-in-add-channel-menu"><a class="header" href="#whatsapp-not-in-add-channel-menu">WhatsApp Not in Add Channel Menu</a></h3>
 <ul>
 <li>WhatsApp is not offered by default. Add <code>"whatsapp"</code> to the <code>offered</code> list in <code>moltis.toml</code>:
@@ -5385,7 +5856,7 @@ faster and more lightweight.</p>
 <li><strong>BrowserPool</strong> (<code>crates/browser/src/pool.rs</code>) - Chrome instance management</li>
 <li><strong>Snapshot</strong> (<code>crates/browser/src/snapshot.rs</code>) - DOM element extraction</li>
 </ul>
-<h2 id="configuration-13"><a class="header" href="#configuration-13">Configuration</a></h2>
+<h2 id="configuration-14"><a class="header" href="#configuration-14">Configuration</a></h2>
 <p>Browser automation is <strong>enabled by default</strong>. To customize, add to your <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[tools.browser]
 enabled = true              # Enable browser support
@@ -5736,7 +6207,7 @@ tool calls with missing required fields. Moltis handles this gracefully:</p>
 <li><strong>Muted error display</strong>: Validation errors show as muted/informational cards
 in the UI (60% opacity, gray text) to indicate they’re expected, not alarming</li>
 </ul>
-<h2 id="troubleshooting-9"><a class="header" href="#troubleshooting-9">Troubleshooting</a></h2>
+<h2 id="troubleshooting-10"><a class="header" href="#troubleshooting-10">Troubleshooting</a></h2>
 <h3 id="browser-not-launching"><a class="header" href="#browser-not-launching">Browser not launching</a></h3>
 <ul>
 <li>Ensure Chrome/Chromium is installed</li>
@@ -5779,7 +6250,7 @@ agent gains a <code>caldav</code> tool that can list calendars, query events, an
 update, or delete entries on your behalf.</p>
 <p>The feature is compiled in by default (the <code>caldav</code> cargo feature) and can be
 disabled at build time with <code>--no-default-features</code>.</p>
-<h2 id="configuration-14"><a class="header" href="#configuration-14">Configuration</a></h2>
+<h2 id="configuration-15"><a class="header" href="#configuration-15">Configuration</a></h2>
 <p>Add a <code>[caldav]</code> section to your <code>moltis.toml</code> (usually <code>~/.moltis/moltis.toml</code>):</p>
 <pre><code class="language-toml">[caldav]
 enabled = true
@@ -5843,7 +6314,7 @@ Passwords are stored in <code>moltis.toml</code> and redacted in logs, but the f
 is plain text on disk. Consider using <a href="vault.html">Vault</a> for encryption at rest.</p>
 </div>
 </div>
-<h2 id="how-it-works-8"><a class="header" href="#how-it-works-8">How it works</a></h2>
+<h2 id="how-it-works-9"><a class="header" href="#how-it-works-9">How it works</a></h2>
 <p>When Moltis starts and CalDAV is enabled with at least one account, a <code>caldav</code>
 tool is registered in the agent tool registry. The agent can then call it during
 conversations to interact with your calendars.</p>
@@ -6523,7 +6994,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 </ul>
 <p>You can remove any subscription by clicking the <strong>Remove</strong> button. This works from any device - useful for revoking access to old devices.</p>
 <p>Subscription changes are broadcast in real-time via WebSocket, so all connected clients see updates immediately.</p>
-<h3 id="how-it-works-9"><a class="header" href="#how-it-works-9">How It Works</a></h3>
+<h3 id="how-it-works-10"><a class="header" href="#how-it-works-10">How It Works</a></h3>
 <p>Moltis uses the Web Push API with VAPID (Voluntary Application Server Identification) keys:</p>
 <ol>
 <li><strong>VAPID Keys</strong>: On first run, the server generates a P-256 ECDSA key pair</li>
@@ -6573,7 +7044,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 }
 </code></pre>
 <p>Clicking a notification will open or focus the app and navigate to the relevant chat.</p>
-<h2 id="configuration-15"><a class="header" href="#configuration-15">Configuration</a></h2>
+<h2 id="configuration-16"><a class="header" href="#configuration-16">Configuration</a></h2>
 <h3 id="feature-flag-3"><a class="header" href="#feature-flag-3">Feature Flag</a></h3>
 <p>Push notifications are controlled by the <code>push-notifications</code> feature flag, which is enabled by default. To disable:</p>
 <pre><code class="language-toml"># In your Cargo.toml or when building
@@ -6612,7 +7083,7 @@ moltis-gateway = { default-features = false, features = ["web-ui", "tls"] }
 </tbody></table>
 </div>
 <p>Note: iOS push notifications require iOS 16.4 or later and the app must be installed as a PWA.</p>
-<h2 id="troubleshooting-10"><a class="header" href="#troubleshooting-10">Troubleshooting</a></h2>
+<h2 id="troubleshooting-11"><a class="header" href="#troubleshooting-11">Troubleshooting</a></h2>
 <h3 id="notifications-not-working"><a class="header" href="#notifications-not-working">Notifications Not Working</a></h3>
 <ol>
 <li><strong>Check permissions</strong>: Ensure notifications are allowed in browser/OS settings</li>
@@ -7050,7 +7521,7 @@ JSON object <code>{"kind":"created","sessionKey":"..."}</code> dispatched to
 <p>Unmapped provider names are passed through as-is.</p>
 <h2 id="unsupported-channels"><a class="header" href="#unsupported-channels">Unsupported Channels</a></h2>
 <p>Currently only Telegram and Discord channels are imported. If your OpenClaw configuration includes other channel types (Slack, WhatsApp, etc.), they will appear as warnings in the scan output but will not be imported.</p>
-<h2 id="troubleshooting-11"><a class="header" href="#troubleshooting-11">Troubleshooting</a></h2>
+<h2 id="troubleshooting-12"><a class="header" href="#troubleshooting-12">Troubleshooting</a></h2>
 <h3 id="import-not-detected"><a class="header" href="#import-not-detected">Import not detected</a></h3>
 <ul>
 <li>Verify the OpenClaw directory exists: <code>ls ~/.openclaw/</code></li>
@@ -7070,7 +7541,7 @@ JSON object <code>{"kind":"created","sessionKey":"..."}</code> dispatched to
 device that connects to your gateway and executes commands on your behalf.
 This lets the AI agent run shell commands on a Linux server, query a Raspberry
 Pi, or leverage a GPU machine — all from a single chat session.</p>
-<h2 id="how-it-works-10"><a class="header" href="#how-it-works-10">How It Works</a></h2>
+<h2 id="how-it-works-11"><a class="header" href="#how-it-works-11">How It Works</a></h2>
 <pre><code>┌──────────────┐    WebSocket     ┌─────────────────┐
 │  Your laptop │◄────────────────►│  Moltis gateway  │
 │  (browser)   │                  │  (moltis)        │
@@ -7886,7 +8357,7 @@ drift re-trust, dependency install guards, kill switch, audit log), see
 <p>By default, Moltis requires explicit user approval before executing potentially
 dangerous commands. This “human-in-the-loop” design ensures the AI cannot take
 destructive actions without consent.</p>
-<h3 id="how-it-works-11"><a class="header" href="#how-it-works-11">How It Works</a></h3>
+<h3 id="how-it-works-12"><a class="header" href="#how-it-works-12">How It Works</a></h3>
 <p>When the agent wants to run a command:</p>
 <ol>
 <li>The command is analyzed against approval policies</li>
@@ -8490,7 +8961,7 @@ YubiKey-resident GPG key:</p>
 <li>Creates <code>.asc</code> detached GPG signatures for each artifact</li>
 <li>Uploads the <code>.asc</code> files to the GitHub release</li>
 </ol>
-<h3 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h3>
+<h3 id="prerequisites-5"><a class="header" href="#prerequisites-5">Prerequisites</a></h3>
 <ul>
 <li><a href="https://cli.github.com/">GitHub CLI</a> (<code>gh</code>) authenticated</li>
 <li>GPG with your signing key available (YubiKey inserted)</li>
@@ -8791,7 +9262,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t moltis:local .
 <p>OrbStack on macOS works identically to Docker — use the same socket path
 (<code>/var/run/docker.sock</code>). OrbStack’s lightweight Linux VM provides good
 isolation with lower resource usage than Docker Desktop.</p>
-<h2 id="troubleshooting-12"><a class="header" href="#troubleshooting-12">Troubleshooting</a></h2>
+<h2 id="troubleshooting-13"><a class="header" href="#troubleshooting-13">Troubleshooting</a></h2>
 <h3 id="cannot-connect-to-docker-daemon"><a class="header" href="#cannot-connect-to-docker-daemon">“Cannot connect to Docker daemon”</a></h3>
 <p>The Docker socket is not mounted or the Moltis user doesn’t have permission
 to access it. Verify:</p>
@@ -8927,7 +9398,7 @@ fly secrets set MOLTIS_PASSWORD="your-password"
 # Create persistent storage
 fly volumes create moltis_data --region iad --size 1
 </code></pre>
-<h3 id="how-it-works-12"><a class="header" href="#how-it-works-12">How it works</a></h3>
+<h3 id="how-it-works-13"><a class="header" href="#how-it-works-13">How it works</a></h3>
 <ul>
 <li><strong>Image</strong>: pulled from <code>ghcr.io/moltis-org/moltis:latest</code></li>
 <li><strong>Port</strong>: internal 8080, Fly terminates TLS and routes HTTPS traffic</li>
@@ -9499,7 +9970,7 @@ startup in the correct dependency order.</p>
     │   └── 20240205100004_init.sql   # files, chunks, embedding_cache, FTS
     └── src/lib.rs                     # run_migrations() (separate memory.db)
 </code></pre>
-<h2 id="how-it-works-13"><a class="header" href="#how-it-works-13">How It Works</a></h2>
+<h2 id="how-it-works-14"><a class="header" href="#how-it-works-14">How It Works</a></h2>
 <h3 id="migration-ownership"><a class="header" href="#migration-ownership">Migration Ownership</a></h3>
 <p>Each crate is autonomous and owns its schema:</p>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Database</th><th>Tables</th><th>Migration File</th></tr></thead><tbody>
@@ -9657,7 +10128,7 @@ async fn test_session_operations() {
 <span class="boring">}</span></code></pre></pre>
 <p>The <code>init()</code> methods are retained (marked <code>#[doc(hidden)]</code>) specifically for tests.
 In production, migrations handle schema creation.</p>
-<h2 id="troubleshooting-13"><a class="header" href="#troubleshooting-13">Troubleshooting</a></h2>
+<h2 id="troubleshooting-14"><a class="header" href="#troubleshooting-14">Troubleshooting</a></h2>
 <h3 id="failed-to-run-migrations"><a class="header" href="#failed-to-run-migrations">“failed to run migrations”</a></h3>
 <ol>
 <li>Check file permissions on <code>~/.moltis/</code></li>
@@ -9956,7 +10427,7 @@ fn main() {
 
     // Now spans will add labels to metrics
 }</code></pre></pre>
-<h3 id="how-it-works-14"><a class="header" href="#how-it-works-14">How It Works</a></h3>
+<h3 id="how-it-works-15"><a class="header" href="#how-it-works-15">How It Works</a></h3>
 <p>When tracing is enabled, span fields are automatically added as metric labels:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -10041,7 +10512,7 @@ pub mod my_feature {
 
 counter!(my_feature::OPERATIONS_TOTAL).increment(1);
 <span class="boring">}</span></code></pre></pre>
-<h2 id="configuration-16"><a class="header" href="#configuration-16">Configuration</a></h2>
+<h2 id="configuration-17"><a class="header" href="#configuration-17">Configuration</a></h2>
 <p>Metrics configuration in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[metrics]
 enabled = true              # Enable metrics collection (default: true)
@@ -10060,7 +10531,7 @@ labels = { env = "prod" }   # Add custom labels to all metrics
 <li><strong>Feature-gate everything</strong>: Use <code>#[cfg(feature = "metrics")]</code> to ensure zero overhead when disabled</li>
 <li><strong>Use predefined buckets</strong>: The <code>buckets</code> module has standard histogram buckets for common metric types</li>
 </ol>
-<h2 id="troubleshooting-14"><a class="header" href="#troubleshooting-14">Troubleshooting</a></h2>
+<h2 id="troubleshooting-15"><a class="header" href="#troubleshooting-15">Troubleshooting</a></h2>
 <h3 id="metrics-not-appearing"><a class="header" href="#metrics-not-appearing">Metrics not appearing</a></h3>
 <ol>
 <li>Verify the <code>metrics</code> feature is enabled at compile time</li>
@@ -10140,11 +10611,11 @@ tools grouped by origin.</p>
 With many MCP servers this can burn 15,000+ tokens per turn. <strong>Lazy mode</strong>
 replaces all tool schemas with a single <code>tool_search</code> meta-tool that the model
 uses to discover and activate tools on demand.</p>
-<h3 id="configuration-17"><a class="header" href="#configuration-17">Configuration</a></h3>
+<h3 id="configuration-18"><a class="header" href="#configuration-18">Configuration</a></h3>
 <pre><code class="language-toml">[tools]
 registry_mode = "lazy"   # default: "full"
 </code></pre>
-<h3 id="how-it-works-15"><a class="header" href="#how-it-works-15">How it works</a></h3>
+<h3 id="how-it-works-16"><a class="header" href="#how-it-works-16">How it works</a></h3>
 <ol>
 <li>The model receives only <code>tool_search</code> in its tool list.</li>
 <li><code>tool_search(query="memory")</code> returns name + description pairs (max 15), no schemas.</li>
