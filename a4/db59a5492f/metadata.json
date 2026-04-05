@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a4db59a5492f",
+  "strategy": "manual-commit",
+  "branch": "steep-peak",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "crates/providers/src/openai.rs",
+    "crates/service-traits/src/lib.rs",
+    "crates/web/src/assets/js/provider-validation.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a4/db59a5492f/0/metadata.json",
+      "transcript": "/a4/db59a5492f/0/full.jsonl",
+      "context": "/a4/db59a5492f/0/context.md",
+      "content_hash": "/a4/db59a5492f/0/content_hash.txt",
+      "prompt": "/a4/db59a5492f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 31,
+    "cache_creation_tokens": 27709,
+    "cache_read_tokens": 775165,
+    "output_tokens": 2606,
+    "api_call_count": 21
+  }
+}

@@ -1,0 +1,129 @@
+Implement the following plan:
+
+# Fix #554: "Service unavailable" error when probing providers
+
+## Context
+
+Users with local LLM servers (llama.cpp) see a generic "Service temporarily
+unavailable" error when clicking "Save & Validate" in Settings > LLMs.  The
+real error (HTTP 503 from the LLM server, timeout, model discovery failure,
+etc.) is swallowed by two bugs working in concert.  This is a regression from
+0.10.18 — previously the specific error was surfaced.
+
+## Root Cause
+
+**Backend:** `From<ServiceError> for ErrorShape` in `crates/service-traits/src/lib.rs:47-55`
+maps ALL non-Forbidden errors to the `UNAVAILABLE` error code.  This is
+semantically wrong for validation failures, probe errors, and general
+application errors.
+
+**Frontend:** `validateProviderKey()` in `crates/web/src/assets/js/provider-validation.js:76-81`
+reads `res?.error?.message` which has already been localized to
+"Service temporarily unavailable. Please try again." by `localizeRpcError()`.
+The original server message is available as `res?.error?.serverMessage` but is
+not used.  (`testModel()` at line 104 already uses `serverMessage` correctly.)
+
+## Changes
+
+### 1. Fix error code mapping (backend)
+
+**File:** `crates/service-traits/src/lib.rs`
+
+Change the `From<ServiceError> for ErrorShape` impl to use `INTERNAL` instead
+of `UNAVAILABLE` for the default case:
+
+```rust
+let code = match &err {
+    ServiceError::Forbidden { .. } => error_codes::FORBIDDEN,
+    _ => error_codes::INTERNAL,
+};
+```
+
+This is the correct semantic: `UNAVAILABLE` means the service isn't ready (used
+correctly in `gateway/state.rs` and `methods/node.rs` for node connectivity).
+`INTERNAL` means "something went wrong processing your request."  The frontend
+locale for `INTERNAL` is "An internal server error occurred." which is more
+accurate, but the real fix is #2 below.
+
+### 2. Surface server error in validateProviderKey (frontend)
+
+**File:** `crates/web/src/assets/js/provider-validation.js`
+
+In `validateProviderKey()` (line 78), prefer `serverMessage` over localized
+`message`, matching the pattern already used by `testModel()`:
+
+```js
+error: humanizeProbeError(
+    res?.error?.serverMessage || res?.error?.message || "Failed to validate credentials."
+),
+```
+
+### 3. Increase fetch_models_from_api timeout for local servers
+
+**File:** `crates/providers/src/openai.rs`
+
+Change the timeout in `fetch_models_from_api()` (line 361) from 8s to 15s.
+Local LLM servers (llama.cpp, vllm) can be slow to respond to `/v1/models`
+when loading.  The probe timeout is already 30s; model discovery should be
+generous too.
+
+```rust
+.timeout(Duration::from_secs(15))
+```
+
+## Files to modify
+
+1. `crates/service-traits/src/lib.rs` — line 51
+2. `crates/web/src/assets/js/provider-validation.js` — line 78
+3. `crates/providers/src/openai.rs` — line 361
+
+## Verification
+
+1. `cargo test -p moltis-service-traits` — ensure existing tests pass with new error code
+2. `cargo test -p moltis-providers` — verify no test depends on the 8s timeout
+3. `cargo test -p moltis-provider-setup` — validate probe flow tests still pass
+4. `just lint` — clippy clean
+5. `biome check --write crates/web/src/assets/js/provider-validation.js` — JS lint
+6. Manual QA: configure a custom provider with an unreachable endpoint, click
+   "Save & Validate", verify the real error (connection refused / timeout) is
+   shown instead of "Service temporarily unavailable"
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782.jsonl
+
+---
+
+<task-notification>
+<task-id>br2n3exaf</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/br2n3exaf.output</output-file>
+<status>completed</status>
+<summary>Background command "Run providers tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/br2n3exaf.output
+
+---
+
+<task-notification>
+<task-id>bfj2foapy</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/bfj2foapy.output</output-file>
+<status>completed</status>
+<summary>Background command "Run provider-setup tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/bfj2foapy.output
+
+---
+
+<task-notification>
+<task-id>bygkj23sl</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/bygkj23sl.output</output-file>
+<status>failed</status>
+<summary>Background command "Run clippy lint" failed with exit code 101</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-steep-peak/63caa787-6631-46fc-8eaa-becb19942782/tasks/bygkj23sl.output
+
+---
+
+yes
