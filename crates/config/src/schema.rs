@@ -1194,6 +1194,33 @@ pub enum TraceContentMode {
     Full,
 }
 
+/// Runtime limits for how much content Moltis should attach to observability spans.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TraceContentSettings {
+    pub trace_content: TraceContentMode,
+    pub max_content_bytes: usize,
+}
+
+impl TraceContentSettings {
+    #[must_use]
+    pub const fn new(trace_content: TraceContentMode, max_content_bytes: usize) -> Self {
+        Self {
+            trace_content,
+            max_content_bytes: if max_content_bytes == 0 {
+                1
+            } else {
+                max_content_bytes
+            },
+        }
+    }
+}
+
+impl Default for TraceContentSettings {
+    fn default() -> Self {
+        Self::new(TraceContentMode::Off, default_langfuse_max_content_bytes())
+    }
+}
+
 const fn is_default_trace_content_mode(value: &TraceContentMode) -> bool {
     matches!(value, TraceContentMode::Sanitized)
 }

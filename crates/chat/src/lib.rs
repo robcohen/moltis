@@ -10,7 +10,6 @@ use std::{
 
 use {
     async_trait::async_trait,
-    opentelemetry::{Array as OtelArray, Value as OtelValue, trace::TraceContextExt},
     serde::{Deserialize, Serialize},
     serde_json::Value,
     tokio::{
@@ -19,12 +18,19 @@ use {
     },
     tokio_stream::StreamExt,
     tracing::{Instrument, Span, debug, info, warn},
-    tracing_opentelemetry::OpenTelemetrySpanExt,
 };
+
+#[cfg(feature = "tracing")]
+use opentelemetry::{Array as OtelArray, Value as OtelValue, trace::TraceContextExt};
+#[cfg(feature = "tracing")]
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use {
     moltis_common::observability::sanitize_json_for_observability,
-    moltis_config::{MessageQueueMode, ToolMode, schema::TraceContentMode},
+    moltis_config::{
+        MessageQueueMode, ToolMode,
+        schema::{TraceContentMode, TraceContentSettings},
+    },
 };
 
 use {
@@ -275,30 +281,30 @@ struct AssistantTurnOutput {
     trace_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct LangfuseContentSettings {
-    trace_content: TraceContentMode,
-    max_content_bytes: usize,
-}
-
-fn langfuse_content_settings(
-    config: &moltis_config::MoltisConfig,
-) -> Option<LangfuseContentSettings> {
+fn langfuse_content_settings(config: &moltis_config::MoltisConfig) -> Option<TraceContentSettings> {
     let langfuse = &config.metrics.langfuse;
     if !langfuse.enabled {
         return None;
     }
-    Some(LangfuseContentSettings {
-        trace_content: langfuse.trace_content,
-        max_content_bytes: langfuse.max_content_bytes.max(1),
-    })
+    Some(TraceContentSettings::new(
+        langfuse.trace_content,
+        langfuse.max_content_bytes,
+    ))
 }
+
+#[cfg(feature = "tracing")]
+fn set_span_attribute(span: &Span, key: &'static str, value: impl Into<String>) {
+    span.set_attribute(key, value.into());
+}
+
+#[cfg(not(feature = "tracing"))]
+fn set_span_attribute(_span: &Span, _key: &'static str, _value: impl Into<String>) {}
 
 fn set_langfuse_json_attribute(
     span: &Span,
     key: &'static str,
     value: &Value,
-    settings: Option<LangfuseContentSettings>,
+    settings: Option<TraceContentSettings>,
 ) {
     let Some(settings) = settings else {
         return;
@@ -319,7 +325,7 @@ fn set_langfuse_json_attribute(
         .ok(),
     };
     if let Some(serialized) = serialized {
-        span.set_attribute(key, serialized);
+        set_span_attribute(span, key, serialized);
     }
 }
 
@@ -327,6 +333,11 @@ fn set_langfuse_trace_tags(span: &Span, tags: &[String]) {
     if tags.is_empty() {
         return;
     }
+
+    #[cfg(not(feature = "tracing"))]
+    let _ = span;
+
+    #[cfg(feature = "tracing")]
     span.set_attribute(
         "langfuse.trace.tags",
         OtelValue::Array(OtelArray::String(
@@ -336,11 +347,20 @@ fn set_langfuse_trace_tags(span: &Span, tags: &[String]) {
 }
 
 fn trace_id_for_span(span: &Span) -> Option<String> {
-    let context = span.context();
-    let trace_span = context.span();
-    let span_context = trace_span.span_context();
-    (span_context.is_valid() && span_context.is_sampled())
-        .then(|| span_context.trace_id().to_string())
+    #[cfg(not(feature = "tracing"))]
+    {
+        let _ = span;
+        return None;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        let context = span.context();
+        let trace_span = context.span();
+        let span_context = trace_span.span_context();
+        (span_context.is_valid() && span_context.is_sampled())
+            .then(|| span_context.trace_id().to_string())
+    }
 }
 
 fn user_content_observability_value(content: &UserContent) -> Value {
@@ -381,7 +401,7 @@ fn usage_observability_value(usage: &moltis_agents::model::Usage) -> Value {
 fn configure_chat_run_span(
     span: &Span,
     config: &moltis_config::MoltisConfig,
-    settings: Option<LangfuseContentSettings>,
+    settings: Option<TraceContentSettings>,
     run_id: &str,
     session_key: &str,
     agent_id: &str,
@@ -396,9 +416,9 @@ fn configure_chat_run_span(
     user_content: &UserContent,
 ) {
     let trace_name = format!("chat:{agent_id}");
-    span.set_attribute("langfuse.trace.name", trace_name);
-    span.set_attribute("langfuse.observation.type", "agent");
-    span.set_attribute("session.id", session_key.to_string());
+    set_span_attribute(span, "langfuse.trace.name", trace_name);
+    set_span_attribute(span, "langfuse.observation.type", "agent");
+    set_span_attribute(span, "session.id", session_key.to_string());
     set_langfuse_trace_tags(span, &config.metrics.langfuse.tags);
 
     let metadata = serde_json::json!({
@@ -419,8 +439,8 @@ fn configure_chat_run_span(
         "conn_id": conn_id,
     });
     if let Ok(metadata_str) = serde_json::to_string(&metadata) {
-        span.set_attribute("langfuse.trace.metadata", metadata_str.clone());
-        span.set_attribute("langfuse.observation.metadata", metadata_str);
+        set_span_attribute(span, "langfuse.trace.metadata", metadata_str.clone());
+        set_span_attribute(span, "langfuse.observation.metadata", metadata_str);
     }
 
     let input = user_content_observability_value(user_content);
@@ -6938,8 +6958,9 @@ async fn run_with_tools(
                     error: error_obj,
                     seq: client_seq,
                 };
-                run_span.set_attribute("langfuse.observation.level", "ERROR");
-                run_span.set_attribute(
+                set_span_attribute(&run_span, "langfuse.observation.level", "ERROR");
+                set_span_attribute(
+                    &run_span,
                     "langfuse.observation.status_message",
                     "empty response with zero tokens",
                 );
@@ -7097,8 +7118,12 @@ async fn run_with_tools(
                 error: error_obj,
                 seq: client_seq,
             };
-            run_span.set_attribute("langfuse.observation.level", "ERROR");
-            run_span.set_attribute("langfuse.observation.status_message", error_str.clone());
+            set_span_attribute(&run_span, "langfuse.observation.level", "ERROR");
+            set_span_attribute(
+                &run_span,
+                "langfuse.observation.status_message",
+                error_str.clone(),
+            );
             set_langfuse_json_attribute(
                 &run_span,
                 "langfuse.trace.output",
@@ -7370,8 +7395,12 @@ async fn run_streaming(
             provider = %provider_name,
             model = %model_id
         );
-        llm_span.set_attribute("langfuse.observation.type", "generation");
-        llm_span.set_attribute("langfuse.observation.model.name", model_id.to_string());
+        set_span_attribute(&llm_span, "langfuse.observation.type", "generation");
+        set_span_attribute(
+            &llm_span,
+            "langfuse.observation.model.name",
+            model_id.to_string(),
+        );
         if let Ok(metadata) = serde_json::to_string(&serde_json::json!({
             "message_count": messages.len(),
             "streaming": true,
@@ -7379,7 +7408,7 @@ async fn run_streaming(
             "retryable_server_retries_remaining": server_retries_remaining,
             "retryable_rate_limit_retries_remaining": rate_limit_retries_remaining,
         })) {
-            llm_span.set_attribute("langfuse.observation.metadata", metadata);
+            set_span_attribute(&llm_span, "langfuse.observation.metadata", metadata);
         }
         let request_payload = serde_json::json!({
             "messages": messages.iter().map(ChatMessage::to_openai_value).collect::<Vec<_>>(),
@@ -7533,8 +7562,9 @@ async fn run_streaming(
                             error: error_obj,
                             seq: client_seq,
                         };
-                        llm_span.set_attribute("langfuse.observation.level", "ERROR");
-                        llm_span.set_attribute(
+                        set_span_attribute(&llm_span, "langfuse.observation.level", "ERROR");
+                        set_span_attribute(
+                            &llm_span,
                             "langfuse.observation.status_message",
                             "empty stream with zero tokens",
                         );
@@ -7544,8 +7574,9 @@ async fn run_streaming(
                             &serde_json::json!({ "error": "empty stream with zero tokens" }),
                             langfuse_settings,
                         );
-                        run_span.set_attribute("langfuse.observation.level", "ERROR");
-                        run_span.set_attribute(
+                        set_span_attribute(&run_span, "langfuse.observation.level", "ERROR");
+                        set_span_attribute(
+                            &run_span,
                             "langfuse.observation.status_message",
                             "empty stream with zero tokens",
                         );
@@ -7637,7 +7668,11 @@ async fn run_streaming(
                     if let Ok(usage_json) =
                         serde_json::to_string(&usage_observability_value(&usage))
                     {
-                        llm_span.set_attribute("langfuse.observation.usage_details", usage_json);
+                        set_span_attribute(
+                            &llm_span,
+                            "langfuse.observation.usage_details",
+                            usage_json,
+                        );
                     }
                     set_langfuse_json_attribute(
                         &llm_span,
@@ -7707,8 +7742,12 @@ async fn run_streaming(
                             &mut rate_limit_backoff_ms,
                         )
                     {
-                        llm_span.set_attribute("langfuse.observation.level", "ERROR");
-                        llm_span.set_attribute("langfuse.observation.status_message", msg.clone());
+                        set_span_attribute(&llm_span, "langfuse.observation.level", "ERROR");
+                        set_span_attribute(
+                            &llm_span,
+                            "langfuse.observation.status_message",
+                            msg.clone(),
+                        );
                         set_langfuse_json_attribute(
                             &llm_span,
                             "langfuse.observation.output",
@@ -7768,16 +7807,24 @@ async fn run_streaming(
                         error: error_obj,
                         seq: client_seq,
                     };
-                    llm_span.set_attribute("langfuse.observation.level", "ERROR");
-                    llm_span.set_attribute("langfuse.observation.status_message", msg.clone());
+                    set_span_attribute(&llm_span, "langfuse.observation.level", "ERROR");
+                    set_span_attribute(
+                        &llm_span,
+                        "langfuse.observation.status_message",
+                        msg.clone(),
+                    );
                     set_langfuse_json_attribute(
                         &llm_span,
                         "langfuse.observation.output",
                         &serde_json::json!({ "error": msg.clone() }),
                         langfuse_settings,
                     );
-                    run_span.set_attribute("langfuse.observation.level", "ERROR");
-                    run_span.set_attribute("langfuse.observation.status_message", msg.clone());
+                    set_span_attribute(&run_span, "langfuse.observation.level", "ERROR");
+                    set_span_attribute(
+                        &run_span,
+                        "langfuse.observation.status_message",
+                        msg.clone(),
+                    );
                     set_langfuse_json_attribute(
                         &run_span,
                         "langfuse.trace.output",

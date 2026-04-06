@@ -3,18 +3,20 @@ use std::{borrow::Cow, fmt::Write, sync::Arc};
 use {
     anyhow::{Result, bail},
     tracing::{Instrument, Span, debug, info, trace, warn},
-    tracing_opentelemetry::OpenTelemetrySpanExt,
 };
 
 #[cfg(feature = "metrics")]
 use moltis_metrics::{counter, histogram, labels, llm as llm_metrics};
+
+#[cfg(feature = "tracing")]
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use {
     moltis_common::{
         hooks::{HookAction, HookPayload, HookRegistry},
         observability::{sanitize_json_for_observability, sanitize_text_for_observability},
     },
-    moltis_config::schema::TraceContentMode,
+    moltis_config::schema::{TraceContentMode, TraceContentSettings},
 };
 
 use crate::{
@@ -90,21 +92,6 @@ const EMPTY_TOOL_NAME_RETRY_PROMPT: &str = "Your structured tool call had an emp
 const TELEMETRY_TRACE_CONTENT_KEY: &str = "__telemetry_trace_content";
 const TELEMETRY_MAX_CONTENT_BYTES_KEY: &str = "__telemetry_max_content_bytes";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ObservabilitySettings {
-    trace_content: TraceContentMode,
-    max_content_bytes: usize,
-}
-
-impl Default for ObservabilitySettings {
-    fn default() -> Self {
-        Self {
-            trace_content: TraceContentMode::Off,
-            max_content_bytes: 8_192,
-        }
-    }
-}
-
 fn find_empty_tool_name_call(tool_calls: &[ToolCall]) -> Option<&ToolCall> {
     tool_calls
         .iter()
@@ -148,9 +135,17 @@ fn streaming_tool_call_message_content(
     }
 }
 
-fn observability_settings(tool_context: &Option<serde_json::Value>) -> ObservabilitySettings {
+#[cfg(feature = "tracing")]
+fn set_span_attribute(span: &Span, key: &'static str, value: impl Into<String>) {
+    span.set_attribute(key, value.into());
+}
+
+#[cfg(not(feature = "tracing"))]
+fn set_span_attribute(_span: &Span, _key: &'static str, _value: impl Into<String>) {}
+
+fn observability_settings(tool_context: &Option<serde_json::Value>) -> TraceContentSettings {
     let Some(ctx) = tool_context.as_ref().and_then(serde_json::Value::as_object) else {
-        return ObservabilitySettings::default();
+        return TraceContentSettings::default();
     };
 
     let trace_content = match ctx
@@ -168,10 +163,7 @@ fn observability_settings(tool_context: &Option<serde_json::Value>) -> Observabi
         .filter(|value| *value > 0)
         .unwrap_or(8_192);
 
-    ObservabilitySettings {
-        trace_content,
-        max_content_bytes,
-    }
+    TraceContentSettings::new(trace_content, max_content_bytes)
 }
 
 fn is_internal_tool_context_key(key: &str) -> bool {
@@ -219,7 +211,7 @@ fn set_json_attribute(
     span: &Span,
     key: &'static str,
     value: &serde_json::Value,
-    settings: ObservabilitySettings,
+    settings: TraceContentSettings,
 ) {
     let serialized = match settings.trace_content {
         TraceContentMode::Off => None,
@@ -237,16 +229,11 @@ fn set_json_attribute(
         .ok(),
     };
     if let Some(serialized) = serialized {
-        span.set_attribute(key, serialized);
+        set_span_attribute(span, key, serialized);
     }
 }
 
-fn set_text_attribute(
-    span: &Span,
-    key: &'static str,
-    value: &str,
-    settings: ObservabilitySettings,
-) {
+fn set_text_attribute(span: &Span, key: &'static str, value: &str, settings: TraceContentSettings) {
     let serialized = match settings.trace_content {
         TraceContentMode::Off => None,
         TraceContentMode::Sanitized => Some(sanitize_text_for_observability(
@@ -261,13 +248,13 @@ fn set_text_attribute(
         )),
     };
     if let Some(serialized) = serialized {
-        span.set_attribute(key, serialized);
+        set_span_attribute(span, key, serialized);
     }
 }
 
 fn set_usage_attributes(span: &Span, usage: &Usage) {
     if let Ok(serialized) = serde_json::to_string(&usage_to_json(usage)) {
-        span.set_attribute("langfuse.observation.usage_details", serialized);
+        set_span_attribute(span, "langfuse.observation.usage_details", serialized);
     }
 }
 
@@ -915,15 +902,19 @@ pub async fn run_agent_loop_with_context(
             provider = %provider.name(),
             model = %provider.id()
         );
-        llm_span.set_attribute("langfuse.observation.type", "generation");
-        llm_span.set_attribute("langfuse.observation.model.name", provider.id().to_string());
+        set_span_attribute(&llm_span, "langfuse.observation.type", "generation");
+        set_span_attribute(
+            &llm_span,
+            "langfuse.observation.model.name",
+            provider.id().to_string(),
+        );
         if let Ok(metadata) = serde_json::to_string(&serde_json::json!({
             "iteration": iterations,
             "message_count": messages.len(),
             "tool_schema_count": schemas_for_api.len(),
             "native_tools": native_tools,
         })) {
-            llm_span.set_attribute("langfuse.observation.metadata", metadata);
+            set_span_attribute(&llm_span, "langfuse.observation.metadata", metadata);
         }
         let request_payload = serde_json::json!({
             "messages": messages.iter().map(ChatMessage::to_openai_value).collect::<Vec<_>>(),
@@ -977,8 +968,12 @@ pub async fn run_agent_loop_with_context(
             Ok(r) => r,
             Err(e) => {
                 let msg = e.to_string();
-                llm_span.set_attribute("langfuse.observation.level", "ERROR");
-                llm_span.set_attribute("langfuse.observation.status_message", msg.clone());
+                set_span_attribute(&llm_span, "langfuse.observation.level", "ERROR");
+                set_span_attribute(
+                    &llm_span,
+                    "langfuse.observation.status_message",
+                    msg.clone(),
+                );
                 set_text_attribute(
                     &llm_span,
                     "langfuse.observation.output",
@@ -1268,12 +1263,12 @@ pub async fn run_agent_loop_with_context(
                     tool = %tc_name,
                     tool_call_id = %tc.id,
                 );
-                tool_span.set_attribute("langfuse.observation.type", "tool");
+                set_span_attribute(&tool_span, "langfuse.observation.type", "tool");
                 if let Ok(metadata) = serde_json::to_string(&serde_json::json!({
                     "tool_call_id": tc.id,
                     "iteration": iterations,
                 })) {
-                    tool_span.set_attribute("langfuse.observation.metadata", metadata);
+                    set_span_attribute(&tool_span, "langfuse.observation.metadata", metadata);
                 }
                 set_json_attribute(
                     &tool_span,
@@ -1294,9 +1289,16 @@ pub async fn run_agent_loop_with_context(
                             Ok(HookAction::Block(reason)) => {
                                 warn!(tool = %tc_name, reason = %reason, "tool call blocked by hook");
                                 let err_str = format!("blocked by hook: {reason}");
-                                tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                                tool_span
-                                    .set_attribute("langfuse.observation.status_message", err_str.clone());
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.level",
+                                    "ERROR",
+                                );
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.status_message",
+                                    err_str.clone(),
+                                );
                                 set_text_attribute(
                                     &tool_span,
                                     "langfuse.observation.output",
@@ -1348,9 +1350,14 @@ pub async fn run_agent_loop_with_context(
                                 }
 
                                 if has_error {
-                                    tool_span.set_attribute("langfuse.observation.level", "ERROR");
+                                    set_span_attribute(
+                                        &tool_span,
+                                        "langfuse.observation.level",
+                                        "ERROR",
+                                    );
                                     if let Some(error) = error_msg.as_ref() {
-                                        tool_span.set_attribute(
+                                        set_span_attribute(
+                                            &tool_span,
                                             "langfuse.observation.status_message",
                                             error.clone(),
                                         );
@@ -1375,9 +1382,16 @@ pub async fn run_agent_loop_with_context(
                             },
                             Err(e) => {
                                 let err_str = e.to_string();
-                                tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                                tool_span
-                                    .set_attribute("langfuse.observation.status_message", err_str.clone());
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.level",
+                                    "ERROR",
+                                );
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.status_message",
+                                    err_str.clone(),
+                                );
                                 set_text_attribute(
                                     &tool_span,
                                     "langfuse.observation.output",
@@ -1405,8 +1419,12 @@ pub async fn run_agent_loop_with_context(
                         }
                     } else {
                         let err_str = format!("unknown tool: {tc_name}");
-                        tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                        tool_span.set_attribute("langfuse.observation.status_message", err_str.clone());
+                        set_span_attribute(&tool_span, "langfuse.observation.level", "ERROR");
+                        set_span_attribute(
+                            &tool_span,
+                            "langfuse.observation.status_message",
+                            err_str.clone(),
+                        );
                         set_text_attribute(
                             &tool_span,
                             "langfuse.observation.output",
@@ -1618,8 +1636,12 @@ pub async fn run_agent_loop_streaming(
             provider = %provider.name(),
             model = %provider.id()
         );
-        llm_span.set_attribute("langfuse.observation.type", "generation");
-        llm_span.set_attribute("langfuse.observation.model.name", provider.id().to_string());
+        set_span_attribute(&llm_span, "langfuse.observation.type", "generation");
+        set_span_attribute(
+            &llm_span,
+            "langfuse.observation.model.name",
+            provider.id().to_string(),
+        );
         if let Ok(metadata) = serde_json::to_string(&serde_json::json!({
             "iteration": iterations,
             "message_count": messages.len(),
@@ -1627,7 +1649,7 @@ pub async fn run_agent_loop_streaming(
             "native_tools": native_tools,
             "streaming": true,
         })) {
-            llm_span.set_attribute("langfuse.observation.metadata", metadata);
+            set_span_attribute(&llm_span, "langfuse.observation.metadata", metadata);
         }
         let request_payload = serde_json::json!({
             "messages": messages.iter().map(ChatMessage::to_openai_value).collect::<Vec<_>>(),
@@ -1775,8 +1797,12 @@ pub async fn run_agent_loop_streaming(
 
         // Handle stream errors — retry on transient failures/rate limits.
         if let Some(err) = stream_error {
-            llm_span.set_attribute("langfuse.observation.level", "ERROR");
-            llm_span.set_attribute("langfuse.observation.status_message", err.clone());
+            set_span_attribute(&llm_span, "langfuse.observation.level", "ERROR");
+            set_span_attribute(
+                &llm_span,
+                "langfuse.observation.status_message",
+                err.clone(),
+            );
             set_text_attribute(
                 &llm_span,
                 "langfuse.observation.output",
@@ -2080,12 +2106,12 @@ pub async fn run_agent_loop_streaming(
                     tool = %tc_name,
                     tool_call_id = %tc.id,
                 );
-                tool_span.set_attribute("langfuse.observation.type", "tool");
+                set_span_attribute(&tool_span, "langfuse.observation.type", "tool");
                 if let Ok(metadata) = serde_json::to_string(&serde_json::json!({
                     "tool_call_id": tc.id,
                     "iteration": iterations,
                 })) {
-                    tool_span.set_attribute("langfuse.observation.metadata", metadata);
+                    set_span_attribute(&tool_span, "langfuse.observation.metadata", metadata);
                 }
                 set_json_attribute(
                     &tool_span,
@@ -2106,9 +2132,16 @@ pub async fn run_agent_loop_streaming(
                             Ok(HookAction::Block(reason)) => {
                                 warn!(tool = %tc_name, reason = %reason, "tool call blocked by hook");
                                 let err_str = format!("blocked by hook: {reason}");
-                                tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                                tool_span
-                                    .set_attribute("langfuse.observation.status_message", err_str.clone());
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.level",
+                                    "ERROR",
+                                );
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.status_message",
+                                    err_str.clone(),
+                                );
                                 set_text_attribute(
                                     &tool_span,
                                     "langfuse.observation.output",
@@ -2159,9 +2192,14 @@ pub async fn run_agent_loop_streaming(
                                 }
 
                                 if has_error {
-                                    tool_span.set_attribute("langfuse.observation.level", "ERROR");
+                                    set_span_attribute(
+                                        &tool_span,
+                                        "langfuse.observation.level",
+                                        "ERROR",
+                                    );
                                     if let Some(error) = error_msg.as_ref() {
-                                        tool_span.set_attribute(
+                                        set_span_attribute(
+                                            &tool_span,
                                             "langfuse.observation.status_message",
                                             error.clone(),
                                         );
@@ -2185,9 +2223,16 @@ pub async fn run_agent_loop_streaming(
                             }
                             Err(e) => {
                                 let err_str = e.to_string();
-                                tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                                tool_span
-                                    .set_attribute("langfuse.observation.status_message", err_str.clone());
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.level",
+                                    "ERROR",
+                                );
+                                set_span_attribute(
+                                    &tool_span,
+                                    "langfuse.observation.status_message",
+                                    err_str.clone(),
+                                );
                                 set_text_attribute(
                                     &tool_span,
                                     "langfuse.observation.output",
@@ -2214,8 +2259,12 @@ pub async fn run_agent_loop_streaming(
                         }
                     } else {
                         let err_str = format!("unknown tool: {tc_name}");
-                        tool_span.set_attribute("langfuse.observation.level", "ERROR");
-                        tool_span.set_attribute("langfuse.observation.status_message", err_str.clone());
+                        set_span_attribute(&tool_span, "langfuse.observation.level", "ERROR");
+                        set_span_attribute(
+                            &tool_span,
+                            "langfuse.observation.status_message",
+                            err_str.clone(),
+                        );
                         set_text_attribute(
                             &tool_span,
                             "langfuse.observation.output",
