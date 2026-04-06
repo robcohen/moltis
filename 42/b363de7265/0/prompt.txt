@@ -1,0 +1,17 @@
+I like https://github.com/moltis-org/moltis/discussions/538 can you plan for an implementation
+
+---
+
+Create bead issues and start implementing all of them
+
+---
+
+try again
+
+---
+
+commit push create a PR
+
+---
+
+Fix PR comments and resolve conversations

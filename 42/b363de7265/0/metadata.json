@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "42b363de7265",
+  "session_id": "5dfe1891-efdb-420d-80a4-f5b1d1b24585",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T09:29:43.850291Z",
+  "branch": "mahogany-night",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c65e010767db",
+  "checkpoint_transcript_start": 954,
+  "transcript_lines_at_start": 954,
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 9722,
+    "cache_read_tokens": 2053194,
+    "output_tokens": 3700,
+    "api_call_count": 14
+  },
+  "summary": {
+    "intent": "Implement cron session key tracking with auto-pruning and session retention across 5 phases, then get it merged via PR with review comments addressed.",
+    "outcome": "PR #564 created and two review comments fixed: a named-session guard logic bug and a magic-number time calculation replaced with the `time` crate.",
+    "learnings": {
+      "repo": [
+        "All cron session keys are prefixed with `cron:`, so checking `!key.starts_with(\"cron:\")` is always false — UUID suffix must be inspected to distinguish isolated from named sessions.",
+        "CLAUDE.md prohibits magic epoch math (e.g. `retention_days * 24 * 60 * 60 * 1000`); the `time` crate must be used instead.",
+        "The `time` and `uuid` crates are dependencies of moltis-gateway; `uuid` is used via full path without an explicit `use` import.",
+        "Store backends (SQLite, memory, and a third) all require parallel implementation of new query methods like `prune_runs_before` and `list_session_keys_before`."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Named-session guard `!key.starts_with(\"cron:\")` was always false; fix requires parsing the UUID suffix to distinguish session types."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Retention duration calculation replaced from raw millisecond arithmetic to `time` crate duration API to comply with CLAUDE.md conventions."
+        }
+      ],
+      "workflow": [
+        "PR review comments were fetched via Bash/gh CLI and triaged before any edits — two comments were both deemed valid.",
+        "Compile + clippy + fmt checks were run after edits before committing the review fixes.",
+        "YubiKey interaction is required for git push in this repo."
+      ]
+    },
+    "friction": [
+      "Named-session guard bug shipped in the initial PR — the logic error (`!key.starts_with(\"cron:\")` always false) wasn't caught before merge.",
+      "Magic epoch math also shipped and required a reviewer to flag the CLAUDE.md violation rather than being caught pre-commit.",
+      "`time` and `uuid` import style is inconsistent (full paths vs `use` imports), requiring a grep investigation before editing."
+    ],
+    "open_items": [
+      "Verify PR conversations were actually resolved after the fix commit was pushed (transcript ends before confirmation).",
+      "Consider adding a lint or test to prevent magic time arithmetic regressions in the future."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T09:29:22.342809Z",
+    "agent_lines": 6,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "agent_percentage": 100
+  }
+}
