@@ -194,6 +194,11 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h3 id="removed"><a class="header" href="#removed">Removed</a></h3>
 <h3 id="fixed"><a class="header" href="#fixed">Fixed</a></h3>
 <h3 id="security"><a class="header" href="#security">Security</a></h3>
+<h2 id="2026040506---2026-04-05"><a class="header" href="#2026040506---2026-04-05">[20260405.06] - 2026-04-05</a></h2>
+<h3 id="security-1"><a class="header" href="#security-1">Security</a></h3>
+<ul>
+<li>Add GitHub artifact attestations to release workflow</li>
+</ul>
 <h2 id="2026040505---2026-04-05"><a class="header" href="#2026040505---2026-04-05">[20260405.05] - 2026-04-05</a></h2>
 <h2 id="2026040504---2026-04-05"><a class="header" href="#2026040504---2026-04-05">[20260405.04] - 2026-04-05</a></h2>
 <h2 id="2026040503---2026-04-05"><a class="header" href="#2026040503---2026-04-05">[20260405.03] - 2026-04-05</a></h2>
@@ -1657,7 +1662,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[skills] Improve slug error messages and test isolation</li>
 <li>[gateway] Suppress update banner for dev builds</li>
 </ul>
-<h3 id="security-1"><a class="header" href="#security-1">Security</a></h3>
+<h3 id="security-2"><a class="header" href="#security-2">Security</a></h3>
 <ul>
 <li>[ci] Add zizmor workflow security scan to deb-packages workflow (#8)</li>
 <li>[skills] Add requirements system, spec compliance, and markdown rendering</li>
@@ -1773,7 +1778,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[chat] Skip duplicate text fallback when TTS disabled and voice streamed (#373)</li>
 <li>[web] Break redirect loop when accessing via Tailscale Serve (#356)</li>
 </ul>
-<h3 id="security-2"><a class="header" href="#security-2">Security</a></h3>
+<h3 id="security-3"><a class="header" href="#security-3">Security</a></h3>
 <ul>
 <li>[nodes] Add multi-node support with device pairing, remote exec, and UI (#291)</li>
 <li>[security] Add direct nginx websocket proxy example (#364)</li>
@@ -1851,7 +1856,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Externalize SVG icons and restore empty-chat centering</li>
 <li>[web] Align e2e with controls modal and daily model refresh</li>
 </ul>
-<h3 id="security-3"><a class="header" href="#security-3">Security</a></h3>
+<h3 id="security-4"><a class="header" href="#security-4">Security</a></h3>
 <ul>
 <li>[nodes] Add multi-node support with device pairing, remote exec, and UI (#291)</li>
 </ul>
@@ -1903,7 +1908,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Auto-install node_modules in Tailwind build script</li>
 <li>[web] Retry openclaw onboarding scan until ws is ready</li>
 </ul>
-<h3 id="security-4"><a class="header" href="#security-4">Security</a></h3>
+<h3 id="security-5"><a class="header" href="#security-5">Security</a></h3>
 <ul>
 <li>[macos] Wire settings UI to rust config backend (#267)</li>
 <li>[channels] Shared channel webhook middleware pipeline (#290)</li>
@@ -1953,14 +1958,14 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>Release packaging now installs cross-compilation targets on the active nightly toolchain in the Homebrew binary job, fixing <code>error[E0463]: can't find crate for core</code> during macOS binary builds.</li>
 <li>Docker release builds now copy <code>apps/courier</code> into the image build context so Cargo workspace metadata resolves correctly during WASM component builds.</li>
 </ul>
-<h3 id="security-5"><a class="header" href="#security-5">Security</a></h3>
+<h3 id="security-6"><a class="header" href="#security-6">Security</a></h3>
 <h2 id="0101---2026-02-28"><a class="header" href="#0101---2026-02-28">[0.10.1] - 2026-02-28</a></h2>
 <h3 id="added-12"><a class="header" href="#added-12">Added</a></h3>
 <h3 id="changed-12"><a class="header" href="#changed-12">Changed</a></h3>
 <h3 id="deprecated-2"><a class="header" href="#deprecated-2">Deprecated</a></h3>
 <h3 id="removed-6"><a class="header" href="#removed-6">Removed</a></h3>
 <h3 id="fixed-24"><a class="header" href="#fixed-24">Fixed</a></h3>
-<h3 id="security-6"><a class="header" href="#security-6">Security</a></h3>
+<h3 id="security-7"><a class="header" href="#security-7">Security</a></h3>
 <h2 id="0100---2026-02-28"><a class="header" href="#0100---2026-02-28">[0.10.0] - 2026-02-28</a></h2>
 <h3 id="added-13"><a class="header" href="#added-13">Added</a></h3>
 <ul>
@@ -2061,35 +2066,35 @@ centered spinner.</li>
 <li>Gateway startup now blocks the common reverse-proxy TLS mismatch (<code>MOLTIS_BEHIND_PROXY=true</code> with Moltis TLS enabled) and explains using <code>--no-tls</code>; HTTPS-upstream proxy setups can explicitly opt in with <code>MOLTIS_ALLOW_TLS_BEHIND_PROXY=true</code></li>
 <li>WebSocket same-origin checks now accept proxy deployments that rewrite <code>Host</code> by using <code>X-Forwarded-Host</code> in proxy mode, and treat implicit <code>:443</code>/<code>:80</code> as equivalent to default ports</li>
 </ul>
-<h3 id="security-7"><a class="header" href="#security-7">Security</a></h3>
+<h3 id="security-8"><a class="header" href="#security-8">Security</a></h3>
 <h2 id="0910---2026-02-21"><a class="header" href="#0910---2026-02-21">[0.9.10] - 2026-02-21</a></h2>
 <h3 id="added-14"><a class="header" href="#added-14">Added</a></h3>
 <h3 id="changed-14"><a class="header" href="#changed-14">Changed</a></h3>
 <h3 id="deprecated-4"><a class="header" href="#deprecated-4">Deprecated</a></h3>
 <h3 id="removed-8"><a class="header" href="#removed-8">Removed</a></h3>
 <h3 id="fixed-26"><a class="header" href="#fixed-26">Fixed</a></h3>
-<h3 id="security-8"><a class="header" href="#security-8">Security</a></h3>
+<h3 id="security-9"><a class="header" href="#security-9">Security</a></h3>
 <h2 id="099---2026-02-21"><a class="header" href="#099---2026-02-21">[0.9.9] - 2026-02-21</a></h2>
 <h3 id="added-15"><a class="header" href="#added-15">Added</a></h3>
 <h3 id="changed-15"><a class="header" href="#changed-15">Changed</a></h3>
 <h3 id="deprecated-5"><a class="header" href="#deprecated-5">Deprecated</a></h3>
 <h3 id="removed-9"><a class="header" href="#removed-9">Removed</a></h3>
 <h3 id="fixed-27"><a class="header" href="#fixed-27">Fixed</a></h3>
-<h3 id="security-9"><a class="header" href="#security-9">Security</a></h3>
+<h3 id="security-10"><a class="header" href="#security-10">Security</a></h3>
 <h2 id="098---2026-02-21"><a class="header" href="#098---2026-02-21">[0.9.8] - 2026-02-21</a></h2>
 <h3 id="added-16"><a class="header" href="#added-16">Added</a></h3>
 <h3 id="changed-16"><a class="header" href="#changed-16">Changed</a></h3>
 <h3 id="deprecated-6"><a class="header" href="#deprecated-6">Deprecated</a></h3>
 <h3 id="removed-10"><a class="header" href="#removed-10">Removed</a></h3>
 <h3 id="fixed-28"><a class="header" href="#fixed-28">Fixed</a></h3>
-<h3 id="security-10"><a class="header" href="#security-10">Security</a></h3>
+<h3 id="security-11"><a class="header" href="#security-11">Security</a></h3>
 <h2 id="097---2026-02-20"><a class="header" href="#097---2026-02-20">[0.9.7] - 2026-02-20</a></h2>
 <h3 id="added-17"><a class="header" href="#added-17">Added</a></h3>
 <h3 id="changed-17"><a class="header" href="#changed-17">Changed</a></h3>
 <h3 id="deprecated-7"><a class="header" href="#deprecated-7">Deprecated</a></h3>
 <h3 id="removed-11"><a class="header" href="#removed-11">Removed</a></h3>
 <h3 id="fixed-29"><a class="header" href="#fixed-29">Fixed</a></h3>
-<h3 id="security-11"><a class="header" href="#security-11">Security</a></h3>
+<h3 id="security-12"><a class="header" href="#security-12">Security</a></h3>
 <h2 id="096---2026-02-20"><a class="header" href="#096---2026-02-20">[0.9.6] - 2026-02-20</a></h2>
 <h3 id="added-18"><a class="header" href="#added-18">Added</a></h3>
 <ul>
@@ -2103,7 +2108,7 @@ centered spinner.</li>
 <li>Accessing <code>http://</code> on the HTTPS port now returns a 301 redirect to <code>https://</code> instead of a garbled TLS handshake page</li>
 <li>SQLite metrics store now uses WAL journal mode and <code>synchronous=NORMAL</code> to fix slow INSERT times (1-3s) on Docker/WSL2</li>
 </ul>
-<h3 id="security-12"><a class="header" href="#security-12">Security</a></h3>
+<h3 id="security-13"><a class="header" href="#security-13">Security</a></h3>
 <h2 id="095---2026-02-20"><a class="header" href="#095---2026-02-20">[0.9.5] - 2026-02-20</a></h2>
 <h3 id="added-19"><a class="header" href="#added-19">Added</a></h3>
 <h3 id="changed-19"><a class="header" href="#changed-19">Changed</a></h3>
@@ -2113,21 +2118,21 @@ centered spinner.</li>
 <ul>
 <li>Skip jemalloc on Windows (platform-specific dependency gate)</li>
 </ul>
-<h3 id="security-13"><a class="header" href="#security-13">Security</a></h3>
+<h3 id="security-14"><a class="header" href="#security-14">Security</a></h3>
 <h2 id="094---2026-02-20"><a class="header" href="#094---2026-02-20">[0.9.4] - 2026-02-20</a></h2>
 <h3 id="added-20"><a class="header" href="#added-20">Added</a></h3>
 <h3 id="changed-20"><a class="header" href="#changed-20">Changed</a></h3>
 <h3 id="deprecated-10"><a class="header" href="#deprecated-10">Deprecated</a></h3>
 <h3 id="removed-14"><a class="header" href="#removed-14">Removed</a></h3>
 <h3 id="fixed-32"><a class="header" href="#fixed-32">Fixed</a></h3>
-<h3 id="security-14"><a class="header" href="#security-14">Security</a></h3>
+<h3 id="security-15"><a class="header" href="#security-15">Security</a></h3>
 <h2 id="093---2026-02-20"><a class="header" href="#093---2026-02-20">[0.9.3] - 2026-02-20</a></h2>
 <h3 id="added-21"><a class="header" href="#added-21">Added</a></h3>
 <h3 id="changed-21"><a class="header" href="#changed-21">Changed</a></h3>
 <h3 id="deprecated-11"><a class="header" href="#deprecated-11">Deprecated</a></h3>
 <h3 id="removed-15"><a class="header" href="#removed-15">Removed</a></h3>
 <h3 id="fixed-33"><a class="header" href="#fixed-33">Fixed</a></h3>
-<h3 id="security-15"><a class="header" href="#security-15">Security</a></h3>
+<h3 id="security-16"><a class="header" href="#security-16">Security</a></h3>
 <h2 id="092---2026-02-20"><a class="header" href="#092---2026-02-20">[0.9.2] - 2026-02-20</a></h2>
 <h3 id="added-22"><a class="header" href="#added-22">Added</a></h3>
 <ul>
@@ -2144,7 +2149,7 @@ background task results.</li>
 <h3 id="deprecated-12"><a class="header" href="#deprecated-12">Deprecated</a></h3>
 <h3 id="removed-16"><a class="header" href="#removed-16">Removed</a></h3>
 <h3 id="fixed-34"><a class="header" href="#fixed-34">Fixed</a></h3>
-<h3 id="security-16"><a class="header" href="#security-16">Security</a></h3>
+<h3 id="security-17"><a class="header" href="#security-17">Security</a></h3>
 <h2 id="091---2026-02-19"><a class="header" href="#091---2026-02-19">[0.9.1] - 2026-02-19</a></h2>
 <h3 id="added-23"><a class="header" href="#added-23">Added</a></h3>
 <ul>
@@ -2209,7 +2214,7 @@ parsing robustness.</li>
 <li>Gateway: align <code>show_map</code> listing ratings to the right for consistent
 layout.</li>
 </ul>
-<h3 id="security-17"><a class="header" href="#security-17">Security</a></h3>
+<h3 id="security-18"><a class="header" href="#security-18">Security</a></h3>
 <h2 id="090---2026-02-17"><a class="header" href="#090---2026-02-17">[0.9.0] - 2026-02-17</a></h2>
 <h3 id="added-24"><a class="header" href="#added-24">Added</a></h3>
 <ul>
@@ -2232,7 +2237,7 @@ updated provider and local-LLM snippets.</li>
 <code>tools.agent_max_iterations</code> in <code>moltis.toml</code> (default <code>25</code>) instead of
 being hardcoded at runtime.</li>
 </ul>
-<h3 id="security-18"><a class="header" href="#security-18">Security</a></h3>
+<h3 id="security-19"><a class="header" href="#security-19">Security</a></h3>
 <h2 id="0838---2026-02-17"><a class="header" href="#0838---2026-02-17">[0.8.38] - 2026-02-17</a></h2>
 <h3 id="added-25"><a class="header" href="#added-25">Added</a></h3>
 <ul>
@@ -2250,7 +2255,7 @@ delay the first streamed message until enough text has accumulated.</li>
 <h3 id="deprecated-15"><a class="header" href="#deprecated-15">Deprecated</a></h3>
 <h3 id="removed-19"><a class="header" href="#removed-19">Removed</a></h3>
 <h3 id="fixed-37"><a class="header" href="#fixed-37">Fixed</a></h3>
-<h3 id="security-19"><a class="header" href="#security-19">Security</a></h3>
+<h3 id="security-20"><a class="header" href="#security-20">Security</a></h3>
 <h2 id="0837---2026-02-17"><a class="header" href="#0837---2026-02-17">[0.8.37] - 2026-02-17</a></h2>
 <h3 id="added-26"><a class="header" href="#added-26">Added</a></h3>
 <ul>
@@ -2316,7 +2321,7 @@ tabs (notably seen with <code>vim</code>).</li>
 post-connect settle window, fixing initial page-reload cases where tmux
 windows stayed at stale dimensions until a manual tab switch.</li>
 </ul>
-<h3 id="security-20"><a class="header" href="#security-20">Security</a></h3>
+<h3 id="security-21"><a class="header" href="#security-21">Security</a></h3>
 <h2 id="0836---2026-02-16"><a class="header" href="#0836---2026-02-16">[0.8.36] - 2026-02-16</a></h2>
 <h3 id="added-27"><a class="header" href="#added-27">Added</a></h3>
 <ul>
@@ -2345,7 +2350,7 @@ collapsing queued channel replies into a single batch delivery.</li>
 <li>MCP docs/config examples now use the current table-based config shape and <code>/mcp</code> endpoint examples for remote servers.</li>
 <li>Memory embeddings endpoint composition now avoids duplicated path segments like <code>/v1/v1/embeddings</code> and accepts base URLs ending in host-only, <code>/v1</code>, versioned paths (for example <code>/v4</code>), or <code>/embeddings</code></li>
 </ul>
-<h3 id="security-21"><a class="header" href="#security-21">Security</a></h3>
+<h3 id="security-22"><a class="header" href="#security-22">Security</a></h3>
 <h2 id="0835---2026-02-15"><a class="header" href="#0835---2026-02-15">[0.8.35] - 2026-02-15</a></h2>
 <h3 id="added-28"><a class="header" href="#added-28">Added</a></h3>
 <ul>
@@ -2355,7 +2360,7 @@ collapsing queued channel replies into a single batch delivery.</li>
 <h3 id="deprecated-18"><a class="header" href="#deprecated-18">Deprecated</a></h3>
 <h3 id="removed-22"><a class="header" href="#removed-22">Removed</a></h3>
 <h3 id="fixed-40"><a class="header" href="#fixed-40">Fixed</a></h3>
-<h3 id="security-22"><a class="header" href="#security-22">Security</a></h3>
+<h3 id="security-23"><a class="header" href="#security-23">Security</a></h3>
 <h2 id="0834---2026-02-15"><a class="header" href="#0834---2026-02-15">[0.8.34] - 2026-02-15</a></h2>
 <h3 id="added-29"><a class="header" href="#added-29">Added</a></h3>
 <ul>
@@ -2367,7 +2372,7 @@ collapsing queued channel replies into a single batch delivery.</li>
 <h3 id="deprecated-19"><a class="header" href="#deprecated-19">Deprecated</a></h3>
 <h3 id="removed-23"><a class="header" href="#removed-23">Removed</a></h3>
 <h3 id="fixed-41"><a class="header" href="#fixed-41">Fixed</a></h3>
-<h3 id="security-23"><a class="header" href="#security-23">Security</a></h3>
+<h3 id="security-24"><a class="header" href="#security-24">Security</a></h3>
 <h2 id="0833---2026-02-15"><a class="header" href="#0833---2026-02-15">[0.8.33] - 2026-02-15</a></h2>
 <h3 id="added-30"><a class="header" href="#added-30">Added</a></h3>
 <h3 id="changed-30"><a class="header" href="#changed-30">Changed</a></h3>
@@ -2378,7 +2383,7 @@ collapsing queued channel replies into a single batch delivery.</li>
 <li><strong>CI</strong>: remove unnecessary <code>std::path::</code> qualification in gateway server flagged
 by nightly clippy.</li>
 </ul>
-<h3 id="security-24"><a class="header" href="#security-24">Security</a></h3>
+<h3 id="security-25"><a class="header" href="#security-25">Security</a></h3>
 <h2 id="0832---2026-02-15"><a class="header" href="#0832---2026-02-15">[0.8.32] - 2026-02-15</a></h2>
 <h3 id="added-31"><a class="header" href="#added-31">Added</a></h3>
 <h3 id="changed-31"><a class="header" href="#changed-31">Changed</a></h3>
@@ -2389,7 +2394,7 @@ by nightly clippy.</li>
 <li><strong>CI</strong>: gate macOS-only sandbox helper functions with <code>#[cfg]</code> to fix dead-code
 errors on Linux CI.</li>
 </ul>
-<h3 id="security-25"><a class="header" href="#security-25">Security</a></h3>
+<h3 id="security-26"><a class="header" href="#security-26">Security</a></h3>
 <h2 id="0831---2026-02-15"><a class="header" href="#0831---2026-02-15">[0.8.31] - 2026-02-15</a></h2>
 <h3 id="added-32"><a class="header" href="#added-32">Added</a></h3>
 <ul>
@@ -2486,7 +2491,7 @@ tags is now stripped, preventing extra blank lines in streamed output.</li>
 <li><strong>Token bar visible at zero</strong>: the token usage bar no longer disappears
 when all counts are zero; it stays visible as a baseline indicator.</li>
 </ul>
-<h3 id="security-26"><a class="header" href="#security-26">Security</a></h3>
+<h3 id="security-27"><a class="header" href="#security-27">Security</a></h3>
 <h2 id="0830---2026-02-15"><a class="header" href="#0830---2026-02-15">[0.8.30] - 2026-02-15</a></h2>
 <h3 id="added-33"><a class="header" href="#added-33">Added</a></h3>
 <h3 id="changed-33"><a class="header" href="#changed-33">Changed</a></h3>
@@ -2498,7 +2503,7 @@ reasoning context instead of dropping it after refresh/share operations.</li>
 <h3 id="deprecated-23"><a class="header" href="#deprecated-23">Deprecated</a></h3>
 <h3 id="removed-27"><a class="header" href="#removed-27">Removed</a></h3>
 <h3 id="fixed-45"><a class="header" href="#fixed-45">Fixed</a></h3>
-<h3 id="security-27"><a class="header" href="#security-27">Security</a></h3>
+<h3 id="security-28"><a class="header" href="#security-28">Security</a></h3>
 <h2 id="0829---2026-02-14"><a class="header" href="#0829---2026-02-14">[0.8.29] - 2026-02-14</a></h2>
 <h3 id="added-34"><a class="header" href="#added-34">Added</a></h3>
 <ul>
@@ -2525,7 +2530,7 @@ path validation, size limits, and automatic re-indexing after writes</li>
 directory root, which was previously excluded because the filter only matched
 directories</li>
 </ul>
-<h3 id="security-28"><a class="header" href="#security-28">Security</a></h3>
+<h3 id="security-29"><a class="header" href="#security-29">Security</a></h3>
 <h2 id="0828---2026-02-14"><a class="header" href="#0828---2026-02-14">[0.8.28] - 2026-02-14</a></h2>
 <h3 id="added-35"><a class="header" href="#added-35">Added</a></h3>
 <h3 id="changed-35"><a class="header" href="#changed-35">Changed</a></h3>
@@ -2542,7 +2547,7 @@ injected via tool call params.</li>
 <code>provider-validation.js</code> that was accidentally left unstaged in the DRY
 refactoring commit.</li>
 </ul>
-<h3 id="security-29"><a class="header" href="#security-29">Security</a></h3>
+<h3 id="security-30"><a class="header" href="#security-30">Security</a></h3>
 <h2 id="0827---2026-02-14"><a class="header" href="#0827---2026-02-14">[0.8.27] - 2026-02-14</a></h2>
 <h3 id="added-36"><a class="header" href="#added-36">Added</a></h3>
 <h3 id="changed-36"><a class="header" href="#changed-36">Changed</a></h3>
@@ -2561,7 +2566,7 @@ and <code>channel-utils.js</code> modules.</li>
 failure caused by <code>MOLTIS_IDENTITY__NAME</code> environment variable leaking
 into the test via <code>apply_env_overrides</code>.</li>
 </ul>
-<h3 id="security-30"><a class="header" href="#security-30">Security</a></h3>
+<h3 id="security-31"><a class="header" href="#security-31">Security</a></h3>
 <h2 id="0826---2026-02-14"><a class="header" href="#0826---2026-02-14">[0.8.26] - 2026-02-14</a></h2>
 <h3 id="added-37"><a class="header" href="#added-37">Added</a></h3>
 <ul>
@@ -2585,21 +2590,21 @@ synthetic IDs in the agent runner to prevent API errors.</li>
 before opening model selection during onboarding, aligning behavior with the
 Settings &gt; LLM flow.</li>
 </ul>
-<h3 id="security-31"><a class="header" href="#security-31">Security</a></h3>
+<h3 id="security-32"><a class="header" href="#security-32">Security</a></h3>
 <h2 id="0825---2026-02-14"><a class="header" href="#0825---2026-02-14">[0.8.25] - 2026-02-14</a></h2>
 <h3 id="added-38"><a class="header" href="#added-38">Added</a></h3>
 <h3 id="changed-38"><a class="header" href="#changed-38">Changed</a></h3>
 <h3 id="deprecated-28"><a class="header" href="#deprecated-28">Deprecated</a></h3>
 <h3 id="removed-32"><a class="header" href="#removed-32">Removed</a></h3>
 <h3 id="fixed-50"><a class="header" href="#fixed-50">Fixed</a></h3>
-<h3 id="security-32"><a class="header" href="#security-32">Security</a></h3>
+<h3 id="security-33"><a class="header" href="#security-33">Security</a></h3>
 <h2 id="0824---2026-02-13"><a class="header" href="#0824---2026-02-13">[0.8.24] - 2026-02-13</a></h2>
 <h3 id="added-39"><a class="header" href="#added-39">Added</a></h3>
 <h3 id="changed-39"><a class="header" href="#changed-39">Changed</a></h3>
 <h3 id="deprecated-29"><a class="header" href="#deprecated-29">Deprecated</a></h3>
 <h3 id="removed-33"><a class="header" href="#removed-33">Removed</a></h3>
 <h3 id="fixed-51"><a class="header" href="#fixed-51">Fixed</a></h3>
-<h3 id="security-33"><a class="header" href="#security-33">Security</a></h3>
+<h3 id="security-34"><a class="header" href="#security-34">Security</a></h3>
 <h2 id="0823---2026-02-13"><a class="header" href="#0823---2026-02-13">[0.8.23] - 2026-02-13</a></h2>
 <h3 id="added-40"><a class="header" href="#added-40">Added</a></h3>
 <ul>
@@ -2655,7 +2660,7 @@ commands. They are now also injected into the Moltis process at startup,
 making them available to web search, embeddings, and provider API calls.</li>
 </ul>
 <h2 id="0814---2026-02-11"><a class="header" href="#0814---2026-02-11">[0.8.14] - 2026-02-11</a></h2>
-<h3 id="security-34"><a class="header" href="#security-34">Security</a></h3>
+<h3 id="security-35"><a class="header" href="#security-35">Security</a></h3>
 <ul>
 <li><strong>Disconnect all WS clients on credential change</strong>: WebSocket connections
 opened before auth setup are now disconnected when credentials change
@@ -2784,7 +2789,7 @@ connections behind the platform’s reverse proxy.</li>
 <li><strong>WebAuthn origin scheme on PaaS</strong>: Non-localhost RP IDs now default to
 <code>https://</code> origin since PaaS platforms terminate TLS at the proxy.</li>
 </ul>
-<h3 id="security-35"><a class="header" href="#security-35">Security</a></h3>
+<h3 id="security-36"><a class="header" href="#security-36">Security</a></h3>
 <ul>
 <li><strong>Compaction prompt injection hardening</strong>: Session compaction now passes
 typed <code>ChatMessage</code> objects to the summarizer LLM instead of concatenated
@@ -2935,7 +2940,7 @@ dropdown pattern as the chat model selector for consistent UX.</li>
 <li><strong>Branch favicon contrast</strong>: Non-main branches now use a high-contrast purple
 favicon variant so branch sessions are visually distinct from <code>main</code>.</li>
 </ul>
-<h3 id="security-36"><a class="header" href="#security-36">Security</a></h3>
+<h3 id="security-37"><a class="header" href="#security-37">Security</a></h3>
 <ul>
 <li><strong>Content-Security-Policy header</strong>: HTML pages now include a nonce-based CSP
 header (<code>script-src 'self' 'nonce-&lt;UUID&gt;'</code>), preventing inline script
@@ -2954,7 +2959,7 @@ audits security (file permissions, API keys in config), checks directory and
 database health, verifies provider readiness (API keys via config or env vars),
 inspects TLS certificates, and validates MCP server commands on PATH.</li>
 </ul>
-<h3 id="security-37"><a class="header" href="#security-37">Security</a></h3>
+<h3 id="security-38"><a class="header" href="#security-38">Security</a></h3>
 <ul>
 <li><strong>npm install –ignore-scripts</strong>: Skill dependency installation now passes
 <code>--ignore-scripts</code> to npm, preventing supply chain attacks via malicious
@@ -3492,7 +3497,7 @@ with vertical scrolling instead of being scaled down to fit the viewport.</li>
 <li><strong>Telegram typing indicator for long responses</strong>: Channel replies now wait for outbound delivery tasks to finish before chat completion returns, so periodic <code>typing...</code> updates continue until the Telegram message is actually sent.</li>
 <li><strong>Skills dependency install safety</strong>: <code>skills.install_dep</code> now requires explicit user confirmation and blocks host installs when sandbox mode is disabled (unless explicitly overridden in the RPC call).</li>
 </ul>
-<h3 id="security-38"><a class="header" href="#security-38">Security</a></h3>
+<h3 id="security-39"><a class="header" href="#security-39">Security</a></h3>
 <ul>
 <li><strong>Asset response hardening</strong>: Static assets now set <code>X-Content-Type-Options: nosniff</code>, and SVG responses include a restrictive <code>Content-Security-Policy</code> (<code>script-src 'none'</code>, <code>object-src 'none'</code>) to reduce stored-XSS risk if user-controlled SVGs are ever introduced.</li>
 <li><strong>Archive extraction hardening</strong>: Skills/plugin tarball installs now reject unsafe archive paths (<code>..</code>, absolute/path-prefix escapes) and reject symlink/hardlink archive entries to prevent path traversal and link-based escapes.</li>

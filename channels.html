@@ -236,6 +236,9 @@ integrations (e.g. email, SMS).</p>
 <li>In the web UI under <strong>Settings -&gt; Channels</strong>, which stores channel accounts in the internal <code>channels</code> table inside <code>data_dir()/moltis.db</code></li>
 </ul>
 <p>The web UI does not write channel settings back into <code>moltis.toml</code>. It includes an advanced JSON config editor so channel-specific settings remain reachable even when a dedicated form field has not been added yet.</p>
+<p>The channel picker itself is controlled by <code>[channels].offered</code> in
+<code>moltis.toml</code>. If you edit that list by hand, reload the page so the web UI
+re-reads the current picker options.</p>
 <p>Channel configs stored through the web UI currently live as JSON records in the
 internal <code>channels</code> table in <code>data_dir()/moltis.db</code>. They are not currently
 wrapped by the Moltis vault, so treat local access to that database as access
