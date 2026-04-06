@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0757952ad9e7",
+  "strategy": "manual-commit",
+  "branch": "thoughtful-pint",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "website/scripts/build-i18n.mjs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/07/57952ad9e7/0/metadata.json",
+      "transcript": "/07/57952ad9e7/0/full.jsonl",
+      "context": "/07/57952ad9e7/0/context.md",
+      "content_hash": "/07/57952ad9e7/0/content_hash.txt",
+      "prompt": "/07/57952ad9e7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 309,
+    "cache_creation_tokens": 584741,
+    "cache_read_tokens": 44517403,
+    "output_tokens": 104653,
+    "api_call_count": 236
+  }
+}
