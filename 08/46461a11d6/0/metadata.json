@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0846461a11d6",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T21:13:17.56456Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/gateway/src/server.rs",
+    "crates/gateway/src/state.rs",
+    "crates/httpd/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ffca54a994a1",
+  "token_usage": {
+    "input_tokens": 3797,
+    "cache_creation_tokens": 278143,
+    "cache_read_tokens": 34352981,
+    "output_tokens": 76410,
+    "api_call_count": 185
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis that supports provider-specific triggers (GitHub, GitLab, Stripe, etc.) to run AI agents based on incoming webhook events.",
+    "outcome": "Full webhook feature implemented: new `moltis-webhooks` crate with 36 passing tests, gateway/httpd integration, web UI settings page, documentation, and a test script. A critical initialization bug (Arc::get_mut silently failing) was fixed using OnceLock.",
+    "learnings": {
+      "repo": [
+        "GatewayState is Arc-wrapped via `with_options()` which returns Arc::new(Self{...}). Using Arc::get_mut after construction is fragile — any prior clone silently returns None, causing fields to stay uninitialized.",
+        "Optional service fields on GatewayState should use OnceLock rather than Option for late initialization to avoid silent Arc::get_mut failures.",
+        "The httpd crate has a pre-existing compilation error in the vault/ssh feature path (unrelated to webhooks) that blocks `cargo check -p moltis-web` but does not affect the webhooks crate or gateway.",
+        "Public (unauthenticated) HTTP routes require explicit exemption in auth_middleware.rs — the pattern is to match path prefix `/api/webhooks/ingest/`.",
+        "Gon data (server-side data injected into the frontend) is populated in `crates/web/src/templates.rs` and must be extended there to expose new backend data to JS.",
+        "Settings sidebar icons use CSS classes like `icon-globe`, `icon-link` etc. defined in minified style.css. Using a duplicate icon (e.g., `icon-link` already used by MCP) renders as a black square.",
+        "The `preferredPublicBaseUrl` pattern (ngrok \u003e tailscale \u003e window.location.origin) exists in onboarding-view.js and should be replicated in any UI that shows public-facing URLs.",
+        "Workspace dependencies are declared in root Cargo.toml under `[workspace.dependencies]`; new crates must be added to both `members` and `default-members`."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3268,
+          "end_line": 3275,
+          "finding": "Arc::get_mut(\u0026mut state) was used to set webhook_store/worker_tx after construction. This silently fails if any clone exists. Replaced with OnceLock::set()."
+        },
+        {
+          "path": "crates/gateway/src/state.rs",
+          "finding": "webhook_store, webhook_rate_limiter, webhook_worker_tx fields changed from Option\u003cT\u003e to OnceLock\u003cT\u003e so they can be safely set post-construction without Arc::get_mut."
+        },
+        {
+          "path": "crates/httpd/src/server.rs",
+          "finding": "Ingress handler accesses webhook_store via OnceLock::get() — returns 404 if store not initialized. Also must use .get() for worker_tx to send delivery to background worker."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-webhooks.js",
+          "finding": "Webhook endpoint URL display must use ngrok/tailscale public URL, not window.location.origin. Fetch ngrok/tailscale status on mount and apply preferredPublicBaseUrl logic."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-webhooks.js",
+          "finding": "Agent field uses ComboSelect with agents from gon data; model field uses ModelSelect from model-store.js — same pattern as cron job modal."
+        }
+      ],
+      "workflow": [
+        "When large feature branches have pre-existing compilation errors (e.g., vault feature), verify errors exist on main before investigating — avoids wasted debugging time.",
+        "Arc::get_mut is only valid before any clones are made. For GatewayState-style structs that get Arc-wrapped at construction, prefer OnceLock for any field that needs late initialization.",
+        "The test script approach (curl with HMAC signing) was essential for manual validation; ngrok/TLS self-signed certs require -k flag and verbose output to diagnose auth failures vs. connectivity issues."
+      ]
+    },
+    "friction": [
+      "Arc::get_mut silently returned None causing webhook_store to remain uninitialized — the ingress handler returned 404 with no visible error, making the root cause hard to diagnose.",
+      "The httpd crate pre-existing vault/ssh compilation error blocked end-to-end compilation checks and caused confusion about whether our changes introduced the error.",
+      "The webhooks icon rendered as a black square because icon-link was already used by MCP; required searching minified CSS to find an unused icon class.",
+      "curl test script initially missing -k flag for self-signed TLS cert, and missing verbose output, made it hard to see what the server was returning.",
+      "OAuth token expiry at the start of the session required the user to re-authenticate before work could begin."
+    ],
+    "open_items": [
+      "No integration test for the actual HTTP ingress handler (only unit tests in the webhooks crate and a curl test script) — httpd integration tests require the full GatewayState which is complex to construct in tests.",
+      "Webhook creation UI defaults to static_header auth mode which requires a secret — no validation preventing creation of a webhook with static_header mode but no secret configured.",
+      "Provider profiles for Linear, Jira, PagerDuty, and Sentry are described in the plan but only GitHub, GitLab, Stripe, and Generic were implemented in code.",
+      "Response action tools (post GitHub comments, merge PRs, issue Stripe refunds, etc.) are described in the plan but not yet implemented — agents can receive events but cannot act back via typed tools.",
+      "per_entity session mode (grouping events by entity key with serialized processing) is defined in types but the worker only implements per_delivery mode.",
+      "UI wizard (6-step guided creation) described in plan was not built — modal uses a flat form instead.",
+      "Metrics instrumentation (webhook_deliveries_total, webhook_auth_failures_total, etc.) referenced in docs but not wired up in the worker or ingress handler."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T21:12:38.56506Z",
+    "agent_lines": 10,
+    "human_added": 755,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 765,
+    "agent_percentage": 1.3071895424836601
+  }
+}
