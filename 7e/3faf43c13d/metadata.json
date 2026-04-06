@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7e3faf43c13d",
+  "strategy": "manual-commit",
+  "branch": "mahogany-night",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/server.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7e/3faf43c13d/0/metadata.json",
+      "transcript": "/7e/3faf43c13d/0/full.jsonl",
+      "context": "/7e/3faf43c13d/0/context.md",
+      "content_hash": "/7e/3faf43c13d/0/content_hash.txt",
+      "prompt": "/7e/3faf43c13d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 11,
+    "cache_creation_tokens": 3422,
+    "cache_read_tokens": 1471836,
+    "output_tokens": 1416,
+    "api_call_count": 9
+  }
+}
