@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f1d0c66bd878",
+  "strategy": "manual-commit",
+  "branch": "thoughtful-pint",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "website/index.de.html",
+    "website/index.es.html",
+    "website/index.fr.html",
+    "website/index.it.html",
+    "website/index.ja.html",
+    "website/index.ko.html",
+    "website/index.pt.html",
+    "website/index.ru.html",
+    "website/index.zh.html",
+    "website/scripts/build-i18n.mjs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f1/d0c66bd878/0/metadata.json",
+      "transcript": "/f1/d0c66bd878/0/full.jsonl",
+      "context": "/f1/d0c66bd878/0/context.md",
+      "content_hash": "/f1/d0c66bd878/0/content_hash.txt",
+      "prompt": "/f1/d0c66bd878/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 287,
+    "cache_creation_tokens": 568290,
+    "cache_read_tokens": 39803879,
+    "output_tokens": 99545,
+    "api_call_count": 219
+  }
+}

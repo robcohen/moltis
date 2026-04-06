@@ -1,0 +1,86 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f1d0c66bd878",
+  "session_id": "a75c15d8-5897-4011-94ab-aa07f3c3d2da",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T14:09:14.685043Z",
+  "branch": "thoughtful-pint",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "website/index.de.html",
+    "website/index.es.html",
+    "website/index.fr.html",
+    "website/index.it.html",
+    "website/index.ja.html",
+    "website/index.ko.html",
+    "website/index.pt.html",
+    "website/index.ru.html",
+    "website/index.zh.html",
+    "website/scripts/build-i18n.mjs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c4ca3bc6ac9a",
+  "token_usage": {
+    "input_tokens": 287,
+    "cache_creation_tokens": 568290,
+    "cache_read_tokens": 39803879,
+    "output_tokens": 99545,
+    "api_call_count": 219
+  },
+  "summary": {
+    "intent": "Update the Moltis website to better showcase its provider/LLM support with visual pills (inspired by Polyphony), add competitive positioning content, and bring the homepage up to date with the product's current feature set.",
+    "outcome": "Homepage rebuilt with a provider pills section (4 rows, 29+ providers with brand icons), positioning paragraph, 3-step quickstart, 8 use-case cards, community quote with Discord source links, updated LoC stats, CSS extracted to style.css, all 9 locale files updated with translations, and all changes pushed to PR #567.",
+    "learnings": {
+      "repo": [
+        "i18n is handled by website/scripts/build-i18n.mjs which generates locale files from index.en.html via string substitution — French (index.fr.html) was never added to this script and was maintained manually, causing it to be missed during regeneration.",
+        "Locale files must be regenerated explicitly via `node scripts/build-i18n.mjs` after English source changes; they do not auto-update.",
+        "The build script has both top-level `title`/`metaDesc` properties per language AND `strings` array pairs — both must be updated when English copy changes, or old translations persist in the generated files.",
+        "Brand icons are best sourced from Simple Icons (simpleicons.org) for SVG; raster logos from official sites need separate handling (grayscale filter, no dark-mode invert).",
+        "website/images/icons/ did not exist before this session — it was created to hold extracted SVG/raster icon assets."
+      ],
+      "code": [
+        {
+          "path": "website/scripts/build-i18n.mjs",
+          "finding": "Each language entry has both a `title`/`metaDesc` field (used for \u003ctitle\u003e and OG tags) and a `strings` array of [English, translated] pairs for body content. Changing English copy requires updating both independently."
+        },
+        {
+          "path": "website/style.css",
+          "finding": "Newly created by extracting all inline \u003cstyle\u003e blocks from index.en.html. Added `.pill-icon` (SVG, dark:invert) and `.pill-icon-color` (raster logos, grayscale filter, no invert) classes for dual dark-mode strategies."
+        }
+      ],
+      "workflow": [
+        "Playwright MCP was used for visual verification of the dev server — effective for catching rendering issues (broken icons, dark mode) without manual browser checks.",
+        "Background Bash tasks for the dev server created noise via task-notification messages that required handling between interactions.",
+        "When updating copy across locale files, sed on all index.*.html files is faster than editing each locale individually.",
+        "SVGs using `currentColor` for fill work well with CSS `filter: invert(1)` for dark mode, but raster (webp/png) logos need `grayscale(1)` instead of invert to avoid color artifacts."
+      ]
+    },
+    "friction": [
+      "French locale was silently excluded from build-i18n.mjs — not discovered until the user tested http://localhost:4000/index.fr.html and saw English content.",
+      "LoC stat updates and then all homepage changes were initially applied only to index.en.html, requiring a second pass to propagate to all locales after user pointed it out.",
+      "Multiple background dev server task-notifications required reading output files mid-conversation, breaking flow.",
+      "Teams and DeepSeek icons were broken on first attempt — Teams used a crude 'T' glyph, DeepSeek used an incomplete heart shape — requiring replacement iterations.",
+      "MiniMax icon fetched from official URL included the full wordmark with text, requiring ImageMagick cropping to extract just the waveform icon.",
+      "Cerebras icon went through multiple iterations (first attempt had white background issues, second attempt still felt broken to user).",
+      "LM Studio has no public SVG, forcing use of a .webp app icon with special CSS handling."
+    ],
+    "open_items": [
+      "Machine-translated locale content (de, es, fr, it, ja, ko, pt, ru, zh) for new sections (positioning, how-it-works, use cases, community quote) should be reviewed by native speakers.",
+      "French was added to build-i18n.mjs near end of session but the final state of whether French translations are in the script vs. hardcoded in HTML is unclear — needs verification.",
+      "MiniMax, Z.AI, and Venice pills have no official brand icons; only text labels.",
+      "LM Studio pill uses a .webp raster icon instead of SVG — would benefit from an official SVG if one becomes available.",
+      "New homepage sections (positioning, how-it-works, use cases) exist only in English in index.en.html — the build-i18n.mjs string pairs for these sections were not added, so regenerating locales via the build script would not translate them.",
+      "PR #567 was created but not reviewed or merged.",
+      "Other locale files (non-English) for the website were not updated as part of the icons extraction to website/images/icons/ — they still reference icons via relative paths that should work, but this should be verified."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T14:08:28.068317Z",
+    "agent_lines": 466,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 466,
+    "agent_percentage": 100
+  }
+}

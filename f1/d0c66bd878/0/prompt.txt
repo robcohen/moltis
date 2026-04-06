@@ -1,0 +1,206 @@
+Moltis changed a lot since I did the website in website/ and for polyphony at https://polyphony.to I added pills to show which AI agents are supported. Can you do something similar in Moltis showing what provider/LLMs are supported. The website is too miminalistic, a lot of features were added since and the website should show that.
+
+---
+
+<task-notification>
+<task-id>b882i0sef</task-id>
+<tool-use-id>toolu_01UV2qyrmx43P4TUE74uuH3U</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/b882i0sef.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server in background" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/b882i0sef.output
+
+---
+
+Add icons for pills which can have some (like codex, teams, etc).
+
+---
+
+<task-notification>
+<task-id>bfyxmm2xb</task-id>
+<tool-use-id>toolu_01L5v3Fx3Zpo8wxSiQsL9zD1</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bfyxmm2xb.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bfyxmm2xb.output
+
+---
+
+Don't use embed SVG, save them in website/images/icons instead so that's easier to fix broken SVGs.
+
+---
+
+teams and deepseek icons feel broken
+
+---
+
+<task-notification>
+<task-id>bmr7nrrs8</task-id>
+<tool-use-id>toolu_01HX2VjDrEoYqmj1dqttrJR7</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bmr7nrrs8.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bmr7nrrs8.output
+
+---
+
+<task-notification>
+<task-id>bq6otb8oz</task-id>
+<tool-use-id>toolu_01PF2pbx9LvFfEWoVvQSb3BQ</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bq6otb8oz.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bq6otb8oz.output
+
+---
+
+teams icon still feels weird, can you get the official assets?
+
+---
+
+all CSS should be extracted from HTML and put in css files
+
+---
+
+<task-notification>
+<task-id>b4t402xs4</task-id>
+<tool-use-id>toolu_01NbsH5H6sSkm1sHuK2ar51o</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/b4t402xs4.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/b4t402xs4.output
+
+---
+
+cerebras icon feels broken. LMStudio has this: https://lmstudio.ai/_next/static/media/lmstudio-app-logo.11b4d746.webp minimax has https://www.minimax.io/_next/image?url=https%3A%2F%2Ffilecdn.minimax.chat%2Fpublic%2F969d635c-cab6-45cc-8d61-47c9fe40c81f.png%3Fx-oss-process%3Dimage%2Fformat%2Cwebp&w=384&q=75 Local GGUF probably should not have any
+
+---
+
+<task-notification>
+<task-id>bhbuzwdys</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bhbuzwdys.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bhbuzwdys.output
+
+---
+
+proceed
+
+---
+
+Commit all changes, push, create a PR
+
+---
+
+Make the lm studio grayscale like others, and the minimax icon was an example, it includes text you need to truncate
+
+---
+
+ok that's much better, looking at https://hermes-agent.nousresearch.com https://openclaw.ai https://polyphony.to and other agent harness like https://www.conductor.build, what changes would you add to moltis website to make it more clear about everything it does.
+
+---
+
+This is some feedback I see on Discord:
+
+12:41]Noita: Honestly it taken 2 weekends for me to make OpenClaw work in a container environment.
+With Moltis it worked in 1 command.
+
+Also I found several AI guardrails missing or turned off in OpenClaw which are again, working out of the box here. 
+
+https://discord.com/channels/1469505370169933837/1469505371398996115/1488503462487654500
+
+Noita: I'll agree, Moltis is way more performant and stable.
+https://discord.com/channels/1469505370169933837/1469505371398996115/1488498690376204379
+
+But I don't have enough yet. Please implement your suggested changes.
+
+---
+
+<task-notification>
+<task-id>bzgflb0f2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bzgflb0f2.output</output-file>
+<status>completed</status>
+<summary>Background command "Start dev server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-thoughtful-pint/a75c15d8-5897-4011-94ab-aa07f3c3d2da/tasks/bzgflb0f2.output
+
+---
+
+The feedback could have the original link so people can verify those.
+
+---
+
+The security with LoC should probably be updated, this is what I see now:
+
+~/.s/w/m/thoughtful-pint thoughtful-pint ❯ tokei
+===============================================================================
+ Language            Files        Lines         Code     Comments       Blanks
+===============================================================================
+ C Header                1            6            4            0            2
+ CSS                    12         7498         6434          238          826
+ Dockerfile              1          123           73           31           19
+ GraphQL                 4           52           50            0            2
+ JavaScript            184        56516        49625         2433         4458
+ JSON                   14         3225         3225            0            0
+ Nix                     1           41           37            0            4
+ Python                  1           59           48            1           10
+ RPM Specfile            1           16           13            0            3
+ Ruby                    2           49           42            0            7
+ Shell                  40         4299         3284          386          629
+ SQL                    24          352          276           36           40
+ SVG                   101          453          387           65            1
+ Swift                  82        14900        12525          500         1875
+ Plain Text              1           85            0           57           28
+ TOML                   65         2526         2249           50          227
+ YAML                   12          513          403           65           45
+-------------------------------------------------------------------------------
+ HTML                   23        16791        16375          232          184
+ |- CSS                 15         1385         1385            0            0
+ |- HTML                 1          103          103            0            0
+ |- JavaScript          18         1083          939           91           53
+ (Total)                          19362        18802          323          237
+-------------------------------------------------------------------------------
+ Markdown              102        21920            0        16202         5718
+ |- BASH                43          825          558          162          105
+ |- GraphQL              1           22           22            0            0
+ |- JavaScript           2           45           40            1            4
+ |- JSON                24          417          408            0            9
+ |- Markdown             3           30            0           27            3
+ |- Rust                 9          776          595           72          109
+ |- SQL                  4           87           72            7            8
+ |- TOML                33          980          771          103          106
+ |- XML                  1            6            6            0            0
+ |- YAML                 4           93           88            1            4
+ (Total)                          25201         2560        16575         6066
+-------------------------------------------------------------------------------
+ Rust                  487       248176       215683         6006        26487
+ |- Markdown           438         9780           24         8852          904
+ (Total)                         257956       215707        14858        27391
+===============================================================================
+ Total                1158       377600       310733        26302        40565
+===============================================================================
+
+---
+
+You only updated the English version, you should update other languages as well
+
+---
+
+I mean not just the LoC but the main index.en.html changes you made too, pills etc.
+
+---
+
+I don't see those changes when going to http://localhost:4000/index.fr.html
+
+---
+
+Do other languages too? I try http://localhost:4000/index.fr.html#home but I see the English version
