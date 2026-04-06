@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f66ffe7eb8fa",
+  "session_id": "a75c15d8-5897-4011-94ab-aa07f3c3d2da",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T13:12:23.001921Z",
+  "branch": "thoughtful-pint",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "website/images/icons/graphql.svg",
+    "website/images/icons/minimax.png",
+    "website/style.css"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d38ad9a9cf8c",
+  "token_usage": {
+    "input_tokens": 182,
+    "cache_creation_tokens": 494831,
+    "cache_read_tokens": 18087080,
+    "output_tokens": 71574,
+    "api_call_count": 134
+  },
+  "summary": {
+    "intent": "Enhance the Moltis website to showcase supported AI providers/LLMs via styled pills (inspired by Polyphony), update the hero tagline, and extract CSS to a separate file.",
+    "outcome": "Added a 'Works with your stack' section with 4 rows of glassmorphism provider pills with official brand icons, extracted all CSS to style.css, updated the hero title/subtitle, and committed/pushed as PR #567.",
+    "learnings": {
+      "repo": [
+        "Website lives at website/index.en.html with locale variants (other locale files not yet updated)",
+        "Icons are stored in website/images/icons/ — SVGs preferred, raster fallbacks for brands without SVG (LM Studio .webp, MiniMax .png)",
+        "Project is at github.com/moltis-org/moltis, worktree at /Users/penso/.superset/worktrees/moltis/thoughtful-pint/",
+        "Dark mode is controlled via a .dark CSS class, not a media query",
+        "pill-icon vs pill-icon-color CSS class distinction: SVG icons use invert filter for dark mode, raster color logos use grayscale+invert"
+      ],
+      "code": [
+        {
+          "path": "website/style.css",
+          "finding": "New file — all pill styles including glassmorphism, scroll-reveal, dark mode overrides, pill-icon (invert on dark) and pill-icon-color (grayscale, no invert) classes"
+        },
+        {
+          "path": "website/index.en.html",
+          "finding": "Pills section placed after value proposition cards, not between screenshot gallery and cards (position was moved mid-session)"
+        }
+      ],
+      "workflow": [
+        "Simple Icons (simpleicons.org) is the reliable source for official brand SVGs at small sizes",
+        "Raster logos fetched from official brand sites should be cropped to icon-only before use — MiniMax's logo URL included the full wordmark",
+        "Inline SVGs in HTML are harder to maintain than external files — extract to images/icons/ early",
+        "pill-icon currentColor approach works for monochrome SVGs but breaks for colored/raster logos — need separate CSS class from the start",
+        "ImageMagick can crop images to isolate icon portion from wordmark logos"
+      ]
+    },
+    "friction": [
+      "Teams and DeepSeek icons required multiple iterations — initial hand-drawn SVGs didn't render well at 16px",
+      "MiniMax logo URL pointed to a full wordmark image requiring cropping after the fact",
+      "Cerebras icon went through multiple attempts before getting correct concentric arcs",
+      "CSS was added inline first and only extracted to style.css after user explicitly requested it — should have been separate from the start",
+      "Dev server background task notifications arrived late and cluttered the conversation",
+      "Hit rate limit mid-session, required user to prompt 'proceed' to continue"
+    ],
+    "open_items": [
+      "Changes are only in index.en.html — other locale files not yet updated",
+      "LM Studio has no official SVG; using .webp app icon with grayscale filter as workaround",
+      "MiniMax, Z.AI, and Venice pills have no widely recognized icon — Z.AI uses a custom lettermark",
+      "Moonshot/Kimi icon is a custom letterform, not an official asset",
+      "GraphQL icon was updated in the final commit but Teams/other icons may still not be fully official"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T13:11:58.023123Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 2,
+    "agent_percentage": 50
+  }
+}

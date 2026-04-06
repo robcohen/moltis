@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f66ffe7eb8fa",
+  "strategy": "manual-commit",
+  "branch": "thoughtful-pint",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "website/images/icons/graphql.svg",
+    "website/images/icons/minimax.png",
+    "website/style.css"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f6/6ffe7eb8fa/0/metadata.json",
+      "transcript": "/f6/6ffe7eb8fa/0/full.jsonl",
+      "context": "/f6/6ffe7eb8fa/0/context.md",
+      "content_hash": "/f6/6ffe7eb8fa/0/content_hash.txt",
+      "prompt": "/f6/6ffe7eb8fa/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 182,
+    "cache_creation_tokens": 494831,
+    "cache_read_tokens": 18087080,
+    "output_tokens": 71574,
+    "api_call_count": 134
+  }
+}
