@@ -1,0 +1,85 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6cf433af9a2e",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T21:16:13.228252Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/src/webhooks.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7c35950c9a69",
+  "token_usage": {
+    "input_tokens": 3819,
+    "cache_creation_tokens": 287477,
+    "cache_read_tokens": 38143390,
+    "output_tokens": 79373,
+    "api_call_count": 199
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis that allows GitHub, GitLab, Stripe, and other provider events to trigger AI agents, with full settings UI for managing webhooks.",
+    "outcome": "A complete webhook feature was built end-to-end: new `moltis-webhooks` crate with 7 provider profiles, SQLite store, auth verification for 9 modes, background worker, HTTP ingress route, RPC methods, settings UI with agent/model selects, docs, test script, and 36 passing tests. A critical bug where `Arc::get_mut` silently failed was discovered and fixed using `OnceLock`.",
+    "learnings": {
+      "repo": [
+        "GatewayState is wrapped in Arc immediately after construction via `with_options()`, making `Arc::get_mut` unreliable for late field initialization — use `std::sync::OnceLock` instead.",
+        "Routes are added to the app after `finalize_gateway_app` in httpd/src/server.rs.",
+        "Public paths (no session auth) are exempted in httpd/src/auth_middleware.rs.",
+        "The `preferredPublicBaseUrl` pattern for ngrok/tailscale URLs is established in onboarding-view.js and should be reused in any UI showing server URLs.",
+        "Agent/model selects use `ComboSelect` and `ModelSelect` components from the shared model-store, same pattern as cron job modal.",
+        "Available icon names for settings sidebar include `icon-globe`, `icon-activity` — duplicating an icon (like `icon-link`) causes it to render as a black square.",
+        "The pre-existing httpd vault/ssh_routes compile error exists on main and is unrelated to new changes.",
+        "Gon data is the mechanism for passing server-side data (agents list, webhooks, profiles) to the frontend JS."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3268,
+          "end_line": 3275,
+          "finding": "Original code used `Arc::get_mut(\u0026mut state)` to set webhook_store after Arc creation — silently a no-op if any other clone existed, causing 404 on every ingress request. Fixed by switching to OnceLock fields."
+        },
+        {
+          "path": "crates/gateway/src/state.rs",
+          "finding": "webhook_store, webhook_rate_limiter, webhook_worker_tx changed from Option to OnceLock to allow safe post-Arc initialization."
+        },
+        {
+          "path": "crates/httpd/src/server.rs",
+          "finding": "Ingress handler at POST /api/webhooks/ingest/{public_id} checks OnceLock::get() for store and worker_tx, returns 503 if not initialized."
+        }
+      ],
+      "workflow": [
+        "When `Arc::get_mut` is needed for late initialization, prefer `OnceLock` — `Arc::get_mut` returns None if any other references exist and fails silently.",
+        "Use `cargo check -p \u003ccrate\u003e` to verify individual crates compile without running the full workspace build.",
+        "The test script approach (scripts/test-webhook.sh) with `-k` for self-signed TLS and verbose output is essential for local webhook testing.",
+        "Hoppscotch (hoppscotch.io) is suitable as a zero-install browser tool for sending test HTTP requests with custom headers."
+      ]
+    },
+    "friction": [
+      "OAuth token expiry blocked the first user message — required re-authentication before work could begin.",
+      "Arc::get_mut silently failed (returned None) after state construction, causing webhook_store to remain None and all ingress requests to return 404 — hard to debug without logging.",
+      "The test script initially lacked -k flag for self-signed TLS certificates, causing confusing failures.",
+      "httpd crate has a pre-existing vault/ssh_routes compile error that made it hard to verify overall compilation state.",
+      "The icon-link was already used by MCP, causing the webhooks nav entry to render as a black square — no compile-time or lint warning for this."
+    ],
+    "open_items": [
+      "Integration tests for the HTTP ingress handler at the httpd level (currently only unit + webhooks-crate integration tests exist).",
+      "GitHub, GitLab, Stripe, Linear, Jira, PagerDuty, Sentry response action tools (post comments, merge PRs, issue refunds, etc.) are designed in the plan but not yet implemented.",
+      "Event filtering allow/deny list UI — the store supports it but the modal doesn't expose checkboxes from the provider event catalog.",
+      "Per-entity session mode (grouping events by PR number, issue ID, etc.) — types exist but worker serialization logic is a placeholder.",
+      "Webhook creation modal should validate that a secret is required when auth mode is not 'none', to prevent silent auth failures.",
+      "Delivery status progression UI (queued → processing → completed/failed) — the Deliveries panel exists but real-time updates may need polling or SSE.",
+      "Jira (Atlassian Connect JWT), Linear, PagerDuty, Sentry profiles are listed in the plan but only generic/GitHub/GitLab/Stripe profiles were implemented.",
+      "The `moltis-web` crate fails to compile due to pre-existing httpd vault/ssh_routes bug — needs fixing upstream."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T21:15:35.607171Z",
+    "agent_lines": 0,
+    "human_added": 22,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 22,
+    "agent_percentage": 0
+  }
+}
