@@ -1,0 +1,86 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3bc8a0588e95",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T21:54:25.63416Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/webhooks/src/profiles/generic.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "dee404168c60",
+  "token_usage": {
+    "input_tokens": 3991,
+    "cache_creation_tokens": 370273,
+    "cache_read_tokens": 82479187,
+    "output_tokens": 111824,
+    "api_call_count": 343
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis so users can trigger AI agents from GitHub, GitLab, Stripe, and other external webhook sources. The user wanted full CRUD management in settings (not onboarding) with provider-specific profiles.",
+    "outcome": "Built a complete `moltis-webhooks` crate with 36 passing tests, gateway integration, HTTP ingress endpoint, web UI settings page, documentation, and a test script. Fixed a critical `Arc::get_mut` bug that silently prevented the store from being wired up, and added CORS support for browser-based testing tools.",
+    "learnings": {
+      "repo": [
+        "Settings sidebar nav icons are rendered via CSS `::before` pseudo-elements in `components.css` using `[data-section=\"NAME\"]::before` selectors — the `icon` property in the JS sections array is unused for sidebar rendering.",
+        "There are two style.css files: `src/assets/style.css` (Tailwind output, gitignored) and `src/assets/css/style.css` (committed). The HTML loads the Tailwind output via versioned asset path.",
+        "The `Arc::get_mut` pattern for post-construction field initialization silently fails if any clone exists before the call; `OnceLock` is the correct approach for lazy initialization on an already-Arc'd state struct.",
+        "The i18n build uses `scripts/build-i18n.mjs` with string replacement — running it regenerates all 9 language HTML files from the English template; untranslated strings stay in English.",
+        "Webhook ingress public path exemption from session auth is handled in `httpd/src/auth_middleware.rs` by prefix-matching `/api/webhooks/ingest/`.",
+        "The generic profile's body-hash fallback for dedup keys caused identical test payloads to always be deduplicated; returning `None` disables dedup for providers with no delivery ID headers."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/state.rs",
+          "finding": "webhook_store, webhook_rate_limiter, and webhook_worker_tx fields changed from Option to OnceLock to allow reliable late initialization after Arc wrapping"
+        },
+        {
+          "path": "crates/httpd/src/server.rs",
+          "line": 1128,
+          "finding": "CORS headers added to webhook ingress responses; irrefutable `if let` warning fixed by using HeaderValue::from_static() directly without try_into()"
+        },
+        {
+          "path": "crates/web/src/assets/css/components.css",
+          "finding": "Settings nav icons are defined here as ::before pseudo-elements keyed on data-section attribute; new webhooks entry added pointing to globe mask SVG"
+        },
+        {
+          "path": "crates/webhooks/src/profiles/generic.rs",
+          "finding": "delivery_key() returns None for generic profile (no dedup) instead of falling back to body SHA-256 hash, which caused identical test payloads to always be deduplicated"
+        }
+      ],
+      "workflow": [
+        "Hoppscotch web app cannot reach localhost due to CORS + self-signed TLS; the desktop app is required for local webhook testing.",
+        "HTM (JSX-like) collapses whitespace between text nodes and tags across newlines; explicit `${\" \"}` is needed to force a space between 'with' and an anchor tag.",
+        "When using `Arc::get_mut` for post-construction mutation, any prior clone silently makes the call return None with no error — always verify this pattern with logging or switch to OnceLock.",
+        "Tailwind-compiled style.css is gitignored; CSS classes added to input.css are only usable after a local rebuild and won't be available in the committed repo unless the build artifact is committed separately."
+      ]
+    },
+    "friction": [
+      "Arc::get_mut silently returned None because the Arc was already cloned, causing webhook_store to stay None — the ingress handler returned 404 on every request with no obvious error message.",
+      "The webhooks nav icon showed as a black square because sidebar icons use components.css ::before selectors, not the icon property in the JS sections array — discovered only after checking rendered HTML.",
+      "style.css is gitignored so CSS classes added via input.css (icon-webhooks) were not usable without a local Tailwind rebuild; this made the icon fix appear to work locally but not in the repo.",
+      "Hoppscotch web app showed 'network error' due to CORS restrictions on the ingress endpoint; required adding Access-Control-Allow-Origin: * and OPTIONS preflight handling.",
+      "Generic profile's body-hash dedup fallback made curl testing with identical payloads always return 'deduplicated' after the first request.",
+      "Initial OAuth token expiry blocked the first user message entirely."
+    ],
+    "open_items": [
+      "Provider-specific webhook profiles for GitLab, Stripe, Linear, Jira, PagerDuty, and Sentry are defined in the plan and have auth/type structures but response tools (post comments, merge PRs, issue refunds) are not yet implemented.",
+      "Webhook edit modal does not prevent changing the source profile after creation (plan specified it should be read-only post-creation).",
+      "Translations for webhook feature text are not yet added to any of the 9 language files — they display in English.",
+      "The `per_entity` session mode (grouping events by entity key with serialized processing) is designed in the plan but the worker currently treats all modes the same way.",
+      "Response action tools (agents acting back via typed tools like post-comment, merge-PR) and the audit table tracking every action are in the plan but not yet implemented.",
+      "The httpd crate has a pre-existing compilation error with the vault feature (ssh_routes) that is unrelated to this work but blocks full `cargo check` from passing.",
+      "Integration tests cover the ingress pipeline but there are no end-to-end tests for the worker actually creating a chat session and running an agent."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T21:53:44.428635Z",
+    "agent_lines": 5,
+    "human_added": 577,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 582,
+    "agent_percentage": 0.859106529209622
+  }
+}

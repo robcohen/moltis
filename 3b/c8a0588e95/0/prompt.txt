@@ -1,0 +1,290 @@
+Look at plans/2026-04-06-plan-generic-webhooks.md and improve it, I want to add webhooks for github, gitlab triggers, stripe triggers etc to run AI agents based on those.
+
+---
+
+Look at plans/2026-04-06-plan-generic-webhooks.md and improve it, I want to add webhooks for github, gitlab triggers, stripe triggers etc to run AI agents based on those.
+
+---
+
+Remember the web-ui settings to delete/edit existing webhooks too. Webhooks don't need to be part of the onboarding, I think it needs to be in the settings only.
+
+---
+
+Proceed with the plan now. Build everything.
+
+---
+
+commit push and create a PR
+
+---
+
+Add documentation in docs about webhooks
+
+---
+
+webhooks icon is just a black square, any icon for the settings navigation?
+
+---
+
+<task-notification>
+<task-id>bem7cmrfp</task-id>
+<tool-use-id>toolu_01YWYeHowzepNLX9TafuwvDt</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/bem7cmrfp.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push icon fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/bem7cmrfp.output
+
+---
+
+Agent ID (optional)
+
+Model Override (optional)
+
+
+Agent ID, provider/LLM should definitely be selects like for the crontab job.
+
+---
+
+<task-notification>
+<task-id>b5j6rcsba</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/b5j6rcsba.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push select fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/b5j6rcsba.output
+
+---
+
+I added one, will the url be based on my current browser? Like if I enable ngrok it should probably give me the "public" url instead:
+
+foobar
+Generic
+active
+
+Deliveries
+Edit
+Delete
+https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc
+
+---
+
+find a 3rd party tool to test this webhook and trigger data
+
+---
+
+Webhooks
+Create webhook
+foobar
+Generic
+active
+
+Deliveries
+Edit
+Delete
+https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc
+
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ scripts/test-webhook.sh https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc --profile generic
+
+Moltis Webhook Test
+===================
+
+Sending generic deploy.completed event...
+────────────────────────────────────────────
+Profile: generic
+URL:     https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc
+
+Sending...
+
+But nothing I can see in moltis
+
+---
+
+I did not, no auth:
+
+Edit Webhook
+✕
+Name
+
+Description
+
+Source Profile
+
+Auth Mode
+
+Agent
+
+Default agent
+Model
+
+MiniMax M2.7
+Session Mode
+
+System Prompt Suffix (optional)
+
+Cancel
+
+---
+
+ok it worked!
+
+~/.s/w/m/kaput-gibbon kaput-gibbon [!] ❯ scripts/test-webhook.sh https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc --profile generic
+
+Moltis Webhook Test
+===================
+
+Sending generic deploy.completed event...
+────────────────────────────────────────────
+Profile: generic
+URL:     https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc
+Auth:    none (no --secret provided)
+
+Request headers:
+  -H
+  X-Event-Type: deploy.completed
+  -H
+  X-Delivery-Id: test-1775509954
+
+Sending...
+
+Response body:
+{
+    "deliveryId": 1,
+    "eventType": "deploy.completed",
+    "receivedAt": "2026-04-06T21:12:34.958069Z",
+    "status": "queued",
+    "webhookId": "wh_d79afd857f1b68d578bdeb47c2afe7b847dc"
+}
+
+HTTP Status: 202
+────────────────────────────────────────────
+
+Done. Check Settings → Webhooks → Deliveries in the Moltis UI.
+~/.s/w/m/kaput-gibbon kaput-gibbon [+] ❯
+
+---
+
+<task-notification>
+<task-id>bj5r2bdfa</task-id>
+<tool-use-id>toolu_01EpA8ayBuq8gooXoNHXed2r</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/bj5r2bdfa.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push OnceLock fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/bj5r2bdfa.output
+
+---
+
+Can you find a 3rd party free webhook tool we could like on the web-ui to let people know how they can "try" their webhooks once installed Moltis.
+
+---
+
+<task-notification>
+<task-id>barpi3f1h</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/barpi3f1h.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push Hoppscotch link" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-kaput-gibbon/3d9acf2d-68f6-4a76-af8d-a4d79258a469/tasks/barpi3f1h.output
+
+---
+
+I dont see a link in the web ui:
+
+<div class="flex-1 flex flex-col min-w-0 overflow-y-auto"><div class="p-5"><div class="flex items-center justify-between mb-4"><h2 class="text-sm font-semibold text-[var(--text-strong)]">Webhooks</h2><button class="provider-btn provider-btn-sm">Create webhook</button></div><div class="flex flex-col gap-2"><div class="channel-card"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><div><div class="text-sm font-medium text-[var(--text-strong)]">foobar</div><div class="text-xs text-[var(--muted)] mt-0.5">Generic</div></div></div><div class="flex items-center gap-2"><span class="text-xs text-[var(--muted)]">1 deliveries</span><span class="provider-item-badge configured" style="">active</span><label class="cron-toggle" title="Pause webhook"><input type="checkbox"><span class="cron-slider"></span></label><button class="provider-btn provider-btn-sm provider-btn-secondary">Deliveries</button><button class="provider-btn provider-btn-sm provider-btn-secondary">Edit</button><button class="provider-btn provider-btn-sm provider-btn-danger">Delete</button></div></div><div class="text-xs text-[var(--muted)] mt-1 font-mono select-all">https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc</div></div></div></div></div>
+
+---
+
+Also change the div width, make it more like the sandbox or cron settings. And fix the dark square icon for the webhooks navigation link
+
+---
+
+missing space: Test your webhooks withHoppscotch — send POST requests with custom headers and JSON bodies, no signup needed.
+
+---
+
+The webhooks listing is still full width, compared to the sandbox page. It needs a max-w-form
+
+---
+
+ok adding max-w-form does not work, let's do full width
+
+---
+
+Now we have assets outside (used to bundle it in the binary), can you extract navigation icons outside in crates/web/src/assets/icons ?
+
+---
+
+<button class="settings-nav-item active" data-section="webhooks">Webhooks</button>
+
+Still black square
+
+---
+
+[Image: source: /var/folders/0h/dmk6d6mj52s98cq24w9_n4d00000gn/T/TemporaryItems/NSIRD_screencaptureui_MFEm1t/Screenshot 2026-04-06 at 22.38.43.png]
+
+---
+
+https://hoppscotch.io says : network error when I use https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc
+
+---
+
+JS console shows:
+
+[Error] Origin https://hoppscotch.io is not allowed by Access-Control-Allow-Origin. Status code: 202
+[Error] XMLHttpRequest cannot load https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc due to access control checks.
+[Error] Failed to load resource: Origin https://hoppscotch.io is not allowed by Access-Control-Allow-Origin. Status code: 202 (wh_d79afd857f1b68d578bdeb47c2afe7b847dc, line 0)
+[Error] Origin https://hoppscotch.io is not allowed by Access-Control-Allow-Origin. Status code: 200
+[Error] XMLHttpRequest cannot load https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc due to access control checks.
+[Error] Failed to load resource: Origin https://hoppscotch.io is not allowed by Access-Control-Allow-Origin. Status code: 200 (wh_d79afd857f1b68d578bdeb47c2afe7b847dc, line 0)
+> Selected Element
+< <div data-v-33a429ff class="flex flex-1 flex-col">…</div>
+
+---
+
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ MOLTIS_CONFIG_DIR=.moltis/config MOLTIS_DATA_DIR=.moltis/ cargo run --bin moltis
+   Compiling moltis-httpd v0.1.0 (/Users/penso/.superset/worktrees/moltis/kaput-gibbon/crates/httpd)
+warning: irrefutable `if let` pattern
+    --> crates/httpd/src/server.rs:1128:16
+     |
+1128 | ...   if let Ok(v) = HeaderValue::from_static("*").try_into() { h.insert(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,...
+     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this pattern will always match, so the `if let` is useless
+     = help: consider replacing the `if let` with a `let`
+     = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+   Compiling moltis-web v0.1.0 (/Users/penso/.superset/worktrees/moltis/kaput-gibbon/crates/web)
+warning: `moltis-httpd` (lib) generated 1 warning
+   Compiling moltis v0.1.0 (/Users/penso/.superset/worktrees/moltis/kaput-gibbon/crates/cli)
+    Building [=====================> ] 1305/1306: moltis(bin)
+
+---
+
+I think the empty curl command is useless: 
+
+Test with: curl -sk -X POST -H "Content-Type: application/json" -d ''{}'' your-endpoint-url. For a GUI, use the Hoppscotch desktop app.
+
+also the copy curl button should have an hover status, and something when I clicked. It should also be more meaningful like "curl test command".
+
+---
+
+Change the website/ and add this new usage so people understand, like "Run your own agent for each PR" and add the webhook feature.
+
+---
+
+Add those in other website language index.html files. Also I tried changing the webhook to "named session" and the curl fails:
+
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ ls -l crates/web/src/assets/icons
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ curl -sk -X POST https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc -H 'Content-Type: application/json' -d '{"test": true}'
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ curl -sk -X POST https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc \
+  -H 'Content-Type: application/json' \
+  -d '{"event": "test", "timestamp": "2026-04-06T21:49:50.508Z"}'
+{"deliveryId":3,"eventType":null,"receivedAt":"2026-04-06T21:50:03.592465Z","status":"queued","webhookId":"wh_d79afd857f1b68d578bdeb47c2afe7b847dc"}%
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ curl -sk -X POST https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc -H 'Content-Type: application/json' -d '{"event": "test", "timestamp": "2026-04-06T21:49:50.508Z"}'
+{"existingDeliveryId":3,"status":"deduplicated"}%
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯ curl -sk -X POST https://localhost:59891/api/webhooks/ingest/wh_d79afd857f1b68d578bdeb47c2afe7b847dc -H 'Content-Type: application/json' -d '{"event": "test", "timestamp": "2026-04-06T21:49:50.508Z"}'
+{"existingDeliveryId":3,"status":"deduplicated"}%
+~/.s/w/m/kaput-gibbon kaput-gibbon ❯
