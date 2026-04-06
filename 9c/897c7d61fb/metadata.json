@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9c897c7d61fb",
+  "strategy": "manual-commit",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/httpd/src/server.rs",
+    "crates/webhooks/src/normalize.rs",
+    "crates/webhooks/src/profiles/github.rs",
+    "crates/webhooks/src/rate_limit.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9c/897c7d61fb/0/metadata.json",
+      "transcript": "/9c/897c7d61fb/0/full.jsonl",
+      "context": "/9c/897c7d61fb/0/context.md",
+      "content_hash": "/9c/897c7d61fb/0/content_hash.txt",
+      "prompt": "/9c/897c7d61fb/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 4041,
+    "cache_creation_tokens": 390025,
+    "cache_read_tokens": 95558019,
+    "output_tokens": 118533,
+    "api_call_count": 379
+  }
+}
