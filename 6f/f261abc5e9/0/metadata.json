@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ff261abc5e9",
+  "session_id": "5dfe1891-efdb-420d-80a4-f5b1d1b24585",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T10:38:06.757522Z",
+  "branch": "mahogany-night",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/router.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7cb90f998072",
+  "checkpoint_transcript_start": 1044,
+  "transcript_lines_at_start": 1044,
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 165195,
+    "cache_read_tokens": 2650065,
+    "output_tokens": 3696,
+    "api_call_count": 18
+  },
+  "summary": {
+    "intent": "Fix PR review comments on moltis PR #564, resolve review conversations, and address a P1 bug where `cleanup_session` wasn't calling `remove_image_override`, causing image override map leaks.",
+    "outcome": "Fixed the `cleanup_session` memory leak by adding `remove_image_override` call in the sandbox router, committed and pushed. All PR review threads were resolved.",
+    "learnings": {
+      "repo": [
+        "Sandbox session cleanup in the router requires explicit `remove_image_override` calls — this is not done automatically on session teardown.",
+        "Greptile PR summaries flag P1 issues in issue comments, not review threads — need to check both when reviewing PR feedback.",
+        "PR is in moltis-org/moltis repo, sandbox code lives at crates/tools/src/sandbox/router.rs"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/sandbox/router.rs",
+          "finding": "`cleanup_session` was missing a call to `remove_image_override`, causing the image override map to leak entries on session cleanup. Fix added the call inside `cleanup_session` so all callers get full cleanup without needing to call it separately."
+        }
+      ],
+      "workflow": [
+        "GitHub review thread resolution requires thread IDs, not review comment node IDs — these are different GraphQL objects.",
+        "After resolving review threads via API, verify by re-fetching unresolved threads rather than assuming success.",
+        "Run `cargo fmt` and `cargo clippy` before committing Rust changes."
+      ]
+    },
+    "friction": [
+      "Confusion between review comment node IDs and review thread IDs caused failed resolution attempts before finding correct thread IDs.",
+      "Remote ref already updated on first push attempt, requiring a pull-rebase before the push succeeded.",
+      "Had to check multiple comment sources (review threads, issue comments) to find all feedback — the P1 bug was only in the Greptile summary in issue comments, not in review threads."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T10:37:51.528148Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}

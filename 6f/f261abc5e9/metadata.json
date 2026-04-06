@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ff261abc5e9",
+  "strategy": "manual-commit",
+  "branch": "mahogany-night",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/router.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/6f/f261abc5e9/0/metadata.json",
+      "transcript": "/6f/f261abc5e9/0/full.jsonl",
+      "context": "/6f/f261abc5e9/0/context.md",
+      "content_hash": "/6f/f261abc5e9/0/content_hash.txt",
+      "prompt": "/6f/f261abc5e9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 165195,
+    "cache_read_tokens": 2650065,
+    "output_tokens": 3696,
+    "api_call_count": 18
+  }
+}
