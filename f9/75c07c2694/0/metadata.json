@@ -1,0 +1,103 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f975c07c2694",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T14:14:06.361671Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "3e35880dfe51",
+  "token_usage": {
+    "input_tokens": 4180,
+    "cache_creation_tokens": 1942746,
+    "cache_read_tokens": 134456535,
+    "output_tokens": 138051,
+    "api_call_count": 482
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis that allows users to trigger AI agents from GitHub, GitLab, Stripe, and other webhook sources, with full CRUD management via the settings UI.",
+    "outcome": "Built and merged a complete `moltis-webhooks` crate with 51 tests, gateway/HTTP integration, web UI settings page, documentation, and iteratively fixed multiple review issues including a critical OnceLock bug that silently dropped all webhook state.",
+    "learnings": {
+      "repo": [
+        "Settings sidebar nav icons are rendered via CSS `::before` pseudo-elements in `components.css` using `[data-section='X']` attribute selectors — NOT from the JS sections array `icon` property",
+        "There are two style.css files: `assets/style.css` (Tailwind output, gitignored) and `assets/css/style.css` (committed, older). The app serves the versioned Tailwind output via asset prefix URLs",
+        "SQLite `ON DELETE CASCADE` silently does nothing without `PRAGMA foreign_keys = ON` on the connection",
+        "The codebase uses `OnceLock` for late-initialized Arc fields; `Arc::get_mut` silently fails if any clone exists and is an unreliable pattern here",
+        "CORS is not automatically applied to public/exempted routes — webhook ingress needs explicit `Access-Control-Allow-Origin: *` headers and OPTIONS preflight handler",
+        "Hoppscotch web app cannot reach localhost due to browser mixed-content/CORS restrictions; desktop app must be used for local testing",
+        "i18n HTML files are auto-generated via `website/scripts/build-i18n.mjs` from `index.en.html` — only edit the English source, then run the build script",
+        "The cron crate's named_session pattern (sessions keyed by `webhook:ID`) means chat UI doesn't live-refresh when background workers append messages — requires WebSocket broadcast (filed as beads issue moltis-2pu)",
+        "Webhook deliveries with same body hash were being deduplicated by the generic profile's body-hash fallback; the fix is to return `None` delivery key when no explicit idempotency header is present",
+        "The `preferredPublicBaseUrl` pattern for ngrok/tailscale URL resolution exists in `onboarding-view.js` but is not exported; pages must inline the same ngrok/tailscale status fetch logic"
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3268,
+          "end_line": 3275,
+          "finding": "Arc::get_mut silently returned None because the state Arc was cloned before the webhook fields could be set, causing webhook_store and webhook_worker_tx to remain None. Fixed by using OnceLock fields instead."
+        },
+        {
+          "path": "crates/web/src/assets/css/components.css",
+          "finding": "Settings nav icons use .settings-nav-item[data-section='X']::before CSS rules with mask-image SVGs, not the icon property in the JS sections array"
+        },
+        {
+          "path": "crates/webhooks/src/auth.rs",
+          "finding": "Stripe timestamp validation originally parsed non-numeric t= values by silently skipping the check; now fails closed with AuthError on invalid timestamps"
+        },
+        {
+          "path": "crates/webhooks/src/profiles/generic.rs",
+          "finding": "Body hash dedup fallback removed — identical payloads without idempotency headers now always go through instead of being silently deduplicated"
+        },
+        {
+          "path": "crates/webhooks/src/worker.rs",
+          "finding": "Crash recovery must query for received + queued + processing deliveries; processing ones are mid-execution during crash and need retry"
+        },
+        {
+          "path": "crates/webhooks/src/store.rs",
+          "finding": "delete_webhook does explicit child deletes (deliveries, response_actions) rather than relying solely on ON DELETE CASCADE, making it robust against connection-level pragma state"
+        }
+      ],
+      "workflow": [
+        "Use `Arc::get_mut` only before any Arc clone exists; prefer OnceLock for fields that need late initialization on a shared Arc",
+        "Always add `PRAGMA foreign_keys = ON` in run_migrations AND do explicit deletes in delete methods for SQLite cascade reliability",
+        "Webhook ingress public routes need explicit CORS headers; axum's CorsLayer applies to the whole router but individual exempted routes need manual headers",
+        "Reviewer caught the gitlab_token auth config key bug, UTF-8 truncation panic, TOCTOU in rate limiter, and secrets in API responses — these should have been caught by tests upfront",
+        "Add regression tests for every reviewer-caught bug immediately; 12 regression tests were added after the review cycle that should have existed from the start",
+        "The Changelog Guard CI check blocks any manual CHANGELOG.md edits — restore to main state when merges pull in changelog diffs"
+      ]
+    },
+    "friction": [
+      "OAuth token expired at session start, requiring re-authentication before work could begin",
+      "Arc::get_mut silently failed for webhook state initialization, causing a silent no-op that only surfaced during live testing (202 responses but no actual processing)",
+      "Two style.css files with different content caused confusion about which one the app serves and whether icon classes would resolve",
+      "CSS icon system requires editing components.css with data-section selectors — not discoverable from the JS sections array pattern",
+      "Hoppscotch web app fails with CORS errors for localhost, making it a misleading recommendation for local testing",
+      "The dedup body-hash fallback caused all repeated curl test requests to be silently swallowed, making testing very difficult",
+      "style.css is gitignored so new CSS icon classes added to input.css won't work in production unless the build is committed separately",
+      "GitLab auth config key was `token` but the create modal was sending `secret` — silent auth failure with no helpful error"
+    ],
+    "open_items": [
+      "Live-refresh chat UI when background workers append messages to already-open named sessions (filed as beads moltis-2pu) — affects both webhooks and cron",
+      "CIDR allowlist enforcement currently extracts IP from X-Forwarded-For/X-Real-Ip headers only — no ConnectInfo integration for direct connections without a proxy",
+      "Webhook translations for all 9 language files are English placeholders — need actual translations added to build-i18n.mjs",
+      "PagerDuty, Linear, Jira, and Sentry source profiles are listed in the plan but only GitHub, GitLab, Stripe, and Generic were implemented",
+      "Response action tools (post GitHub comments, merge PRs, issue Stripe refunds) are described in the plan but the typed tool injection layer was not implemented",
+      "The per_entity session mode entity key extraction and serialized-per-entity processing from the plan was not implemented in the worker",
+      "The deliveries inspector UI only shows status and basic metadata — no way to see the full normalized delivery message or response actions from the UI"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-07T14:13:15.834816Z",
+    "agent_lines": 3,
+    "human_added": 456,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 459,
+    "agent_percentage": 0.6535947712418301
+  }
+}
