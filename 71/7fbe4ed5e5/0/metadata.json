@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "717fbe4ed5e5",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T14:31:48.93272Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/httpd/Cargo.toml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "80dd716632b8",
+  "token_usage": {
+    "input_tokens": 4201,
+    "cache_creation_tokens": 1950134,
+    "cache_read_tokens": 141523019,
+    "output_tokens": 140924,
+    "api_call_count": 499
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis that triggers AI agents on events from GitHub, GitLab, Stripe, and other providers, with full UI management and delivery tracking.",
+    "outcome": "Fully implemented the `moltis-webhooks` crate with provider profiles, auth verification, event filtering, deduplication, rate limiting, crash recovery, and a settings-only web UI; wired into gateway and HTTP server; added docs, website updates, and 51 tests. PR #575 created and iteratively hardened through multiple review cycles.",
+    "learnings": {
+      "repo": [
+        "Sidebar nav icons are rendered via CSS `::before` pseudo-elements in `components.css` using `data-section` attribute selectors — not from any `icon` property in the JS sections array",
+        "There are two style.css files: `src/assets/style.css` (Tailwind output, served) and `src/assets/css/style.css` (separate copy) — only the former is served via the versioned asset path",
+        "SQLite `ON DELETE CASCADE` requires `PRAGMA foreign_keys = ON` per-connection; the fix is to set it on `SqliteConnectOptions` at pool creation, not per-query",
+        "The `with_options` pattern returns `Arc\u003cSelf\u003e` immediately, making `Arc::get_mut` a fragile way to set fields post-construction — use `OnceLock` instead for late initialization on shared state",
+        "Website i18n is handled by `website/scripts/build-i18n.mjs` via string replacement; running it regenerates all 9 language files from the English template",
+        "Webhook ingress endpoint must be exempted from session auth middleware in `auth_middleware.rs` and have CORS headers for browser-based testing tools",
+        "The Changelog Guard CI blocks any manual edits to `CHANGELOG.md` — it is auto-generated from commit history via `git-cliff`",
+        "RPC method authorization lists are in `crates/gateway/src/methods/mod.rs` (read/write split)",
+        "The `ipnet` crate is already a workspace dependency and can be added to any crate's Cargo.toml without a version"
+      ],
+      "code": [
+        {
+          "path": "crates/webhooks/src/auth.rs",
+          "finding": "Stripe timestamp validation must fail closed — non-numeric `t=` values must be rejected, not silently skipped"
+        },
+        {
+          "path": "crates/webhooks/src/profiles/generic.rs",
+          "finding": "Generic profile should NOT fall back to body SHA-256 hash as dedup key — return None so identical test payloads aren't silently deduplicated"
+        },
+        {
+          "path": "crates/webhooks/src/worker.rs",
+          "finding": "Crash recovery drain must include `processing` status alongside `received`/`queued` — deliveries mid-execution during shutdown must be retried"
+        },
+        {
+          "path": "crates/webhooks/src/store.rs",
+          "finding": "Even with CASCADE defined in migration, `delete_webhook` should explicitly delete child rows to handle pooled connections where the pragma may not be active"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "`agent_id` from webhook config must be forwarded to `chat.send_sync` params — otherwise the per-webhook agent preset is ignored at runtime"
+        },
+        {
+          "path": "crates/webhooks/src/normalize.rs",
+          "finding": "String truncation by byte index panics on multibyte UTF-8; need `truncate_str()` that walks back to a char boundary"
+        },
+        {
+          "path": "crates/gateway/src/webhooks.rs",
+          "finding": "Auth secrets in `auth_config` and `source_config` must be redacted via `Webhook::redacted()` before returning from list/get/create/update RPCs"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-webhooks.js",
+          "finding": "`gitlab_token` auth mode must use key `token` in auth_config, not `secret` — the JS modal had a branch ordering bug"
+        }
+      ],
+      "workflow": [
+        "Using `Arc::get_mut` to set fields post-construction is fragile and silently fails when any clone exists — prefer `OnceLock` for late-initialized shared state",
+        "Browser-based webhook testing tools (Hoppscotch web) fail against localhost with self-signed certs due to CORS + mixed-content restrictions; the desktop app or curl is required",
+        "Rate limiters with separate read/write locks have TOCTOU gaps — use a single `Mutex` for atomic check-and-record",
+        "PR review bots flag stale issues on old commits; verify against current code before acting on JS unused-import warnings",
+        "The `scripts/test-webhook.sh` pattern (verbose curl with provider-specific HMAC signing) is valuable for integration smoke testing during development"
+      ]
+    },
+    "friction": [
+      "`Arc::get_mut` silently returned `None` post-construction, causing `webhook_store` and `webhook_worker_tx` to stay `None` — the ingress handler returned 404 on every request with no error log",
+      "The sidebar icon system is fully opaque from the JS side — the `icon` property in the sections array is unused; only `components.css` `::before` rules matter, which required deep CSS archaeology to discover",
+      "Hoppscotch web cannot reach localhost with self-signed TLS, requiring discovery of the desktop app alternative",
+      "Two `style.css` files at different paths with different content caused confusion about which was being served",
+      "The Changelog Guard CI failure required identifying and restoring `CHANGELOG.md` to the main branch state",
+      "Multiple PR review cycles caught issues that should have been caught by tests upfront: GitLab token key name, Stripe timestamp validation, CIDR enforcement never wired in, ON DELETE CASCADE not working without pragma"
+    ],
+    "open_items": [
+      "Live-refresh of chat UI when background workers append messages to already-open sessions (affects both webhooks and cron named sessions) — filed as beads issue moltis-2pu",
+      "CIDR allowlist enforcement relies on `X-Forwarded-For`/`X-Real-Ip` headers which are spoofable; proper fix requires `ConnectInfo` extractor with axum `into_make_service_with_connect_info`",
+      "i18n translations for the new Webhooks feature card on the website — currently stays in English across all 9 language files",
+      "GitLab, Stripe, Linear, PagerDuty, and Sentry source profiles exist in the plan but only GitHub, GitLab, and Stripe were implemented in the profiles module",
+      "Response action tools (post comments, merge PRs, issue refunds) described in the plan were not implemented — agents can receive events but cannot act back via typed tools",
+      "The `per_entity` session mode with per-entity locking described in the plan was not implemented"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-07T14:31:00.405601Z",
+    "agent_lines": 0,
+    "human_added": 34,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 34,
+    "agent_percentage": 0
+  }
+}
