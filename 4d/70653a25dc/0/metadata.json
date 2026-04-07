@@ -1,0 +1,109 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4d70653a25dc",
+  "session_id": "3d9acf2d-68f6-4a76-af8d-a4d79258a469",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T10:55:03.41604Z",
+  "branch": "kaput-gibbon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/webhooks/src/store.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ece5ea0f6183",
+  "token_usage": {
+    "input_tokens": 4102,
+    "cache_creation_tokens": 1518582,
+    "cache_read_tokens": 111567271,
+    "output_tokens": 125683,
+    "api_call_count": 424
+  },
+  "summary": {
+    "intent": "Add a generic webhook ingress system to Moltis that allows AI agents to be triggered by external events from GitHub, GitLab, Stripe, and other providers.",
+    "outcome": "Fully implemented the webhooks feature end-to-end: new `moltis-webhooks` crate with store, auth, profiles, worker; gateway RPC integration; HTTP ingress endpoint; settings UI; documentation; website updates; test script; and multiple bug fixes from PR review.",
+    "learnings": {
+      "repo": [
+        "Settings sidebar nav icons are NOT rendered via the JS `icon` property — they use CSS `::before` pseudo-elements in `components.css` with `[data-section='X']` attribute selectors",
+        "There are TWO style.css files: `src/assets/style.css` (Tailwind output) and `src/assets/css/style.css` (separate compiled CSS for components) — both are served and used",
+        "Icon mask SVGs use stroke-only paths (no fill) for the mask-image system — this is valid and renders correctly via currentColor background",
+        "The `Arc::get_mut` pattern for post-construction field injection silently fails if the Arc was already cloned elsewhere; OnceLock is the correct solution for late initialization on a shared Arc",
+        "The i18n build uses a string-replacement script (`website/scripts/build-i18n.mjs`) that regenerates all language HTML files from the English template",
+        "Webhook dedup uses SHA-256 body hash as fallback in generic profile — this causes aggressive dedup for identical test payloads; removed body-hash fallback so dedup only activates on explicit delivery ID headers",
+        "Chat UI doesn't live-refresh when background workers append to an open named session — requires a WebSocket broadcast from the worker post-send (affects both webhooks and cron)",
+        "The `components.css` file is NOT gitignored and IS committed (unlike the Tailwind `style.css` output)"
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3268,
+          "end_line": 3275,
+          "finding": "Arc::get_mut fails silently when Arc was already cloned — webhook_store and webhook_worker_tx were never set, causing 404 on all ingress requests"
+        },
+        {
+          "path": "crates/webhooks/src/rate_limit.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Original two-RwLock design had TOCTOU gap: global checked then released, per-webhook checked then released, then both recorded — replaced with single Mutex for atomic check-and-record"
+        },
+        {
+          "path": "crates/webhooks/src/profiles/github.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "String slice truncation with [..500] panics on multibyte UTF-8 boundaries — added truncate_str() helper in normalize.rs that walks back to char boundary"
+        },
+        {
+          "path": "crates/httpd/src/server.rs",
+          "line": 1128,
+          "end_line": 1128,
+          "finding": "HeaderValue::from_static().try_into() produces irrefutable if let pattern warning — use from_static() directly"
+        },
+        {
+          "path": "crates/webhooks/src/store.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Crash recovery SQL query for unprocessed deliveries must include 'processing' status, not just 'received' and 'queued' — processing deliveries were orphaned on restart"
+        },
+        {
+          "path": "crates/gateway/src/webhooks.rs",
+          "line": 1,
+          "end_line": 80,
+          "finding": "Auth secrets in auth_config and source_config were returned in API responses — added Webhook::redacted() method and applied at gateway service layer before returning to clients"
+        }
+      ],
+      "workflow": [
+        "Use OnceLock instead of Arc::get_mut for late field initialization on shared Arcs — get_mut is fragile and fails silently",
+        "Browser-based HTTP tools (Hoppscotch web) cannot reach localhost with self-signed certs due to CORS and mixed-content restrictions — recommend desktop app or curl instead",
+        "CORS headers on ingress endpoints need to be added to EVERY response path, not just the success path — wrapping at the end of handler is the cleanest approach",
+        "HTM JSX collapses whitespace between text and elements across newlines — use ${' '} or ${'\\u00a0'} for explicit spaces between adjacent elements",
+        "beads CLI can create issues with: beads issue create --title '...' --description '...' --priority p1"
+      ]
+    },
+    "friction": [
+      "Arc::get_mut silently returning None caused webhook_store to never be set — all ingress requests returned 404 with no error logged, very hard to diagnose",
+      "Two style.css files with different contents caused confusion about which one the dev server serves",
+      "CSS nav icon system is completely undocumented — icon property in JS sections array is unused, real icons are in components.css ::before rules",
+      "Hoppscotch web cannot test localhost endpoints — the recommendation to use it was misleading without the desktop app caveat",
+      "OAuth token expired at session start, causing initial confusion before retry",
+      "Pre-existing compile error in moltis-httpd (vault/ssh_routes feature) added noise to compilation checks throughout the session",
+      "HTM whitespace collapsing between text nodes required an obscure workaround for a simple space character"
+    ],
+    "open_items": [
+      "Live-refresh of chat UI when background workers append messages to open named sessions (filed as moltis-2pu) — affects both webhooks and cron",
+      "Provider-specific response tools (post GitHub comments, merge PRs, issue Stripe refunds) are defined in the plan but not yet implemented — currently agents can only read webhook data",
+      "CIDR allowlist enforcement is implemented in the handler but needs real-world testing with proxied deployments (X-Forwarded-For trust)",
+      "Translations for webhook feature text in non-English website language files are still in English",
+      "GitLab and Stripe profiles have basic event normalization but lack the full entity key and payload normalization depth of the GitHub profile",
+      "The webhook worker uses a fixed-size pool but per-entity locking (to serialize events for the same PR/issue) is not yet implemented",
+      "Webhook response actions audit table exists in the schema but the response tool injection pipeline is not yet wired"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-07T10:54:17.98509Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
