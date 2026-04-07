@@ -6856,7 +6856,454 @@ sandbox isolation, and job notification details.</p>
 <tr><td><code>moltis_cron_input_tokens_total</code></td><td>Counter</td><td>Input tokens from cron runs</td></tr>
 <tr><td><code>moltis_cron_output_tokens_total</code></td><td>Counter</td><td>Output tokens from cron runs</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="skill-self-extension"><a class="header" href="#skill-self-extension">Skill Self-Extension</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="webhooks"><a class="header" href="#webhooks">Webhooks</a></h1>
+<p>Moltis can receive inbound HTTP webhooks from external services and run AI
+agents in response. Each webhook delivery becomes a persistent chat session
+that can be inspected and continued from the web UI.</p>
+<p>Use webhooks to trigger agents from GitHub PRs, GitLab merge requests, Stripe
+payments, PagerDuty incidents, or any service that can POST JSON to a URL.</p>
+<h2 id="how-it-works-10"><a class="header" href="#how-it-works-10">How It Works</a></h2>
+<pre><code>External Service (GitHub, Stripe, …)
+        │
+        ▼  POST /api/webhooks/ingest/{public_id}
+┌──────────────────────────────────┐
+│         Ingress Handler          │
+│  verify → filter → dedup → 202  │
+└──────────────┬───────────────────┘
+               │  delivery_id
+               ▼
+┌──────────────────────────────────┐
+│       Background Worker          │
+│  normalize → create session      │
+│  → inject message → chat.send   │
+└──────────────┬───────────────────┘
+               │
+               ▼
+┌──────────────────────────────────┐
+│       Persistent Session         │
+│  Agent processes event,          │
+│  optionally acts back via tools  │
+└──────────────────────────────────┘
+</code></pre>
+<ol>
+<li>The external service POSTs to the webhook’s public endpoint.</li>
+<li>Moltis verifies authentication, checks the event filter, and deduplicates.</li>
+<li>The request is acknowledged with <code>202 Accepted</code> immediately.</li>
+<li>A background worker normalizes the payload, creates a chat session, and runs
+the bound agent.</li>
+<li>The resulting session is visible in the web UI like any other conversation.</li>
+</ol>
+<h2 id="setup-1"><a class="header" href="#setup-1">Setup</a></h2>
+<p>Webhooks are configured exclusively from <strong>Settings → Webhooks</strong> in the web UI.
+They are not part of the onboarding flow.</p>
+<h3 id="creating-a-webhook"><a class="header" href="#creating-a-webhook">Creating a Webhook</a></h3>
+<ol>
+<li>Navigate to <strong>Settings → Webhooks</strong> and click <strong>Create webhook</strong>.</li>
+<li>Choose a <strong>source profile</strong> (GitHub, GitLab, Stripe, or Generic).</li>
+<li>Configure <strong>authentication</strong> — the profile pre-selects a recommended mode.</li>
+<li>Optionally filter which <strong>event types</strong> to process.</li>
+<li>Select a <strong>target agent</strong> and optional model override.</li>
+<li>Click <strong>Create</strong> — the endpoint URL is displayed with a copy button.</li>
+<li>Register this URL in the external service’s webhook settings.</li>
+</ol>
+<h3 id="endpoint-url"><a class="header" href="#endpoint-url">Endpoint URL</a></h3>
+<p>Each webhook gets a stable, high-entropy public URL:</p>
+<pre><code>https://your-moltis-host/api/webhooks/ingest/wh_a1b2c3d4e5f6...
+</code></pre>
+<p>The <code>wh_</code> prefix followed by 36 random hex characters serves as a routing
+identifier — it is <strong>not</strong> authentication. Authentication is handled by the
+configured auth mode.</p>
+<h2 id="source-profiles"><a class="header" href="#source-profiles">Source Profiles</a></h2>
+<p>Source profiles define how to authenticate, parse, and normalize events from a
+specific provider. Selecting a profile pre-fills the recommended auth mode and
+provides an event catalog for filtering.</p>
+<div class="table-wrapper"><table><thead><tr><th>Profile</th><th>Auth Mode</th><th>Event Parsing</th><th>Entity Grouping</th></tr></thead><tbody>
+<tr><td>Generic</td><td>Static header</td><td>Configurable header</td><td>None</td></tr>
+<tr><td>GitHub</td><td>HMAC-SHA256 (<code>X-Hub-Signature-256</code>)</td><td><code>X-GitHub-Event</code> + action</td><td>PR number, issue number</td></tr>
+<tr><td>GitLab</td><td>Token (<code>X-Gitlab-Token</code>)</td><td><code>X-Gitlab-Event</code> + action</td><td>MR iid, issue iid</td></tr>
+<tr><td>Stripe</td><td>Webhook signature (<code>Stripe-Signature</code>)</td><td><code>$.type</code> in body</td><td>Subscription ID</td></tr>
+</tbody></table>
+</div>
+<h3 id="github"><a class="header" href="#github">GitHub</a></h3>
+<p>GitHub webhooks use HMAC-SHA256 signature verification. When you create a
+webhook with the GitHub profile:</p>
+<ol>
+<li>Moltis generates a random secret (or you provide one).</li>
+<li>In your GitHub repo, go to <strong>Settings → Webhooks → Add webhook</strong>.</li>
+<li>Set the payload URL to your Moltis webhook endpoint.</li>
+<li>Set content type to <code>application/json</code>.</li>
+<li>Paste the secret.</li>
+<li>Select the events you want to trigger (or choose “Send me everything” and
+filter in Moltis).</li>
+</ol>
+<p><strong>Event types:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Event</th><th>Description</th><th>Use case</th></tr></thead><tbody>
+<tr><td><code>pull_request.opened</code></td><td>New PR</td><td>Code review, labeling</td></tr>
+<tr><td><code>pull_request.synchronize</code></td><td>PR updated</td><td>Re-review</td></tr>
+<tr><td><code>pull_request.closed</code></td><td>PR closed/merged</td><td>Cleanup, changelog</td></tr>
+<tr><td><code>push</code></td><td>Commits pushed</td><td>CI trigger, deploy check</td></tr>
+<tr><td><code>issues.opened</code></td><td>New issue</td><td>Triage, auto-respond</td></tr>
+<tr><td><code>issue_comment.created</code></td><td>Comment on issue/PR</td><td>Answer questions</td></tr>
+<tr><td><code>pull_request_review.submitted</code></td><td>PR review posted</td><td>Respond to feedback</td></tr>
+<tr><td><code>release.published</code></td><td>New release</td><td>Announce, post-release tasks</td></tr>
+<tr><td><code>workflow_run.completed</code></td><td>Actions workflow done</td><td>Post-CI analysis</td></tr>
+</tbody></table>
+</div>
+<p><strong>Payload normalization</strong> extracts key fields (repo, PR number, author, branch,
+description, changed files) instead of dumping the full payload into the agent
+prompt — keeping token usage reasonable.</p>
+<h3 id="gitlab"><a class="header" href="#gitlab">GitLab</a></h3>
+<p>GitLab webhooks use a static token in the <code>X-Gitlab-Token</code> header.</p>
+<ol>
+<li>In your GitLab project, go to <strong>Settings → Webhooks</strong>.</li>
+<li>Set the URL to your Moltis webhook endpoint.</li>
+<li>Paste the secret token.</li>
+<li>Select trigger events.</li>
+</ol>
+<p><strong>Event types:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Event</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>merge_request.open</code></td><td>New merge request</td></tr>
+<tr><td><code>merge_request.update</code></td><td>MR updated</td></tr>
+<tr><td><code>merge_request.merge</code></td><td>MR merged</td></tr>
+<tr><td><code>push</code></td><td>Commits pushed</td></tr>
+<tr><td><code>note</code></td><td>Comment on MR or issue</td></tr>
+<tr><td><code>issue.open</code></td><td>New issue</td></tr>
+<tr><td><code>pipeline</code></td><td>Pipeline status change</td></tr>
+</tbody></table>
+</div>
+<h3 id="stripe"><a class="header" href="#stripe">Stripe</a></h3>
+<p>Stripe webhooks use a composite signature in the <code>Stripe-Signature</code> header
+with timestamp validation (5-minute tolerance).</p>
+<ol>
+<li>In the Stripe Dashboard, go to <strong>Developers → Webhooks → Add endpoint</strong>.</li>
+<li>Set the endpoint URL to your Moltis webhook endpoint.</li>
+<li>Select events to listen to.</li>
+<li>Copy the signing secret (<code>whsec_...</code>) into Moltis.</li>
+</ol>
+<p><strong>Event types:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Event</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>checkout.session.completed</code></td><td>Successful checkout</td></tr>
+<tr><td><code>payment_intent.succeeded</code></td><td>Payment captured</td></tr>
+<tr><td><code>payment_intent.payment_failed</code></td><td>Payment failed</td></tr>
+<tr><td><code>invoice.paid</code></td><td>Invoice paid</td></tr>
+<tr><td><code>customer.subscription.created</code></td><td>New subscription</td></tr>
+<tr><td><code>customer.subscription.deleted</code></td><td>Subscription canceled</td></tr>
+<tr><td><code>charge.dispute.created</code></td><td>Chargeback opened</td></tr>
+</tbody></table>
+</div>
+<h3 id="generic"><a class="header" href="#generic">Generic</a></h3>
+<p>The generic profile works with any service that can POST JSON. Configure a
+static header or bearer token for authentication. Event type is extracted from
+common headers (<code>X-Event-Type</code>, <code>X-Webhook-Event</code>) if present.</p>
+<h2 id="authentication-1"><a class="header" href="#authentication-1">Authentication</a></h2>
+<p>Each webhook is configured with an auth mode that verifies inbound requests.</p>
+<div class="table-wrapper"><table><thead><tr><th>Mode</th><th>Header</th><th>Verification</th></tr></thead><tbody>
+<tr><td><code>none</code></td><td>—</td><td>No verification (testing only)</td></tr>
+<tr><td><code>static_header</code></td><td>Configurable</td><td>Constant-time comparison of header value</td></tr>
+<tr><td><code>bearer</code></td><td><code>Authorization</code></td><td><code>Bearer &lt;token&gt;</code> comparison</td></tr>
+<tr><td><code>github_hmac_sha256</code></td><td><code>X-Hub-Signature-256</code></td><td>HMAC-SHA256 of body against shared secret</td></tr>
+<tr><td><code>gitlab_token</code></td><td><code>X-Gitlab-Token</code></td><td>Constant-time token comparison</td></tr>
+<tr><td><code>stripe_webhook_signature</code></td><td><code>Stripe-Signature</code></td><td>HMAC-SHA256 with timestamp tolerance</td></tr>
+<tr><td><code>linear_webhook_signature</code></td><td><code>Linear-Signature</code></td><td>HMAC-SHA256</td></tr>
+<tr><td><code>pagerduty_v2_signature</code></td><td><code>X-PagerDuty-Signature</code></td><td>HMAC-SHA256</td></tr>
+<tr><td><code>sentry_webhook_signature</code></td><td><code>Sentry-Hook-Signature</code></td><td>HMAC-SHA256</td></tr>
+</tbody></table>
+</div><div id="admonition-auth-mode-none" class="admonition admonish-warning" role="note" aria-labelledby="admonition-auth-mode-none-title">
+<div class="admonition-title">
+<div id="admonition-auth-mode-none-title">
+<p>Auth Mode: None</p>
+</div>
+<a class="admonition-anchor-link" href="webhooks.html#admonition-auth-mode-none"></a>
+</div>
+<div>
+<p>The <code>none</code> auth mode accepts all requests without verification. Use it only for
+local testing. The UI displays a warning when this mode is selected.</p>
+</div>
+</div>
+<p>All secret comparisons use constant-time operations to prevent timing attacks.</p>
+<h2 id="event-filtering"><a class="header" href="#event-filtering">Event Filtering</a></h2>
+<p>Each webhook can filter which event types to process using allow and deny lists.</p>
+<ul>
+<li><strong>Allow list empty, deny list empty</strong> — accept all events.</li>
+<li><strong>Allow list non-empty</strong> — only accept events in the list.</li>
+<li><strong>Deny list</strong> — always applied last, explicitly skips matching events.</li>
+</ul>
+<p>Filtered events are logged with status <code>filtered</code> but not processed. They do
+not count against rate limits.</p>
+<p>When using a source profile, the UI shows the event catalog as checkboxes
+instead of requiring free-form text.</p>
+<h2 id="session-modes"><a class="header" href="#session-modes">Session Modes</a></h2>
+<p>Each delivery creates a chat session. The session mode controls how sessions
+are organized.</p>
+<div class="table-wrapper"><table><thead><tr><th>Mode</th><th>Behaviour</th></tr></thead><tbody>
+<tr><td><code>per_delivery</code> (default)</td><td>One new session per delivery. Best for debugging and clean history.</td></tr>
+<tr><td><code>per_entity</code></td><td>Group deliveries by entity key (e.g., all events for PR #567 in one session). Useful for maintaining context across an entity’s lifecycle.</td></tr>
+<tr><td><code>named_session</code></td><td>All deliveries go to one named session. Use sparingly — can become noisy.</td></tr>
+</tbody></table>
+</div>
+<h3 id="entity-keys"><a class="header" href="#entity-keys">Entity Keys</a></h3>
+<p>In <code>per_entity</code> mode, the source profile extracts a grouping key from the
+payload:</p>
+<div class="table-wrapper"><table><thead><tr><th>Profile</th><th>Entity Key Format</th></tr></thead><tbody>
+<tr><td>GitHub</td><td><code>github:{repo}:pr:{number}</code> or <code>github:{repo}:issue:{number}</code></td></tr>
+<tr><td>GitLab</td><td><code>gitlab:{project}:mr:{iid}</code> or <code>gitlab:{project}:issue:{iid}</code></td></tr>
+<tr><td>Stripe</td><td><code>stripe:{subscription_id}</code> or <code>stripe:dispute:{charge_id}</code></td></tr>
+<tr><td>Generic</td><td>None (falls back to <code>per_delivery</code>)</td></tr>
+</tbody></table>
+</div>
+<h3 id="session-labels"><a class="header" href="#session-labels">Session Labels</a></h3>
+<p>Sessions are labeled for easy identification in the sidebar:</p>
+<ul>
+<li><strong>per_delivery</strong>: <code>webhook:{public_id}:{delivery_id}</code></li>
+<li><strong>per_entity</strong>: <code>webhook:{public_id}:{entity_key}</code></li>
+<li><strong>named_session</strong>: configured key or <code>webhook:{public_id}</code></li>
+</ul>
+<h2 id="agent-execution"><a class="header" href="#agent-execution">Agent Execution</a></h2>
+<p>Each webhook is bound to an agent preset. When a delivery is processed:</p>
+<ol>
+<li>The worker creates a session with the webhook’s session key.</li>
+<li>The configured agent is assigned to the session.</li>
+<li>A normalized message describing the event is injected.</li>
+<li><code>chat.send_sync</code> runs the agent turn.</li>
+<li>The delivery record is updated with status, duration, and token counts.</li>
+</ol>
+<h3 id="execution-overrides"><a class="header" href="#execution-overrides">Execution Overrides</a></h3>
+<p>Webhooks can override specific agent settings without changing the base preset:</p>
+<ul>
+<li><strong>Model</strong> — use a different LLM for webhook processing.</li>
+<li><strong>System prompt suffix</strong> — append extra instructions (e.g., “Focus on security
+issues” for a code review webhook).</li>
+<li><strong>Tool policy</strong> — restrict which tools the agent can use.</li>
+</ul>
+<h3 id="delivery-message-format"><a class="header" href="#delivery-message-format">Delivery Message Format</a></h3>
+<p>The agent receives a structured message with three layers:</p>
+<pre><code>Webhook delivery received.
+
+Webhook: GitHub PR Hook (wh_xxxxx)
+Source: github
+Event: pull_request.opened
+Delivery: abc-123-def
+Received: 2026-04-07T12:34:56Z
+
+---
+
+GitHub event: pull_request.opened
+
+Repository: moltis-org/moltis
+PR #567: "Add webhook support"
+  Author: @penso
+  Branch: feature/webhooks → main
+  URL: https://github.com/moltis-org/moltis/pull/567
+  Draft: false
+
+Description:
+  This PR adds generic webhook support...
+
+Changed files: 42 (+1,203 / -156)
+
+---
+
+Full payload available via webhook_get_full_payload tool.
+</code></pre>
+<p>The full raw payload is stored on the delivery record and available to the
+agent via the <code>webhook_get_full_payload</code> tool, keeping prompt token usage
+manageable for large payloads.</p>
+<h2 id="delivery-lifecycle"><a class="header" href="#delivery-lifecycle">Delivery Lifecycle</a></h2>
+<p>Each delivery goes through a status progression:</p>
+<div class="table-wrapper"><table><thead><tr><th>Status</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>received</code></td><td>Persisted, not yet queued</td></tr>
+<tr><td><code>filtered</code></td><td>Event type not in allow list</td></tr>
+<tr><td><code>deduplicated</code></td><td>Duplicate delivery key</td></tr>
+<tr><td><code>rejected</code></td><td>Auth failure or policy violation</td></tr>
+<tr><td><code>queued</code></td><td>Waiting for worker</td></tr>
+<tr><td><code>processing</code></td><td>Agent running</td></tr>
+<tr><td><code>completed</code></td><td>Agent finished successfully</td></tr>
+<tr><td><code>failed</code></td><td>Agent errored</td></tr>
+</tbody></table>
+</div>
+<h3 id="deduplication"><a class="header" href="#deduplication">Deduplication</a></h3>
+<p>Deliveries are deduplicated by a provider-specific key:</p>
+<ul>
+<li><strong>GitHub</strong>: <code>X-GitHub-Delivery</code> header</li>
+<li><strong>GitLab</strong>: <code>Idempotency-Key</code> header (falls back to body hash)</li>
+<li><strong>Stripe</strong>: <code>$.id</code> field in body</li>
+<li><strong>Generic</strong>: <code>X-Delivery-Id</code> or <code>X-Request-Id</code> header (falls back to body
+SHA-256 hash)</li>
+</ul>
+<p>Duplicate deliveries are logged with status <code>deduplicated</code> and return <code>200 OK</code>.</p>
+<h2 id="rate-limiting"><a class="header" href="#rate-limiting">Rate Limiting</a></h2>
+<p>Two levels of rate limiting protect against abuse:</p>
+<div class="table-wrapper"><table><thead><tr><th>Level</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td>Per-webhook</td><td>60/minute</td><td>Configurable per webhook</td></tr>
+<tr><td>Global</td><td>300/minute</td><td>Across all webhooks</td></tr>
+</tbody></table>
+</div>
+<p>Rate-limited requests receive <code>429 Too Many Requests</code>. Filtered and
+deduplicated events do not count against rate limits.</p>
+<h2 id="security-3"><a class="header" href="#security-3">Security</a></h2>
+<ul>
+<li><strong>Public IDs are routing identifiers, not secrets.</strong> Authentication is
+handled by the configured auth mode.</li>
+<li><strong>Secrets use constant-time comparison</strong> to prevent timing attacks.</li>
+<li><strong>Request body size is limited</strong> (default: 1 MB, configurable per webhook).</li>
+<li><strong>Auth headers are never logged.</strong> Only safe headers (event type, delivery
+ID, content type) are persisted.</li>
+<li><strong>Webhook secrets and source API credentials</strong> are encrypted at rest when
+Vault is enabled.</li>
+</ul>
+<div id="admonition-secret-management" class="admonition admonish-warning" role="note" aria-labelledby="admonition-secret-management-title">
+<div class="admonition-title">
+<div id="admonition-secret-management-title">
+<p>Secret Management</p>
+</div>
+<a class="admonition-anchor-link" href="webhooks.html#admonition-secret-management"></a>
+</div>
+<div>
+<p>Without Vault, webhook secrets and API tokens remain plaintext in the SQLite
+database. Enable Moltis <a href="vault.html">Vault</a> if these secrets are going to live on
+disk. Rotate secrets periodically.</p>
+</div>
+</div>
+<h2 id="delivery-inspector"><a class="header" href="#delivery-inspector">Delivery Inspector</a></h2>
+<p>The web UI provides a delivery inspector for each webhook:</p>
+<ul>
+<li><strong>Deliveries list</strong> with status, event type, timestamp, and duration.</li>
+<li><strong>Per-delivery detail</strong> with normalized metadata, headers, body preview, and
+session link.</li>
+<li><strong>Response actions</strong> (when using profiles with response tools) showing what
+the agent did.</li>
+<li>Click a delivery’s session link to open the full chat conversation.</li>
+</ul>
+<h2 id="editing-and-deleting"><a class="header" href="#editing-and-deleting">Editing and Deleting</a></h2>
+<h3 id="editing"><a class="header" href="#editing">Editing</a></h3>
+<p>Click <strong>Edit</strong> on a webhook card to modify its settings. Changes take effect
+immediately for new deliveries. In-progress deliveries use the configuration
+that was active when they were received.</p>
+<h3 id="disabling"><a class="header" href="#disabling">Disabling</a></h3>
+<p>The toggle on each webhook card pauses it — the endpoint returns <code>404</code> but
+configuration and delivery history are preserved.</p>
+<h3 id="deleting"><a class="header" href="#deleting">Deleting</a></h3>
+<p>Deleting a webhook permanently removes it and all delivery records. Chat
+sessions created by deliveries are <strong>not</strong> deleted — they persist independently
+as normal sessions.</p>
+<h2 id="crash-recovery"><a class="header" href="#crash-recovery">Crash Recovery</a></h2>
+<p>On startup, Moltis scans for deliveries with status <code>received</code> or <code>queued</code> and
+re-queues them for processing. Accepted deliveries are not silently dropped on
+restart.</p>
+<h2 id="testing-webhooks"><a class="header" href="#testing-webhooks">Testing Webhooks</a></h2>
+<p>Use <a href="https://hoppscotch.io">Hoppscotch</a> (free, open source, no signup) to test
+your webhooks. Set the method to POST, paste your webhook endpoint URL, add a
+JSON body, and set any required auth headers.</p>
+<p>Alternatively, use the included test script:</p>
+<pre><code class="language-bash">./scripts/test-webhook.sh &lt;webhook-url&gt; --profile github --secret &lt;your-secret&gt;
+</code></pre>
+<p>Available profiles: <code>generic</code>, <code>github</code>, <code>gitlab</code>, <code>stripe</code>. Each sends a
+realistic sample payload with the correct headers and signature.</p>
+<h2 id="example-github-pr-reviewer"><a class="header" href="#example-github-pr-reviewer">Example: GitHub PR Reviewer</a></h2>
+<p>A complete example of setting up a webhook that reviews pull requests:</p>
+<ol>
+<li>
+<p><strong>Create webhook</strong> in Settings → Webhooks:</p>
+<ul>
+<li>
+<p>Source: <strong>GitHub</strong></p>
+</li>
+<li>
+<p>Auth: <strong>GitHub HMAC-SHA256</strong> (auto-selected)</p>
+</li>
+<li>
+<p>Events: check <code>pull_request.opened</code> and <code>pull_request.synchronize</code></p>
+</li>
+<li>
+<p>Agent: <code>code-reviewer</code> (or your default agent)</p>
+</li>
+<li>
+<p>Session mode: <strong>Per entity</strong> (groups all events for the same PR)</p>
+</li>
+<li>
+<p>System prompt suffix:</p>
+<pre><code>You are reviewing a GitHub pull request. Analyze the PR description and
+changed files. Focus on correctness, security, and maintainability.
+Provide specific, actionable feedback.
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Register in GitHub</strong>:</p>
+<ul>
+<li>Repo → Settings → Webhooks → Add webhook</li>
+<li>Payload URL: copy from Moltis</li>
+<li>Content type: <code>application/json</code></li>
+<li>Secret: copy from Moltis</li>
+<li>Events: “Pull requests”</li>
+</ul>
+</li>
+<li>
+<p><strong>Test it</strong>: open a PR — a new session appears in Moltis with the agent’s
+review.</p>
+</li>
+</ol>
+<h2 id="example-stripe-payment-handler"><a class="header" href="#example-stripe-payment-handler">Example: Stripe Payment Handler</a></h2>
+<ol>
+<li>
+<p><strong>Create webhook</strong> in Settings → Webhooks:</p>
+<ul>
+<li>
+<p>Source: <strong>Stripe</strong></p>
+</li>
+<li>
+<p>Auth: <strong>Stripe Signature</strong> (auto-selected)</p>
+</li>
+<li>
+<p>Events: check <code>checkout.session.completed</code>, <code>payment_intent.payment_failed</code></p>
+</li>
+<li>
+<p>Session mode: <strong>Per delivery</strong></p>
+</li>
+<li>
+<p>System prompt suffix:</p>
+<pre><code>Process this Stripe payment event. For successful payments, log the
+details and confirm fulfillment. For failures, summarize the issue
+and suggest next steps.
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Register in Stripe</strong>:</p>
+<ul>
+<li>Dashboard → Developers → Webhooks → Add endpoint</li>
+<li>Endpoint URL: copy from Moltis</li>
+<li>Events: select the matching events</li>
+<li>Copy signing secret (<code>whsec_...</code>) into Moltis</li>
+</ul>
+</li>
+</ol>
+<h2 id="metrics-2"><a class="header" href="#metrics-2">Metrics</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Metric</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>webhooks_deliveries_total</code></td><td>Counter</td><td>Total deliveries by webhook, status, event type</td></tr>
+<tr><td><code>webhooks_deliveries_rejected_total</code></td><td>Counter</td><td>Rejected deliveries by reason</td></tr>
+<tr><td><code>webhooks_deliveries_filtered_total</code></td><td>Counter</td><td>Filtered deliveries</td></tr>
+<tr><td><code>webhooks_processing_duration_seconds</code></td><td>Histogram</td><td>Agent execution time</td></tr>
+<tr><td><code>webhooks_response_actions_total</code></td><td>Counter</td><td>Response actions by tool and status</td></tr>
+<tr><td><code>webhooks_rate_limited_total</code></td><td>Counter</td><td>Rate-limited requests</td></tr>
+<tr><td><code>webhooks_worker_queue_depth</code></td><td>Gauge</td><td>Pending deliveries in worker queue</td></tr>
+</tbody></table>
+</div>
+<h2 id="comparison-with-channels-and-cron"><a class="header" href="#comparison-with-channels-and-cron">Comparison with Channels and Cron</a></h2>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Channels</th><th>Webhooks</th><th>Cron</th></tr></thead><tbody>
+<tr><td><strong>Purpose</strong></td><td>Human messaging</td><td>Machine event ingress</td><td>Scheduled tasks</td></tr>
+<tr><td><strong>Trigger</strong></td><td>User sends message</td><td>External HTTP POST</td><td>Time-based schedule</td></tr>
+<tr><td><strong>Reply</strong></td><td>Back to the channel</td><td>Via response tools (optional)</td><td>Optional channel delivery</td></tr>
+<tr><td><strong>Session</strong></td><td>Per conversation</td><td>Per delivery / entity</td><td>Per job run</td></tr>
+<tr><td><strong>Auth</strong></td><td>Platform account</td><td>Per-webhook (HMAC, token, etc.)</td><td>Internal only</td></tr>
+</tbody></table>
+</div>
+<p>Webhooks are <strong>not channels</strong>. They do not support reply routing, streaming, or
+platform presence semantics. Use channels for human messaging and webhooks for
+machine event ingress.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="skill-self-extension"><a class="header" href="#skill-self-extension">Skill Self-Extension</a></h1>
 <p>Moltis can create, update, and delete personal skills at runtime through agent
 tools, enabling the system to extend its own capabilities during a conversation.</p>
 <h2 id="overview-3"><a class="header" href="#overview-3">Overview</a></h2>
@@ -6999,7 +7446,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 </ul>
 <p>You can remove any subscription by clicking the <strong>Remove</strong> button. This works from any device - useful for revoking access to old devices.</p>
 <p>Subscription changes are broadcast in real-time via WebSocket, so all connected clients see updates immediately.</p>
-<h3 id="how-it-works-10"><a class="header" href="#how-it-works-10">How It Works</a></h3>
+<h3 id="how-it-works-11"><a class="header" href="#how-it-works-11">How It Works</a></h3>
 <p>Moltis uses the Web Push API with VAPID (Voluntary Application Server Identification) keys:</p>
 <ol>
 <li><strong>VAPID Keys</strong>: On first run, the server generates a P-256 ECDSA key pair</li>
@@ -7548,7 +7995,7 @@ JSON object <code>{"kind":"created","sessionKey":"..."}</code> dispatched to
 device that connects to your gateway and executes commands on your behalf.
 This lets the AI agent run shell commands on a Linux server, query a Raspberry
 Pi, or leverage a GPU machine — all from a single chat session.</p>
-<h2 id="how-it-works-11"><a class="header" href="#how-it-works-11">How It Works</a></h2>
+<h2 id="how-it-works-12"><a class="header" href="#how-it-works-12">How It Works</a></h2>
 <pre><code>┌──────────────┐    WebSocket     ┌─────────────────┐
 │  Your laptop │◄────────────────►│  Moltis gateway  │
 │  (browser)   │                  │  (moltis)        │
@@ -7697,7 +8144,7 @@ doctor panel</li>
 <tr><td><code>moltis node logs</code></td><td>Print log file path</td></tr>
 </tbody></table>
 </div>
-<h2 id="security-3"><a class="header" href="#security-3">Security</a></h2>
+<h2 id="security-4"><a class="header" href="#security-4">Security</a></h2>
 <ul>
 <li><strong>Device tokens</strong> are SHA-256 hashed before storage. The raw token is shown
 once during pairing and never stored on the gateway.</li>
@@ -7768,7 +8215,7 @@ remote machine that connects back to a gateway for command execution. See
 <tr><td>launchd label</td><td><code>org.moltis.gateway</code></td><td><code>org.moltis.node</code></td></tr>
 <tr><td>systemd unit</td><td><code>moltis.service</code></td><td><code>moltis-node.service</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="authentication-1"><a class="header" href="#authentication-1">Authentication</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="authentication-2"><a class="header" href="#authentication-2">Authentication</a></h1>
 <p>Moltis uses a unified authentication gate that protects all routes with a
 single source of truth. This page explains how authentication works, the
 decision logic, and the different credential types.</p>
@@ -8364,7 +8811,7 @@ drift re-trust, dependency install guards, kill switch, audit log), see
 <p>By default, Moltis requires explicit user approval before executing potentially
 dangerous commands. This “human-in-the-loop” design ensures the AI cannot take
 destructive actions without consent.</p>
-<h3 id="how-it-works-12"><a class="header" href="#how-it-works-12">How It Works</a></h3>
+<h3 id="how-it-works-13"><a class="header" href="#how-it-works-13">How It Works</a></h3>
 <p>When the agent wants to run a command:</p>
 <ol>
 <li>The command is analyzed against approval policies</li>
@@ -8441,7 +8888,7 @@ channel cannot affect another channel’s session or the main UI session.</p>
 <h2 id="cron-job-security"><a class="header" href="#cron-job-security">Cron Job Security</a></h2>
 <p>Scheduled tasks (cron jobs) can run agent turns automatically. Security
 considerations:</p>
-<h3 id="rate-limiting"><a class="header" href="#rate-limiting">Rate Limiting</a></h3>
+<h3 id="rate-limiting-1"><a class="header" href="#rate-limiting-1">Rate Limiting</a></h3>
 <p>To prevent prompt injection attacks from rapidly creating many cron jobs:</p>
 <pre><code class="language-toml">[cron]
 rate_limit_max = 10           # max jobs per window
@@ -8565,7 +9012,7 @@ ssrf_allowlist = ["172.22.0.0/16"]
 <p><strong>Warning:</strong> Only add networks you trust. The allowlist bypasses SSRF protection
 for the listed ranges. Never add cloud metadata ranges (<code>169.254.169.254/32</code>)
 unless you understand the risk.</p>
-<h2 id="authentication-2"><a class="header" href="#authentication-2">Authentication</a></h2>
+<h2 id="authentication-3"><a class="header" href="#authentication-3">Authentication</a></h2>
 <p>Moltis uses a unified auth gate that applies a single <code>check_auth()</code>
 function to every request. This prevents split-brain bugs where different
 code paths disagree on auth status.</p>
@@ -9435,7 +9882,7 @@ fly secrets set MOLTIS_PASSWORD="your-password"
 # Create persistent storage
 fly volumes create moltis_data --region iad --size 1
 </code></pre>
-<h3 id="how-it-works-13"><a class="header" href="#how-it-works-13">How it works</a></h3>
+<h3 id="how-it-works-14"><a class="header" href="#how-it-works-14">How it works</a></h3>
 <ul>
 <li><strong>Image</strong>: pulled from <code>ghcr.io/moltis-org/moltis:latest</code></li>
 <li><strong>Port</strong>: internal 8080, Fly terminates TLS and routes HTTPS traffic</li>
@@ -9541,7 +9988,7 @@ restart needed.</p>
 github.com), so it works from the web UI without this workaround.</p>
 </div>
 </div>
-<h2 id="authentication-3"><a class="header" href="#authentication-3">Authentication</a></h2>
+<h2 id="authentication-4"><a class="header" href="#authentication-4">Authentication</a></h2>
 <p>On first launch, Moltis requires a password or passkey to be set. In cloud
 deployments the easiest approach is to set the <code>MOLTIS_PASSWORD</code> environment
 variable (or secret) before deploying. This pre-configures the password so the
@@ -10007,7 +10454,7 @@ startup in the correct dependency order.</p>
     │   └── 20240205100004_init.sql   # files, chunks, embedding_cache, FTS
     └── src/lib.rs                     # run_migrations() (separate memory.db)
 </code></pre>
-<h2 id="how-it-works-14"><a class="header" href="#how-it-works-14">How It Works</a></h2>
+<h2 id="how-it-works-15"><a class="header" href="#how-it-works-15">How It Works</a></h2>
 <h3 id="migration-ownership"><a class="header" href="#migration-ownership">Migration Ownership</a></h3>
 <p>Each crate is autonomous and owns its schema:</p>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Database</th><th>Tables</th><th>Migration File</th></tr></thead><tbody>
@@ -10464,7 +10911,7 @@ fn main() {
 
     // Now spans will add labels to metrics
 }</code></pre></pre>
-<h3 id="how-it-works-15"><a class="header" href="#how-it-works-15">How It Works</a></h3>
+<h3 id="how-it-works-16"><a class="header" href="#how-it-works-16">How It Works</a></h3>
 <p>When tracing is enabled, span fields are automatically added as metric labels:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -10652,7 +11099,7 @@ uses to discover and activate tools on demand.</p>
 <pre><code class="language-toml">[tools]
 registry_mode = "lazy"   # default: "full"
 </code></pre>
-<h3 id="how-it-works-16"><a class="header" href="#how-it-works-16">How it works</a></h3>
+<h3 id="how-it-works-17"><a class="header" href="#how-it-works-17">How it works</a></h3>
 <ol>
 <li>The model receives only <code>tool_search</code> in its tool list.</li>
 <li><code>tool_search(query="memory")</code> returns name + description pairs (max 15), no schemas.</li>
@@ -10861,9 +11308,21 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h3 id="deprecated"><a class="header" href="#deprecated">Deprecated</a></h3>
 <h3 id="removed"><a class="header" href="#removed">Removed</a></h3>
 <h3 id="fixed"><a class="header" href="#fixed">Fixed</a></h3>
-<h3 id="security-4"><a class="header" href="#security-4">Security</a></h3>
-<h2 id="2026040604---2026-04-06"><a class="header" href="#2026040604---2026-04-06">[20260406.04] - 2026-04-06</a></h2>
+<h3 id="security-5"><a class="header" href="#security-5">Security</a></h3>
+<h2 id="2026040605---2026-04-06"><a class="header" href="#2026040605---2026-04-06">[20260406.05] - 2026-04-06</a></h2>
 <h3 id="added-1"><a class="header" href="#added-1">Added</a></h3>
+<ul>
+<li>[openclaw-import] Convert non-default agents to spawn_agent presets</li>
+</ul>
+<h3 id="fixed-1"><a class="header" href="#fixed-1">Fixed</a></h3>
+<ul>
+<li>[web] Allow session sidebar links to open in new tabs</li>
+<li>[web] Tighten session sidebar link accessibility</li>
+<li>[docker] Add missing default features to Dockerfile build</li>
+<li>[docker] Use default features instead of explicit list</li>
+</ul>
+<h2 id="2026040604---2026-04-06"><a class="header" href="#2026040604---2026-04-06">[20260406.04] - 2026-04-06</a></h2>
+<h3 id="added-2"><a class="header" href="#added-2">Added</a></h3>
 <ul>
 <li>[website] Add provider/channel pills section and update branding</li>
 <li>[website] Add positioning, how-it-works, use cases, and community quote</li>
@@ -10873,7 +11332,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[providers] Avoid quadratic SSE buffer copies</li>
 <li>[providers] Align copilot stream error handling</li>
 </ul>
-<h3 id="fixed-1"><a class="header" href="#fixed-1">Fixed</a></h3>
+<h3 id="fixed-2"><a class="header" href="#fixed-2">Fixed</a></h3>
 <ul>
 <li>[providers] Route Copilot enterprise tokens via proxy endpoint (#352)</li>
 <li>[providers] Address PR review comments on Copilot enterprise</li>
@@ -10894,26 +11353,26 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[website] Sync i18n builder with locale pages</li>
 <li>[website] Correct i18n generator keys</li>
 </ul>
-<h3 id="security-5"><a class="header" href="#security-5">Security</a></h3>
+<h3 id="security-6"><a class="header" href="#security-6">Security</a></h3>
 <ul>
 <li>[providers] Redact CopilotTokenResponse token in Debug output</li>
 </ul>
 <h2 id="2026040603---2026-04-06"><a class="header" href="#2026040603---2026-04-06">[20260406.03] - 2026-04-06</a></h2>
-<h3 id="fixed-2"><a class="header" href="#fixed-2">Fixed</a></h3>
+<h3 id="fixed-3"><a class="header" href="#fixed-3">Fixed</a></h3>
 <ul>
 <li>[web] Restore all-features build</li>
 </ul>
 <h2 id="2026040602---2026-04-06"><a class="header" href="#2026040602---2026-04-06">[20260406.02] - 2026-04-06</a></h2>
-<h3 id="fixed-3"><a class="header" href="#fixed-3">Fixed</a></h3>
+<h3 id="fixed-4"><a class="header" href="#fixed-4">Fixed</a></h3>
 <ul>
 <li>[web] Map config reload errors explicitly</li>
 </ul>
 <h2 id="2026040601---2026-04-06"><a class="header" href="#2026040601---2026-04-06">[20260406.01] - 2026-04-06</a></h2>
-<h3 id="added-2"><a class="header" href="#added-2">Added</a></h3>
+<h3 id="added-3"><a class="header" href="#added-3">Added</a></h3>
 <ul>
 <li>[cron] Auto-clean orphaned sessions and prune sandbox containers</li>
 </ul>
-<h3 id="fixed-4"><a class="header" href="#fixed-4">Fixed</a></h3>
+<h3 id="fixed-5"><a class="header" href="#fixed-5">Fixed</a></h3>
 <ul>
 <li>[swift-bridge] Await embedded httpd shutdown</li>
 <li>[cron] Use time crate for retention math and fix named-session guard</li>
@@ -10923,19 +11382,19 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[ci] Await channel preload in settings e2e</li>
 </ul>
 <h2 id="2026040506---2026-04-05"><a class="header" href="#2026040506---2026-04-05">[20260405.06] - 2026-04-05</a></h2>
-<h3 id="security-6"><a class="header" href="#security-6">Security</a></h3>
+<h3 id="security-7"><a class="header" href="#security-7">Security</a></h3>
 <ul>
 <li>Add GitHub artifact attestations to release workflow</li>
 </ul>
 <h2 id="2026040505---2026-04-05"><a class="header" href="#2026040505---2026-04-05">[20260405.05] - 2026-04-05</a></h2>
 <h2 id="2026040504---2026-04-05"><a class="header" href="#2026040504---2026-04-05">[20260405.04] - 2026-04-05</a></h2>
 <h2 id="2026040503---2026-04-05"><a class="header" href="#2026040503---2026-04-05">[20260405.03] - 2026-04-05</a></h2>
-<h3 id="fixed-5"><a class="header" href="#fixed-5">Fixed</a></h3>
+<h3 id="fixed-6"><a class="header" href="#fixed-6">Fixed</a></h3>
 <ul>
 <li>[web] Restore matrix onboarding icon</li>
 </ul>
 <h2 id="2026040502---2026-04-05"><a class="header" href="#2026040502---2026-04-05">[20260405.02] - 2026-04-05</a></h2>
-<h3 id="added-3"><a class="header" href="#added-3">Added</a></h3>
+<h3 id="added-4"><a class="header" href="#added-4">Added</a></h3>
 <ul>
 <li>[providers] Add zai-code provider for Z.AI Coding plan</li>
 <li>[tools] Add cross-session search recall</li>
@@ -10977,7 +11436,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>[web] Remove unused gon import</li>
 </ul>
-<h3 id="fixed-6"><a class="header" href="#fixed-6">Fixed</a></h3>
+<h3 id="fixed-7"><a class="header" href="#fixed-7">Fixed</a></h3>
 <ul>
 <li>[providers] Address PR review comments for zai-code</li>
 <li>[vault] Allow unencrypted session history while sealed</li>
@@ -11050,7 +11509,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Satisfy biome hook and lint checks</li>
 </ul>
 <h2 id="2026032803---2026-03-28"><a class="header" href="#2026032803---2026-03-28">[20260328.03] - 2026-03-28</a></h2>
-<h3 id="fixed-7"><a class="header" href="#fixed-7">Fixed</a></h3>
+<h3 id="fixed-8"><a class="header" href="#fixed-8">Fixed</a></h3>
 <ul>
 <li>[telegram] Route forum-topic replies to correct thread</li>
 <li>[telegram] Restore raw chat_id in logs, add thread_id to tracing</li>
@@ -11058,7 +11517,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[providers] Address PR review feedback</li>
 </ul>
 <h2 id="2026032802---2026-03-28"><a class="header" href="#2026032802---2026-03-28">[20260328.02] - 2026-03-28</a></h2>
-<h3 id="added-4"><a class="header" href="#added-4">Added</a></h3>
+<h3 id="added-5"><a class="header" href="#added-5">Added</a></h3>
 <ul>
 <li>[telegram] Isolate forum-topic sessions by thread_id</li>
 </ul>
@@ -11066,7 +11525,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>[telegram] Consolidate parse_chat_target, fix typing indicator</li>
 </ul>
-<h3 id="fixed-8"><a class="header" href="#fixed-8">Fixed</a></h3>
+<h3 id="fixed-9"><a class="header" href="#fixed-9">Fixed</a></h3>
 <ul>
 <li>[telegram] Propagate thread_id parse errors in parse_chat_target</li>
 <li>[providers] Skip model discovery for custom providers with explicit models</li>
@@ -11080,7 +11539,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[provider-setup] Use Arc<AtomicBool> instead of static in test</li>
 </ul>
 <h2 id="2026032801---2026-03-28"><a class="header" href="#2026032801---2026-03-28">[20260328.01] - 2026-03-28</a></h2>
-<h3 id="added-5"><a class="header" href="#added-5">Added</a></h3>
+<h3 id="added-6"><a class="header" href="#added-6">Added</a></h3>
 <ul>
 <li>[website] Add local dev server with SSR partial injection</li>
 <li>[web] Add changelog link to header nav</li>
@@ -11094,7 +11553,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[telegram] Use std::str::from_utf8 for UTF-8 truncation</li>
 <li>[telegram] Normalize MIME type once, avoid redundant UTF-8 scans</li>
 </ul>
-<h3 id="fixed-9"><a class="header" href="#fixed-9">Fixed</a></h3>
+<h3 id="fixed-10"><a class="header" href="#fixed-10">Fixed</a></h3>
 <ul>
 <li>[website] Allow nav links without data-page to navigate normally</li>
 <li>[website] Highlight Changelog tab and show GitHub stars on /changelog</li>
@@ -11112,22 +11571,22 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[release] Build changelog HTML in prepare-release instead of CI</li>
 </ul>
 <h2 id="2026032704---2026-03-27"><a class="header" href="#2026032704---2026-03-27">[20260327.04] - 2026-03-27</a></h2>
-<h3 id="fixed-10"><a class="header" href="#fixed-10">Fixed</a></h3>
+<h3 id="fixed-11"><a class="header" href="#fixed-11">Fixed</a></h3>
 <ul>
 <li>[ci] Use file input for changelog blob to avoid argument list too long</li>
 </ul>
 <h2 id="2026032703---2026-03-27"><a class="header" href="#2026032703---2026-03-27">[20260327.03] - 2026-03-27</a></h2>
-<h3 id="added-6"><a class="header" href="#added-6">Added</a></h3>
+<h3 id="added-7"><a class="header" href="#added-7">Added</a></h3>
 <ul>
 <li>[website] Add changelog HTML page and fix RPM version override</li>
 </ul>
 <h2 id="2026032702---2026-03-27"><a class="header" href="#2026032702---2026-03-27">[20260327.02] - 2026-03-27</a></h2>
-<h3 id="fixed-11"><a class="header" href="#fixed-11">Fixed</a></h3>
+<h3 id="fixed-12"><a class="header" href="#fixed-12">Fixed</a></h3>
 <ul>
 <li>[install] Support date-based version tags in installer and package builds</li>
 </ul>
 <h2 id="2026032701---2026-03-27"><a class="header" href="#2026032701---2026-03-27">[20260327.01] - 2026-03-27</a></h2>
-<h3 id="added-7"><a class="header" href="#added-7">Added</a></h3>
+<h3 id="added-8"><a class="header" href="#added-8">Added</a></h3>
 <ul>
 <li>[gateway] Embedded web chat UI at root endpoint</li>
 <li>[gateway] Add services, pairing, expanded methods and auth</li>
@@ -11765,7 +12224,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>Merge branch ‘main’ into claude/remove-unsafe-code-ehZlQ</li>
 <li>[local-llm] Remove unused gguf runtime helper</li>
 </ul>
-<h3 id="fixed-12"><a class="header" href="#fixed-12">Fixed</a></h3>
+<h3 id="fixed-13"><a class="header" href="#fixed-13">Fixed</a></h3>
 <ul>
 <li>[oauth] Use correct OpenAI client_id, add config layer and tests</li>
 <li>[agents] Prefer tool-capable provider when tools are registered</li>
@@ -12390,7 +12849,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[skills] Improve slug error messages and test isolation</li>
 <li>[gateway] Suppress update banner for dev builds</li>
 </ul>
-<h3 id="security-7"><a class="header" href="#security-7">Security</a></h3>
+<h3 id="security-8"><a class="header" href="#security-8">Security</a></h3>
 <ul>
 <li>[ci] Add zizmor workflow security scan to deb-packages workflow (#8)</li>
 <li>[skills] Add requirements system, spec compliance, and markdown rendering</li>
@@ -12458,7 +12917,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[tools] Add send_document tool for file sharing to channels</li>
 </ul>
 <h2 id="01018---2026-03-09"><a class="header" href="#01018---2026-03-09">[0.10.18] - 2026-03-09</a></h2>
-<h3 id="added-8"><a class="header" href="#added-8">Added</a></h3>
+<h3 id="added-9"><a class="header" href="#added-9">Added</a></h3>
 <ul>
 <li>[gateway] Make provider discovery startup non-blocking</li>
 <li>[monitoring] Track memory history and improve local-llm memory reporting (#325)</li>
@@ -12479,7 +12938,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Remove nested onboarding scroll and restore settings nav icons</li>
 <li>[web] Declutter chat controls and fix dropdown positioning</li>
 </ul>
-<h3 id="fixed-13"><a class="header" href="#fixed-13">Fixed</a></h3>
+<h3 id="fixed-14"><a class="header" href="#fixed-14">Fixed</a></h3>
 <ul>
 <li>[gateway] Speed up startup by deferring tailscale and log scan</li>
 <li>[gateway] Improve browser warmup integration</li>
@@ -12506,39 +12965,39 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[chat] Skip duplicate text fallback when TTS disabled and voice streamed (#373)</li>
 <li>[web] Break redirect loop when accessing via Tailscale Serve (#356)</li>
 </ul>
-<h3 id="security-8"><a class="header" href="#security-8">Security</a></h3>
+<h3 id="security-9"><a class="header" href="#security-9">Security</a></h3>
 <ul>
 <li>[nodes] Add multi-node support with device pairing, remote exec, and UI (#291)</li>
 <li>[security] Add direct nginx websocket proxy example (#364)</li>
 </ul>
 <h2 id="01017---2026-03-05"><a class="header" href="#01017---2026-03-05">[0.10.17] - 2026-03-05</a></h2>
-<h3 id="fixed-14"><a class="header" href="#fixed-14">Fixed</a></h3>
+<h3 id="fixed-15"><a class="header" href="#fixed-15">Fixed</a></h3>
 <ul>
 <li>[config] Include tmux in default sandbox packages</li>
 </ul>
 <h2 id="01016---2026-03-05"><a class="header" href="#01016---2026-03-05">[0.10.16] - 2026-03-05</a></h2>
-<h3 id="fixed-15"><a class="header" href="#fixed-15">Fixed</a></h3>
+<h3 id="fixed-16"><a class="header" href="#fixed-16">Fixed</a></h3>
 <ul>
 <li>[ci,tools] Unblock dependabot and support wasmtime 36</li>
 <li>[auth] Honor forwarded host for proxy session cookies</li>
 </ul>
 <h2 id="01015---2026-03-05"><a class="header" href="#01015---2026-03-05">[0.10.15] - 2026-03-05</a></h2>
-<h3 id="fixed-16"><a class="header" href="#fixed-16">Fixed</a></h3>
+<h3 id="fixed-17"><a class="header" href="#fixed-17">Fixed</a></h3>
 <ul>
 <li>Install rustls CryptoProvider before channel startup (#336)</li>
 </ul>
 <h2 id="01014---2026-03-05"><a class="header" href="#01014---2026-03-05">[0.10.14] - 2026-03-05</a></h2>
-<h3 id="fixed-17"><a class="header" href="#fixed-17">Fixed</a></h3>
+<h3 id="fixed-18"><a class="header" href="#fixed-18">Fixed</a></h3>
 <ul>
 <li>[packaging] Use cli-relative web assets in cargo-deb</li>
 </ul>
 <h2 id="01013---2026-03-04"><a class="header" href="#01013---2026-03-04">[0.10.13] - 2026-03-04</a></h2>
-<h3 id="fixed-18"><a class="header" href="#fixed-18">Fixed</a></h3>
+<h3 id="fixed-19"><a class="header" href="#fixed-19">Fixed</a></h3>
 <ul>
 <li>[ci] Stage wasm assets for cargo-deb packaging</li>
 </ul>
 <h2 id="01012---2026-03-04"><a class="header" href="#01012---2026-03-04">[0.10.12] - 2026-03-04</a></h2>
-<h3 id="added-9"><a class="header" href="#added-9">Added</a></h3>
+<h3 id="added-10"><a class="header" href="#added-10">Added</a></h3>
 <ul>
 <li>[ci] Add release dry-run mode</li>
 <li>[browser] Add container_host for Docker-in-Docker connectivity (#300)</li>
@@ -12563,7 +13022,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Remove nested onboarding scroll and restore settings nav icons</li>
 <li>[web] Declutter chat controls and fix dropdown positioning</li>
 </ul>
-<h3 id="fixed-19"><a class="header" href="#fixed-19">Fixed</a></h3>
+<h3 id="fixed-20"><a class="header" href="#fixed-20">Fixed</a></h3>
 <ul>
 <li>[config] Support provider url alias for remote Ollama config (#299)</li>
 <li>[ci] Make release dry-run job conditions valid</li>
@@ -12584,18 +13043,18 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Externalize SVG icons and restore empty-chat centering</li>
 <li>[web] Align e2e with controls modal and daily model refresh</li>
 </ul>
-<h3 id="security-9"><a class="header" href="#security-9">Security</a></h3>
+<h3 id="security-10"><a class="header" href="#security-10">Security</a></h3>
 <ul>
 <li>[nodes] Add multi-node support with device pairing, remote exec, and UI (#291)</li>
 </ul>
 <h2 id="01011---2026-03-02"><a class="header" href="#01011---2026-03-02">[0.10.11] - 2026-03-02</a></h2>
 <h2 id="01010---2026-03-02"><a class="header" href="#01010---2026-03-02">[0.10.10] - 2026-03-02</a></h2>
-<h3 id="fixed-20"><a class="header" href="#fixed-20">Fixed</a></h3>
+<h3 id="fixed-21"><a class="header" href="#fixed-21">Fixed</a></h3>
 <ul>
 <li>[swift-bridge] Stabilize gateway migration and stream tests</li>
 </ul>
 <h2 id="0109---2026-03-02"><a class="header" href="#0109---2026-03-02">[0.10.9] - 2026-03-02</a></h2>
-<h3 id="fixed-21"><a class="header" href="#fixed-21">Fixed</a></h3>
+<h3 id="fixed-22"><a class="header" href="#fixed-22">Fixed</a></h3>
 <ul>
 <li>[ci] Harden tailwindcss cli downloads</li>
 </ul>
@@ -12604,13 +13063,13 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>[gateway] Fetch updates from releases manifest instead of GitHub API</li>
 </ul>
-<h3 id="fixed-22"><a class="header" href="#fixed-22">Fixed</a></h3>
+<h3 id="fixed-23"><a class="header" href="#fixed-23">Fixed</a></h3>
 <ul>
 <li>[ci] Add Tailwind CSS build step to release workflow, Dockerfile, and snapcraft</li>
 <li>[e2e] Wait for session history render before DOM injection in chat-abort</li>
 </ul>
 <h2 id="0107---2026-03-02"><a class="header" href="#0107---2026-03-02">[0.10.7] - 2026-03-02</a></h2>
-<h3 id="added-10"><a class="header" href="#added-10">Added</a></h3>
+<h3 id="added-11"><a class="header" href="#added-11">Added</a></h3>
 <ul>
 <li>[sandbox] Add GitHub runner parity packages and enable corepack (#284)</li>
 <li>[providers] Add first-class LM Studio provider (#286)</li>
@@ -12622,7 +13081,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>[channels] Registry-driven dispatch for cheap new channels (#277)</li>
 </ul>
-<h3 id="fixed-23"><a class="header" href="#fixed-23">Fixed</a></h3>
+<h3 id="fixed-24"><a class="header" href="#fixed-24">Fixed</a></h3>
 <ul>
 <li>[e2e] Make sandboxes container tests deterministic</li>
 <li>[e2e] Replace remaining racy waitForResponse with route interceptors</li>
@@ -12636,13 +13095,13 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Auto-install node_modules in Tailwind build script</li>
 <li>[web] Retry openclaw onboarding scan until ws is ready</li>
 </ul>
-<h3 id="security-10"><a class="header" href="#security-10">Security</a></h3>
+<h3 id="security-11"><a class="header" href="#security-11">Security</a></h3>
 <ul>
 <li>[macos] Wire settings UI to rust config backend (#267)</li>
 <li>[channels] Shared channel webhook middleware pipeline (#290)</li>
 </ul>
 <h2 id="0106---2026-03-01"><a class="header" href="#0106---2026-03-01">[0.10.6] - 2026-03-01</a></h2>
-<h3 id="fixed-24"><a class="header" href="#fixed-24">Fixed</a></h3>
+<h3 id="fixed-25"><a class="header" href="#fixed-25">Fixed</a></h3>
 <ul>
 <li>[web] Fix Shiki highlighter init failures in E2E tests</li>
 <li>[web] Make thinking stop button smaller with left spacing</li>
@@ -12650,17 +13109,17 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[providers] Emit StreamEvent::Error on non-success finish_reason</li>
 </ul>
 <h2 id="0105---2026-03-01"><a class="header" href="#0105---2026-03-01">[0.10.5] - 2026-03-01</a></h2>
-<h3 id="fixed-25"><a class="header" href="#fixed-25">Fixed</a></h3>
+<h3 id="fixed-26"><a class="header" href="#fixed-26">Fixed</a></h3>
 <ul>
 <li>[web] Lazy-load Shiki to prevent blocking page mount</li>
 </ul>
 <h2 id="0104---2026-03-01"><a class="header" href="#0104---2026-03-01">[0.10.4] - 2026-03-01</a></h2>
-<h3 id="added-11"><a class="header" href="#added-11">Added</a></h3>
+<h3 id="added-12"><a class="header" href="#added-12">Added</a></h3>
 <ul>
 <li>[web] Add Shiki syntax highlighting to code blocks</li>
 </ul>
 <h2 id="0103---2026-03-01"><a class="header" href="#0103---2026-03-01">[0.10.3] - 2026-03-01</a></h2>
-<h3 id="added-12"><a class="header" href="#added-12">Added</a></h3>
+<h3 id="added-13"><a class="header" href="#added-13">Added</a></h3>
 <ul>
 <li>Add channel-aware heartbeat delivery and send_message agent tool (#270)</li>
 <li>[memory] Add tree-sitter code splitter and RRF search merge</li>
@@ -12669,7 +13128,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>[ffi] Tighten unsafe_code allowances</li>
 </ul>
-<h3 id="fixed-26"><a class="header" href="#fixed-26">Fixed</a></h3>
+<h3 id="fixed-27"><a class="header" href="#fixed-27">Fixed</a></h3>
 <ul>
 <li>[sandbox] Make apple container keepalive portable (#269)</li>
 <li>[local-llm] Combine compile-time and runtime Metal detection</li>
@@ -12677,25 +13136,25 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>[web] Replace rg with grep in changelog guard and deduplicate passkey status refresh</li>
 </ul>
 <h2 id="0102---2026-02-28"><a class="header" href="#0102---2026-02-28">[0.10.2] - 2026-02-28</a></h2>
-<h3 id="added-13"><a class="header" href="#added-13">Added</a></h3>
+<h3 id="added-14"><a class="header" href="#added-14">Added</a></h3>
 <h3 id="changed-12"><a class="header" href="#changed-12">Changed</a></h3>
 <h3 id="deprecated-1"><a class="header" href="#deprecated-1">Deprecated</a></h3>
 <h3 id="removed-5"><a class="header" href="#removed-5">Removed</a></h3>
-<h3 id="fixed-27"><a class="header" href="#fixed-27">Fixed</a></h3>
+<h3 id="fixed-28"><a class="header" href="#fixed-28">Fixed</a></h3>
 <ul>
 <li>Release packaging now installs cross-compilation targets on the active nightly toolchain in the Homebrew binary job, fixing <code>error[E0463]: can't find crate for core</code> during macOS binary builds.</li>
 <li>Docker release builds now copy <code>apps/courier</code> into the image build context so Cargo workspace metadata resolves correctly during WASM component builds.</li>
 </ul>
-<h3 id="security-11"><a class="header" href="#security-11">Security</a></h3>
+<h3 id="security-12"><a class="header" href="#security-12">Security</a></h3>
 <h2 id="0101---2026-02-28"><a class="header" href="#0101---2026-02-28">[0.10.1] - 2026-02-28</a></h2>
-<h3 id="added-14"><a class="header" href="#added-14">Added</a></h3>
+<h3 id="added-15"><a class="header" href="#added-15">Added</a></h3>
 <h3 id="changed-13"><a class="header" href="#changed-13">Changed</a></h3>
 <h3 id="deprecated-2"><a class="header" href="#deprecated-2">Deprecated</a></h3>
 <h3 id="removed-6"><a class="header" href="#removed-6">Removed</a></h3>
-<h3 id="fixed-28"><a class="header" href="#fixed-28">Fixed</a></h3>
-<h3 id="security-12"><a class="header" href="#security-12">Security</a></h3>
+<h3 id="fixed-29"><a class="header" href="#fixed-29">Fixed</a></h3>
+<h3 id="security-13"><a class="header" href="#security-13">Security</a></h3>
 <h2 id="0100---2026-02-28"><a class="header" href="#0100---2026-02-28">[0.10.0] - 2026-02-28</a></h2>
-<h3 id="added-15"><a class="header" href="#added-15">Added</a></h3>
+<h3 id="added-16"><a class="header" href="#added-16">Added</a></h3>
 <ul>
 <li><strong>Gemini first-class provider</strong>: Google Gemini is now registered via the OpenAI-compatible endpoint with native tool calling, vision/multimodal support, streaming, and model discovery. Replaces the previous genai-backed fallback that lacked tool support. Supports both <code>GEMINI_API_KEY</code> and <code>GOOGLE_API_KEY</code> environment variables</li>
 <li><strong>Podman sandbox backend</strong> — Podman as a first-class sandbox backend. Set <code>backend = "podman"</code> or let auto-detection prefer it over Docker (Apple Container → Podman → Docker → restricted-host). Uses the <code>podman</code> CLI directly (no socket compatibility needed)</li>
@@ -12770,7 +13229,7 @@ onboarding-ready configs.</li>
 </ul>
 <h3 id="deprecated-3"><a class="header" href="#deprecated-3">Deprecated</a></h3>
 <h3 id="removed-7"><a class="header" href="#removed-7">Removed</a></h3>
-<h3 id="fixed-29"><a class="header" href="#fixed-29">Fixed</a></h3>
+<h3 id="fixed-30"><a class="header" href="#fixed-30">Fixed</a></h3>
 <ul>
 <li><strong>OpenAI Codex OAuth in Docker</strong>: the web UI no longer overrides the provider’s pre-registered <code>redirect_uri</code>, which caused OpenAI to reject the authorization request with <code>unknown_error</code>. The OAuth callback server now also respects the gateway bind address (<code>0.0.0.0</code> in Docker) so the callback port (1455) is reachable from the host. Docker image now exposes port 1455 for OAuth callbacks (#207)</li>
 <li><strong>Slow SQLite writes</strong>: <code>moltis.db</code> and <code>memory.db</code> now use <code>journal_mode=WAL</code> and <code>synchronous=NORMAL</code> (matching <code>metrics.db</code>), eliminating multi-second write contention that caused 3–10 s INSERT times under concurrent access</li>
@@ -12794,75 +13253,75 @@ centered spinner.</li>
 <li>Gateway startup now blocks the common reverse-proxy TLS mismatch (<code>MOLTIS_BEHIND_PROXY=true</code> with Moltis TLS enabled) and explains using <code>--no-tls</code>; HTTPS-upstream proxy setups can explicitly opt in with <code>MOLTIS_ALLOW_TLS_BEHIND_PROXY=true</code></li>
 <li>WebSocket same-origin checks now accept proxy deployments that rewrite <code>Host</code> by using <code>X-Forwarded-Host</code> in proxy mode, and treat implicit <code>:443</code>/<code>:80</code> as equivalent to default ports</li>
 </ul>
-<h3 id="security-13"><a class="header" href="#security-13">Security</a></h3>
+<h3 id="security-14"><a class="header" href="#security-14">Security</a></h3>
 <h2 id="0910---2026-02-21"><a class="header" href="#0910---2026-02-21">[0.9.10] - 2026-02-21</a></h2>
-<h3 id="added-16"><a class="header" href="#added-16">Added</a></h3>
+<h3 id="added-17"><a class="header" href="#added-17">Added</a></h3>
 <h3 id="changed-15"><a class="header" href="#changed-15">Changed</a></h3>
 <h3 id="deprecated-4"><a class="header" href="#deprecated-4">Deprecated</a></h3>
 <h3 id="removed-8"><a class="header" href="#removed-8">Removed</a></h3>
-<h3 id="fixed-30"><a class="header" href="#fixed-30">Fixed</a></h3>
-<h3 id="security-14"><a class="header" href="#security-14">Security</a></h3>
+<h3 id="fixed-31"><a class="header" href="#fixed-31">Fixed</a></h3>
+<h3 id="security-15"><a class="header" href="#security-15">Security</a></h3>
 <h2 id="099---2026-02-21"><a class="header" href="#099---2026-02-21">[0.9.9] - 2026-02-21</a></h2>
-<h3 id="added-17"><a class="header" href="#added-17">Added</a></h3>
+<h3 id="added-18"><a class="header" href="#added-18">Added</a></h3>
 <h3 id="changed-16"><a class="header" href="#changed-16">Changed</a></h3>
 <h3 id="deprecated-5"><a class="header" href="#deprecated-5">Deprecated</a></h3>
 <h3 id="removed-9"><a class="header" href="#removed-9">Removed</a></h3>
-<h3 id="fixed-31"><a class="header" href="#fixed-31">Fixed</a></h3>
-<h3 id="security-15"><a class="header" href="#security-15">Security</a></h3>
+<h3 id="fixed-32"><a class="header" href="#fixed-32">Fixed</a></h3>
+<h3 id="security-16"><a class="header" href="#security-16">Security</a></h3>
 <h2 id="098---2026-02-21"><a class="header" href="#098---2026-02-21">[0.9.8] - 2026-02-21</a></h2>
-<h3 id="added-18"><a class="header" href="#added-18">Added</a></h3>
+<h3 id="added-19"><a class="header" href="#added-19">Added</a></h3>
 <h3 id="changed-17"><a class="header" href="#changed-17">Changed</a></h3>
 <h3 id="deprecated-6"><a class="header" href="#deprecated-6">Deprecated</a></h3>
 <h3 id="removed-10"><a class="header" href="#removed-10">Removed</a></h3>
-<h3 id="fixed-32"><a class="header" href="#fixed-32">Fixed</a></h3>
-<h3 id="security-16"><a class="header" href="#security-16">Security</a></h3>
+<h3 id="fixed-33"><a class="header" href="#fixed-33">Fixed</a></h3>
+<h3 id="security-17"><a class="header" href="#security-17">Security</a></h3>
 <h2 id="097---2026-02-20"><a class="header" href="#097---2026-02-20">[0.9.7] - 2026-02-20</a></h2>
-<h3 id="added-19"><a class="header" href="#added-19">Added</a></h3>
+<h3 id="added-20"><a class="header" href="#added-20">Added</a></h3>
 <h3 id="changed-18"><a class="header" href="#changed-18">Changed</a></h3>
 <h3 id="deprecated-7"><a class="header" href="#deprecated-7">Deprecated</a></h3>
 <h3 id="removed-11"><a class="header" href="#removed-11">Removed</a></h3>
-<h3 id="fixed-33"><a class="header" href="#fixed-33">Fixed</a></h3>
-<h3 id="security-17"><a class="header" href="#security-17">Security</a></h3>
+<h3 id="fixed-34"><a class="header" href="#fixed-34">Fixed</a></h3>
+<h3 id="security-18"><a class="header" href="#security-18">Security</a></h3>
 <h2 id="096---2026-02-20"><a class="header" href="#096---2026-02-20">[0.9.6] - 2026-02-20</a></h2>
-<h3 id="added-20"><a class="header" href="#added-20">Added</a></h3>
+<h3 id="added-21"><a class="header" href="#added-21">Added</a></h3>
 <ul>
 <li>Cron jobs can now deliver agent turn output to Telegram channels via the <code>deliver</code>, <code>channel</code>, and <code>to</code> payload fields</li>
 </ul>
 <h3 id="changed-19"><a class="header" href="#changed-19">Changed</a></h3>
 <h3 id="deprecated-8"><a class="header" href="#deprecated-8">Deprecated</a></h3>
 <h3 id="removed-12"><a class="header" href="#removed-12">Removed</a></h3>
-<h3 id="fixed-34"><a class="header" href="#fixed-34">Fixed</a></h3>
+<h3 id="fixed-35"><a class="header" href="#fixed-35">Fixed</a></h3>
 <ul>
 <li>Accessing <code>http://</code> on the HTTPS port now returns a 301 redirect to <code>https://</code> instead of a garbled TLS handshake page</li>
 <li>SQLite metrics store now uses WAL journal mode and <code>synchronous=NORMAL</code> to fix slow INSERT times (1-3s) on Docker/WSL2</li>
 </ul>
-<h3 id="security-18"><a class="header" href="#security-18">Security</a></h3>
+<h3 id="security-19"><a class="header" href="#security-19">Security</a></h3>
 <h2 id="095---2026-02-20"><a class="header" href="#095---2026-02-20">[0.9.5] - 2026-02-20</a></h2>
-<h3 id="added-21"><a class="header" href="#added-21">Added</a></h3>
+<h3 id="added-22"><a class="header" href="#added-22">Added</a></h3>
 <h3 id="changed-20"><a class="header" href="#changed-20">Changed</a></h3>
 <h3 id="deprecated-9"><a class="header" href="#deprecated-9">Deprecated</a></h3>
 <h3 id="removed-13"><a class="header" href="#removed-13">Removed</a></h3>
-<h3 id="fixed-35"><a class="header" href="#fixed-35">Fixed</a></h3>
+<h3 id="fixed-36"><a class="header" href="#fixed-36">Fixed</a></h3>
 <ul>
 <li>Skip jemalloc on Windows (platform-specific dependency gate)</li>
 </ul>
-<h3 id="security-19"><a class="header" href="#security-19">Security</a></h3>
+<h3 id="security-20"><a class="header" href="#security-20">Security</a></h3>
 <h2 id="094---2026-02-20"><a class="header" href="#094---2026-02-20">[0.9.4] - 2026-02-20</a></h2>
-<h3 id="added-22"><a class="header" href="#added-22">Added</a></h3>
+<h3 id="added-23"><a class="header" href="#added-23">Added</a></h3>
 <h3 id="changed-21"><a class="header" href="#changed-21">Changed</a></h3>
 <h3 id="deprecated-10"><a class="header" href="#deprecated-10">Deprecated</a></h3>
 <h3 id="removed-14"><a class="header" href="#removed-14">Removed</a></h3>
-<h3 id="fixed-36"><a class="header" href="#fixed-36">Fixed</a></h3>
-<h3 id="security-20"><a class="header" href="#security-20">Security</a></h3>
+<h3 id="fixed-37"><a class="header" href="#fixed-37">Fixed</a></h3>
+<h3 id="security-21"><a class="header" href="#security-21">Security</a></h3>
 <h2 id="093---2026-02-20"><a class="header" href="#093---2026-02-20">[0.9.3] - 2026-02-20</a></h2>
-<h3 id="added-23"><a class="header" href="#added-23">Added</a></h3>
+<h3 id="added-24"><a class="header" href="#added-24">Added</a></h3>
 <h3 id="changed-22"><a class="header" href="#changed-22">Changed</a></h3>
 <h3 id="deprecated-11"><a class="header" href="#deprecated-11">Deprecated</a></h3>
 <h3 id="removed-15"><a class="header" href="#removed-15">Removed</a></h3>
-<h3 id="fixed-37"><a class="header" href="#fixed-37">Fixed</a></h3>
-<h3 id="security-21"><a class="header" href="#security-21">Security</a></h3>
+<h3 id="fixed-38"><a class="header" href="#fixed-38">Fixed</a></h3>
+<h3 id="security-22"><a class="header" href="#security-22">Security</a></h3>
 <h2 id="092---2026-02-20"><a class="header" href="#092---2026-02-20">[0.9.2] - 2026-02-20</a></h2>
-<h3 id="added-24"><a class="header" href="#added-24">Added</a></h3>
+<h3 id="added-25"><a class="header" href="#added-25">Added</a></h3>
 <ul>
 <li>Event-driven heartbeat wake system: cron jobs can now trigger immediate
 heartbeat runs via a <code>wakeMode</code> field (<code>"now"</code> or <code>"nextHeartbeat"</code>).</li>
@@ -12876,10 +13335,10 @@ background task results.</li>
 <h3 id="changed-23"><a class="header" href="#changed-23">Changed</a></h3>
 <h3 id="deprecated-12"><a class="header" href="#deprecated-12">Deprecated</a></h3>
 <h3 id="removed-16"><a class="header" href="#removed-16">Removed</a></h3>
-<h3 id="fixed-38"><a class="header" href="#fixed-38">Fixed</a></h3>
-<h3 id="security-22"><a class="header" href="#security-22">Security</a></h3>
+<h3 id="fixed-39"><a class="header" href="#fixed-39">Fixed</a></h3>
+<h3 id="security-23"><a class="header" href="#security-23">Security</a></h3>
 <h2 id="091---2026-02-19"><a class="header" href="#091---2026-02-19">[0.9.1] - 2026-02-19</a></h2>
-<h3 id="added-25"><a class="header" href="#added-25">Added</a></h3>
+<h3 id="added-26"><a class="header" href="#added-26">Added</a></h3>
 <ul>
 <li><code>lightweight</code> feature profile for memory-constrained devices (Raspberry Pi, etc.)
 with only essential features: <code>jemalloc</code>, <code>tls</code>, <code>web-ui</code>.</li>
@@ -12909,7 +13368,7 @@ backpressure for slow consumers.</li>
 </ul>
 <h3 id="deprecated-13"><a class="header" href="#deprecated-13">Deprecated</a></h3>
 <h3 id="removed-17"><a class="header" href="#removed-17">Removed</a></h3>
-<h3 id="fixed-39"><a class="header" href="#fixed-39">Fixed</a></h3>
+<h3 id="fixed-40"><a class="header" href="#fixed-40">Fixed</a></h3>
 <ul>
 <li>Onboarding identity save now captures browser timezone and persists it to
 <code>USER.md</code> via <code>user_timezone</code>, so first-run profile setup records the user’s
@@ -12942,9 +13401,9 @@ parsing robustness.</li>
 <li>Gateway: align <code>show_map</code> listing ratings to the right for consistent
 layout.</li>
 </ul>
-<h3 id="security-23"><a class="header" href="#security-23">Security</a></h3>
+<h3 id="security-24"><a class="header" href="#security-24">Security</a></h3>
 <h2 id="090---2026-02-17"><a class="header" href="#090---2026-02-17">[0.9.0] - 2026-02-17</a></h2>
-<h3 id="added-26"><a class="header" href="#added-26">Added</a></h3>
+<h3 id="added-27"><a class="header" href="#added-27">Added</a></h3>
 <ul>
 <li>Settings &gt; Cron job editor now supports per-job LLM model selection and
 execution target selection (<code>host</code> or <code>sandbox</code>), including optional
@@ -12959,15 +13418,15 @@ updated provider and local-LLM snippets.</li>
 </ul>
 <h3 id="deprecated-14"><a class="header" href="#deprecated-14">Deprecated</a></h3>
 <h3 id="removed-18"><a class="header" href="#removed-18">Removed</a></h3>
-<h3 id="fixed-40"><a class="header" href="#fixed-40">Fixed</a></h3>
+<h3 id="fixed-41"><a class="header" href="#fixed-41">Fixed</a></h3>
 <ul>
 <li>Agent loop iteration limit is now configurable via
 <code>tools.agent_max_iterations</code> in <code>moltis.toml</code> (default <code>25</code>) instead of
 being hardcoded at runtime.</li>
 </ul>
-<h3 id="security-24"><a class="header" href="#security-24">Security</a></h3>
+<h3 id="security-25"><a class="header" href="#security-25">Security</a></h3>
 <h2 id="0838---2026-02-17"><a class="header" href="#0838---2026-02-17">[0.8.38] - 2026-02-17</a></h2>
-<h3 id="added-27"><a class="header" href="#added-27">Added</a></h3>
+<h3 id="added-28"><a class="header" href="#added-28">Added</a></h3>
 <ul>
 <li><code>show_map</code> now supports multi-point maps via <code>points[]</code>, rendering all
 destinations in one screenshot with auto-fit zoom/centering, while keeping
@@ -12982,10 +13441,10 @@ delay the first streamed message until enough text has accumulated.</li>
 <h3 id="changed-26"><a class="header" href="#changed-26">Changed</a></h3>
 <h3 id="deprecated-15"><a class="header" href="#deprecated-15">Deprecated</a></h3>
 <h3 id="removed-19"><a class="header" href="#removed-19">Removed</a></h3>
-<h3 id="fixed-41"><a class="header" href="#fixed-41">Fixed</a></h3>
-<h3 id="security-25"><a class="header" href="#security-25">Security</a></h3>
+<h3 id="fixed-42"><a class="header" href="#fixed-42">Fixed</a></h3>
+<h3 id="security-26"><a class="header" href="#security-26">Security</a></h3>
 <h2 id="0837---2026-02-17"><a class="header" href="#0837---2026-02-17">[0.8.37] - 2026-02-17</a></h2>
-<h3 id="added-28"><a class="header" href="#added-28">Added</a></h3>
+<h3 id="added-29"><a class="header" href="#added-29">Added</a></h3>
 <ul>
 <li>Settings &gt; Terminal now includes tmux window tabs for the managed
 <code>moltis-host-terminal</code> session, plus a <code>+ Tab</code> action to create new tmux
@@ -13010,7 +13469,7 @@ show stale <code>$</code>/<code>#</code> information after privilege changes ins
 </ul>
 <h3 id="deprecated-16"><a class="header" href="#deprecated-16">Deprecated</a></h3>
 <h3 id="removed-20"><a class="header" href="#removed-20">Removed</a></h3>
-<h3 id="fixed-42"><a class="header" href="#fixed-42">Fixed</a></h3>
+<h3 id="fixed-43"><a class="header" href="#fixed-43">Fixed</a></h3>
 <ul>
 <li>Apple Container sandbox startup now pins <code>--workdir /tmp</code>, bootstraps
 <code>/home/sandbox</code> before <code>sleep infinity</code>, and uses explicit exec workdirs to
@@ -13049,9 +13508,9 @@ tabs (notably seen with <code>vim</code>).</li>
 post-connect settle window, fixing initial page-reload cases where tmux
 windows stayed at stale dimensions until a manual tab switch.</li>
 </ul>
-<h3 id="security-26"><a class="header" href="#security-26">Security</a></h3>
+<h3 id="security-27"><a class="header" href="#security-27">Security</a></h3>
 <h2 id="0836---2026-02-16"><a class="header" href="#0836---2026-02-16">[0.8.36] - 2026-02-16</a></h2>
-<h3 id="added-29"><a class="header" href="#added-29">Added</a></h3>
+<h3 id="added-30"><a class="header" href="#added-30">Added</a></h3>
 <ul>
 <li>OAuth 2.1 support for remote MCP servers — automatic discovery (RFC 9728/8414), dynamic client registration (RFC 7591), PKCE authorization code flow, and Bearer token injection with 401 retry</li>
 <li><code>McpOAuthOverride</code> config option for servers that don’t implement standard OAuth discovery</li>
@@ -13065,7 +13524,7 @@ CIDR ranges from SSRF blocking, enabling Docker inter-container networking.</li>
 <h3 id="changed-28"><a class="header" href="#changed-28">Changed</a></h3>
 <h3 id="deprecated-17"><a class="header" href="#deprecated-17">Deprecated</a></h3>
 <h3 id="removed-21"><a class="header" href="#removed-21">Removed</a></h3>
-<h3 id="fixed-43"><a class="header" href="#fixed-43">Fixed</a></h3>
+<h3 id="fixed-44"><a class="header" href="#fixed-44">Fixed</a></h3>
 <ul>
 <li><strong>Telegram queued replies</strong>: route channel reply targets per queued message so
 <code>chat.message_queue_mode = "followup"</code> delivers replies one-by-one instead of
@@ -13078,19 +13537,19 @@ collapsing queued channel replies into a single batch delivery.</li>
 <li>MCP docs/config examples now use the current table-based config shape and <code>/mcp</code> endpoint examples for remote servers.</li>
 <li>Memory embeddings endpoint composition now avoids duplicated path segments like <code>/v1/v1/embeddings</code> and accepts base URLs ending in host-only, <code>/v1</code>, versioned paths (for example <code>/v4</code>), or <code>/embeddings</code></li>
 </ul>
-<h3 id="security-27"><a class="header" href="#security-27">Security</a></h3>
+<h3 id="security-28"><a class="header" href="#security-28">Security</a></h3>
 <h2 id="0835---2026-02-15"><a class="header" href="#0835---2026-02-15">[0.8.35] - 2026-02-15</a></h2>
-<h3 id="added-30"><a class="header" href="#added-30">Added</a></h3>
+<h3 id="added-31"><a class="header" href="#added-31">Added</a></h3>
 <ul>
 <li>Add memory target routing guidance to <code>memory_save</code> prompt hint — core facts go to MEMORY.md, everything else to <code>memory/&lt;topic&gt;.md</code> to keep context lean</li>
 </ul>
 <h3 id="changed-29"><a class="header" href="#changed-29">Changed</a></h3>
 <h3 id="deprecated-18"><a class="header" href="#deprecated-18">Deprecated</a></h3>
 <h3 id="removed-22"><a class="header" href="#removed-22">Removed</a></h3>
-<h3 id="fixed-44"><a class="header" href="#fixed-44">Fixed</a></h3>
-<h3 id="security-28"><a class="header" href="#security-28">Security</a></h3>
+<h3 id="fixed-45"><a class="header" href="#fixed-45">Fixed</a></h3>
+<h3 id="security-29"><a class="header" href="#security-29">Security</a></h3>
 <h2 id="0834---2026-02-15"><a class="header" href="#0834---2026-02-15">[0.8.34] - 2026-02-15</a></h2>
-<h3 id="added-31"><a class="header" href="#added-31">Added</a></h3>
+<h3 id="added-32"><a class="header" href="#added-32">Added</a></h3>
 <ul>
 <li>Add explicit <code>memory_save</code> hint in system prompt so weaker models (MiniMax, etc.) call the tool when asked to remember something</li>
 <li>Add anchor text after memory content so models don’t ignore known facts when <code>memory_search</code> returns empty</li>
@@ -13099,32 +13558,32 @@ collapsing queued channel replies into a single batch delivery.</li>
 <h3 id="changed-30"><a class="header" href="#changed-30">Changed</a></h3>
 <h3 id="deprecated-19"><a class="header" href="#deprecated-19">Deprecated</a></h3>
 <h3 id="removed-23"><a class="header" href="#removed-23">Removed</a></h3>
-<h3 id="fixed-45"><a class="header" href="#fixed-45">Fixed</a></h3>
-<h3 id="security-29"><a class="header" href="#security-29">Security</a></h3>
+<h3 id="fixed-46"><a class="header" href="#fixed-46">Fixed</a></h3>
+<h3 id="security-30"><a class="header" href="#security-30">Security</a></h3>
 <h2 id="0833---2026-02-15"><a class="header" href="#0833---2026-02-15">[0.8.33] - 2026-02-15</a></h2>
-<h3 id="added-32"><a class="header" href="#added-32">Added</a></h3>
+<h3 id="added-33"><a class="header" href="#added-33">Added</a></h3>
 <h3 id="changed-31"><a class="header" href="#changed-31">Changed</a></h3>
 <h3 id="deprecated-20"><a class="header" href="#deprecated-20">Deprecated</a></h3>
 <h3 id="removed-24"><a class="header" href="#removed-24">Removed</a></h3>
-<h3 id="fixed-46"><a class="header" href="#fixed-46">Fixed</a></h3>
+<h3 id="fixed-47"><a class="header" href="#fixed-47">Fixed</a></h3>
 <ul>
 <li><strong>CI</strong>: remove unnecessary <code>std::path::</code> qualification in gateway server flagged
 by nightly clippy.</li>
 </ul>
-<h3 id="security-30"><a class="header" href="#security-30">Security</a></h3>
+<h3 id="security-31"><a class="header" href="#security-31">Security</a></h3>
 <h2 id="0832---2026-02-15"><a class="header" href="#0832---2026-02-15">[0.8.32] - 2026-02-15</a></h2>
-<h3 id="added-33"><a class="header" href="#added-33">Added</a></h3>
+<h3 id="added-34"><a class="header" href="#added-34">Added</a></h3>
 <h3 id="changed-32"><a class="header" href="#changed-32">Changed</a></h3>
 <h3 id="deprecated-21"><a class="header" href="#deprecated-21">Deprecated</a></h3>
 <h3 id="removed-25"><a class="header" href="#removed-25">Removed</a></h3>
-<h3 id="fixed-47"><a class="header" href="#fixed-47">Fixed</a></h3>
+<h3 id="fixed-48"><a class="header" href="#fixed-48">Fixed</a></h3>
 <ul>
 <li><strong>CI</strong>: gate macOS-only sandbox helper functions with <code>#[cfg]</code> to fix dead-code
 errors on Linux CI.</li>
 </ul>
-<h3 id="security-31"><a class="header" href="#security-31">Security</a></h3>
+<h3 id="security-32"><a class="header" href="#security-32">Security</a></h3>
 <h2 id="0831---2026-02-15"><a class="header" href="#0831---2026-02-15">[0.8.31] - 2026-02-15</a></h2>
-<h3 id="added-34"><a class="header" href="#added-34">Added</a></h3>
+<h3 id="added-35"><a class="header" href="#added-35">Added</a></h3>
 <ul>
 <li>
 <p><strong>Sandbox toggle notification</strong>: when the sandbox is enabled or disabled
@@ -13184,7 +13643,7 @@ packages.</li>
 </ul>
 <h3 id="deprecated-22"><a class="header" href="#deprecated-22">Deprecated</a></h3>
 <h3 id="removed-26"><a class="header" href="#removed-26">Removed</a></h3>
-<h3 id="fixed-48"><a class="header" href="#fixed-48">Fixed</a></h3>
+<h3 id="fixed-49"><a class="header" href="#fixed-49">Fixed</a></h3>
 <ul>
 <li><strong>Thinking indicator lost on reload</strong>: reloading the page while the model
 was generating no longer loses the “thinking” dots. The backend now includes
@@ -13219,9 +13678,9 @@ tags is now stripped, preventing extra blank lines in streamed output.</li>
 <li><strong>Token bar visible at zero</strong>: the token usage bar no longer disappears
 when all counts are zero; it stays visible as a baseline indicator.</li>
 </ul>
-<h3 id="security-32"><a class="header" href="#security-32">Security</a></h3>
+<h3 id="security-33"><a class="header" href="#security-33">Security</a></h3>
 <h2 id="0830---2026-02-15"><a class="header" href="#0830---2026-02-15">[0.8.30] - 2026-02-15</a></h2>
-<h3 id="added-35"><a class="header" href="#added-35">Added</a></h3>
+<h3 id="added-36"><a class="header" href="#added-36">Added</a></h3>
 <h3 id="changed-34"><a class="header" href="#changed-34">Changed</a></h3>
 <ul>
 <li><strong>Assistant reasoning persistence</strong>: conversation reasoning is now persisted
@@ -13230,10 +13689,10 @@ reasoning context instead of dropping it after refresh/share operations.</li>
 </ul>
 <h3 id="deprecated-23"><a class="header" href="#deprecated-23">Deprecated</a></h3>
 <h3 id="removed-27"><a class="header" href="#removed-27">Removed</a></h3>
-<h3 id="fixed-49"><a class="header" href="#fixed-49">Fixed</a></h3>
-<h3 id="security-33"><a class="header" href="#security-33">Security</a></h3>
+<h3 id="fixed-50"><a class="header" href="#fixed-50">Fixed</a></h3>
+<h3 id="security-34"><a class="header" href="#security-34">Security</a></h3>
 <h2 id="0829---2026-02-14"><a class="header" href="#0829---2026-02-14">[0.8.29] - 2026-02-14</a></h2>
-<h3 id="added-36"><a class="header" href="#added-36">Added</a></h3>
+<h3 id="added-37"><a class="header" href="#added-37">Added</a></h3>
 <ul>
 <li><strong>Memory bootstrap</strong>: inject <code>MEMORY.md</code> content directly into the system
 prompt (truncated at 20,000 chars) so the agent always has core memory
@@ -13252,15 +13711,15 @@ path validation, size limits, and automatic re-indexing after writes</li>
 </ul>
 <h3 id="deprecated-24"><a class="header" href="#deprecated-24">Deprecated</a></h3>
 <h3 id="removed-28"><a class="header" href="#removed-28">Removed</a></h3>
-<h3 id="fixed-50"><a class="header" href="#fixed-50">Fixed</a></h3>
+<h3 id="fixed-51"><a class="header" href="#fixed-51">Fixed</a></h3>
 <ul>
 <li><strong>Memory file watcher</strong>: the file watcher now covers <code>MEMORY.md</code> at the data
 directory root, which was previously excluded because the filter only matched
 directories</li>
 </ul>
-<h3 id="security-34"><a class="header" href="#security-34">Security</a></h3>
+<h3 id="security-35"><a class="header" href="#security-35">Security</a></h3>
 <h2 id="0828---2026-02-14"><a class="header" href="#0828---2026-02-14">[0.8.28] - 2026-02-14</a></h2>
-<h3 id="added-37"><a class="header" href="#added-37">Added</a></h3>
+<h3 id="added-38"><a class="header" href="#added-38">Added</a></h3>
 <h3 id="changed-36"><a class="header" href="#changed-36">Changed</a></h3>
 <ul>
 <li><strong>Browser sandbox resolution</strong>: <code>BrowserTool</code> now resolves sandbox mode
@@ -13269,15 +13728,15 @@ injected via tool call params.</li>
 </ul>
 <h3 id="deprecated-25"><a class="header" href="#deprecated-25">Deprecated</a></h3>
 <h3 id="removed-29"><a class="header" href="#removed-29">Removed</a></h3>
-<h3 id="fixed-51"><a class="header" href="#fixed-51">Fixed</a></h3>
+<h3 id="fixed-52"><a class="header" href="#fixed-52">Fixed</a></h3>
 <ul>
 <li><strong>E2E onboarding failures</strong>: Fixed missing <code>saveProviderKey</code> export in
 <code>provider-validation.js</code> that was accidentally left unstaged in the DRY
 refactoring commit.</li>
 </ul>
-<h3 id="security-35"><a class="header" href="#security-35">Security</a></h3>
+<h3 id="security-36"><a class="header" href="#security-36">Security</a></h3>
 <h2 id="0827---2026-02-14"><a class="header" href="#0827---2026-02-14">[0.8.27] - 2026-02-14</a></h2>
-<h3 id="added-38"><a class="header" href="#added-38">Added</a></h3>
+<h3 id="added-39"><a class="header" href="#added-39">Added</a></h3>
 <h3 id="changed-37"><a class="header" href="#changed-37">Changed</a></h3>
 <ul>
 <li><strong>DRY voice/identity/channel utils</strong>: Extracted shared RPC wrappers and
@@ -13287,16 +13746,16 @@ and <code>channel-utils.js</code> modules.</li>
 </ul>
 <h3 id="deprecated-26"><a class="header" href="#deprecated-26">Deprecated</a></h3>
 <h3 id="removed-30"><a class="header" href="#removed-30">Removed</a></h3>
-<h3 id="fixed-52"><a class="header" href="#fixed-52">Fixed</a></h3>
+<h3 id="fixed-53"><a class="header" href="#fixed-53">Fixed</a></h3>
 <ul>
 <li><strong>Config test env isolation</strong>: Fixed spurious
 <code>save_config_to_path_removes_stale_keys_when_values_are_cleared</code> test
 failure caused by <code>MOLTIS_IDENTITY__NAME</code> environment variable leaking
 into the test via <code>apply_env_overrides</code>.</li>
 </ul>
-<h3 id="security-36"><a class="header" href="#security-36">Security</a></h3>
+<h3 id="security-37"><a class="header" href="#security-37">Security</a></h3>
 <h2 id="0826---2026-02-14"><a class="header" href="#0826---2026-02-14">[0.8.26] - 2026-02-14</a></h2>
-<h3 id="added-39"><a class="header" href="#added-39">Added</a></h3>
+<h3 id="added-40"><a class="header" href="#added-40">Added</a></h3>
 <ul>
 <li><strong>Rustls/OpenSSL migration roadmap</strong>: Added
 <code>plans/2026-02-14-rustls-migration-and-openssl-reduction.md</code> with a staged
@@ -13306,7 +13765,7 @@ networking paths toward rustls.</li>
 <h3 id="changed-38"><a class="header" href="#changed-38">Changed</a></h3>
 <h3 id="deprecated-27"><a class="header" href="#deprecated-27">Deprecated</a></h3>
 <h3 id="removed-31"><a class="header" href="#removed-31">Removed</a></h3>
-<h3 id="fixed-53"><a class="header" href="#fixed-53">Fixed</a></h3>
+<h3 id="fixed-54"><a class="header" href="#fixed-54">Fixed</a></h3>
 <ul>
 <li><strong>Windows release build reliability</strong>: The <code>.exe</code> release workflow now forces
 Strawberry Perl (<code>OPENSSL_SRC_PERL</code>/<code>PERL</code>) so vendored OpenSSL builds do not
@@ -13318,23 +13777,23 @@ synthetic IDs in the agent runner to prevent API errors.</li>
 before opening model selection during onboarding, aligning behavior with the
 Settings &gt; LLM flow.</li>
 </ul>
-<h3 id="security-37"><a class="header" href="#security-37">Security</a></h3>
+<h3 id="security-38"><a class="header" href="#security-38">Security</a></h3>
 <h2 id="0825---2026-02-14"><a class="header" href="#0825---2026-02-14">[0.8.25] - 2026-02-14</a></h2>
-<h3 id="added-40"><a class="header" href="#added-40">Added</a></h3>
+<h3 id="added-41"><a class="header" href="#added-41">Added</a></h3>
 <h3 id="changed-39"><a class="header" href="#changed-39">Changed</a></h3>
 <h3 id="deprecated-28"><a class="header" href="#deprecated-28">Deprecated</a></h3>
 <h3 id="removed-32"><a class="header" href="#removed-32">Removed</a></h3>
-<h3 id="fixed-54"><a class="header" href="#fixed-54">Fixed</a></h3>
-<h3 id="security-38"><a class="header" href="#security-38">Security</a></h3>
+<h3 id="fixed-55"><a class="header" href="#fixed-55">Fixed</a></h3>
+<h3 id="security-39"><a class="header" href="#security-39">Security</a></h3>
 <h2 id="0824---2026-02-13"><a class="header" href="#0824---2026-02-13">[0.8.24] - 2026-02-13</a></h2>
-<h3 id="added-41"><a class="header" href="#added-41">Added</a></h3>
+<h3 id="added-42"><a class="header" href="#added-42">Added</a></h3>
 <h3 id="changed-40"><a class="header" href="#changed-40">Changed</a></h3>
 <h3 id="deprecated-29"><a class="header" href="#deprecated-29">Deprecated</a></h3>
 <h3 id="removed-33"><a class="header" href="#removed-33">Removed</a></h3>
-<h3 id="fixed-55"><a class="header" href="#fixed-55">Fixed</a></h3>
-<h3 id="security-39"><a class="header" href="#security-39">Security</a></h3>
+<h3 id="fixed-56"><a class="header" href="#fixed-56">Fixed</a></h3>
+<h3 id="security-40"><a class="header" href="#security-40">Security</a></h3>
 <h2 id="0823---2026-02-13"><a class="header" href="#0823---2026-02-13">[0.8.23] - 2026-02-13</a></h2>
-<h3 id="added-42"><a class="header" href="#added-42">Added</a></h3>
+<h3 id="added-43"><a class="header" href="#added-43">Added</a></h3>
 <ul>
 <li><strong>Multi-select preferred models per provider</strong>: The LLMs page now has a
 “Preferred Models” button per provider that opens a multi-select modal.
@@ -13380,7 +13839,7 @@ files no longer check <code>provider.name === "ollama"</code> for behavior.
 Instead, the backend exposes a <code>keyOptional</code> field on provider
 metadata, making the UI provider-agnostic.</li>
 </ul>
-<h3 id="fixed-56"><a class="header" href="#fixed-56">Fixed</a></h3>
+<h3 id="fixed-57"><a class="header" href="#fixed-57">Fixed</a></h3>
 <ul>
 <li><strong>Settings UI env vars now available process-wide</strong>: environment variables
 set via Settings &gt; Environment were previously only injected into sandbox
@@ -13388,7 +13847,7 @@ commands. They are now also injected into the Moltis process at startup,
 making them available to web search, embeddings, and provider API calls.</li>
 </ul>
 <h2 id="0814---2026-02-11"><a class="header" href="#0814---2026-02-11">[0.8.14] - 2026-02-11</a></h2>
-<h3 id="security-40"><a class="header" href="#security-40">Security</a></h3>
+<h3 id="security-41"><a class="header" href="#security-41">Security</a></h3>
 <ul>
 <li><strong>Disconnect all WS clients on credential change</strong>: WebSocket connections
 opened before auth setup are now disconnected when credentials change
@@ -13397,19 +13856,19 @@ credential removed). An <code>auth.credentials_changed</code> event notifies bro
 to redirect to <code>/login</code>. Existing sessions are also invalidated on password
 change for defense-in-depth.</li>
 </ul>
-<h3 id="fixed-57"><a class="header" href="#fixed-57">Fixed</a></h3>
+<h3 id="fixed-58"><a class="header" href="#fixed-58">Fixed</a></h3>
 <ul>
 <li><strong>Onboarding test for SOUL.md clear behavior</strong>: Fixed <code>identity_update_partial</code>
 test to match the new empty-file behavior from v0.8.13.</li>
 </ul>
 <h2 id="0813---2026-02-11"><a class="header" href="#0813---2026-02-11">[0.8.13] - 2026-02-11</a></h2>
-<h3 id="added-43"><a class="header" href="#added-43">Added</a></h3>
+<h3 id="added-44"><a class="header" href="#added-44">Added</a></h3>
 <ul>
 <li><strong>Auto-create SOUL.md on first run</strong>: <code>SOUL.md</code> is now seeded with the
 default soul text when the file doesn’t exist, mirroring how <code>moltis.toml</code>
 is auto-created. If deleted, it re-seeds on next load.</li>
 </ul>
-<h3 id="fixed-58"><a class="header" href="#fixed-58">Fixed</a></h3>
+<h3 id="fixed-59"><a class="header" href="#fixed-59">Fixed</a></h3>
 <ul>
 <li><strong>SOUL.md clear via settings</strong>: Clearing the soul textarea in settings no
 longer re-creates the default on the next load. An explicit clear now writes
@@ -13424,7 +13883,7 @@ authentication method when a passkey is already registered.</li>
 <li><strong>Moonshot provider</strong>: Added Moonshot to the default offered providers list.</li>
 </ul>
 <h2 id="0812---2026-02-11"><a class="header" href="#0812---2026-02-11">[0.8.12] - 2026-02-11</a></h2>
-<h3 id="fixed-59"><a class="header" href="#fixed-59">Fixed</a></h3>
+<h3 id="fixed-60"><a class="header" href="#fixed-60">Fixed</a></h3>
 <ul>
 <li><strong>E2E test CI stability</strong>: <code>NoopChatService::clear()</code> now returns Ok instead
 of an error when no LLM providers are configured, fixing 5 e2e test failures
@@ -13445,7 +13904,7 @@ live; Safari-specific reload guidance is shown only when Safari is detected.</li
 only, without appending <code>AI assistant</code> suffix text.</li>
 </ul>
 <h2 id="087---2026-02-11"><a class="header" href="#087---2026-02-11">[0.8.7] - 2026-02-11</a></h2>
-<h3 id="added-44"><a class="header" href="#added-44">Added</a></h3>
+<h3 id="added-45"><a class="header" href="#added-45">Added</a></h3>
 <ul>
 <li><strong>Model allowlist probe output support</strong>: Model allowlist matching now handles
 provider probe output more robustly and applies stricter matching semantics.</li>
@@ -13462,7 +13921,7 @@ release profile to reduce artifact size.</li>
 <li><strong>SPA route handling</strong>: Centralized SPA route definitions and preserved TOML
 comments during config updates.</li>
 </ul>
-<h3 id="fixed-60"><a class="header" href="#fixed-60">Fixed</a></h3>
+<h3 id="fixed-61"><a class="header" href="#fixed-61">Fixed</a></h3>
 <ul>
 <li><strong>Auth setup hardening</strong>: Enforced authentication immediately after password
 or passkey setup to prevent unintended post-setup unauthenticated access.</li>
@@ -13478,7 +13937,7 @@ when no container runtime is available.</li>
 tests and blocks all package builds (deb, rpm, arch, AppImage, snap,
 Homebrew, Docker) if they fail.</li>
 </ul>
-<h3 id="added-45"><a class="header" href="#added-45">Added</a></h3>
+<h3 id="added-46"><a class="header" href="#added-46">Added</a></h3>
 <ul>
 <li><strong>XML tag stripping</strong>: Strip internal XML tags from LLM responses to prevent
 tag leakage in chat (thinking, reasoning, scratchpad, etc.)</li>
@@ -13487,7 +13946,7 @@ accurate context window detection during auto-compaction</li>
 <li><strong>Run detail UI</strong>: Panel showing tool calls and message flow for agent runs,
 accessible via expandable button on assistant messages</li>
 </ul>
-<h3 id="fixed-61"><a class="header" href="#fixed-61">Fixed</a></h3>
+<h3 id="fixed-62"><a class="header" href="#fixed-62">Fixed</a></h3>
 <ul>
 <li><strong>Docker TLS setup</strong>: All Docker examples now expose port 13132 for CA
 certificate download with instructions to trust the self-signed cert,
@@ -13498,13 +13957,13 @@ run against the default gateway (wrong server) instead of the onboarding-auth
 gateway. Tightened regex to <code>/\/auth\.spec/</code>.</li>
 </ul>
 <h2 id="085---2026-02-11"><a class="header" href="#085---2026-02-11">[0.8.5] - 2026-02-11</a></h2>
-<h3 id="added-46"><a class="header" href="#added-46">Added</a></h3>
+<h3 id="added-47"><a class="header" href="#added-47">Added</a></h3>
 <ul>
 <li><strong>CLI <code>--version</code> flag</strong>: <code>moltis --version</code> now prints the version.</li>
 <li><strong>Askama HTML rendering</strong>: SPA index and social metadata templates use
 Askama instead of string replacement.</li>
 </ul>
-<h3 id="fixed-62"><a class="header" href="#fixed-62">Fixed</a></h3>
+<h3 id="fixed-63"><a class="header" href="#fixed-63">Fixed</a></h3>
 <ul>
 <li><strong>WebSocket reconnect after remote onboarding auth</strong>: Connection now
 reconnects immediately after auth setup instead of waiting for the backoff
@@ -13517,7 +13976,7 @@ connections behind the platform’s reverse proxy.</li>
 <li><strong>WebAuthn origin scheme on PaaS</strong>: Non-localhost RP IDs now default to
 <code>https://</code> origin since PaaS platforms terminate TLS at the proxy.</li>
 </ul>
-<h3 id="security-41"><a class="header" href="#security-41">Security</a></h3>
+<h3 id="security-42"><a class="header" href="#security-42">Security</a></h3>
 <ul>
 <li><strong>Compaction prompt injection hardening</strong>: Session compaction now passes
 typed <code>ChatMessage</code> objects to the summarizer LLM instead of concatenated
@@ -13530,21 +13989,21 @@ user content could mimic role prefixes (similar to GHSA-g8p2-7wf7-98mq).</li>
 <li><strong>Session delete UX</strong>: Forked sessions with no new messages beyond the fork
 point are deleted immediately without a confirmation dialog.</li>
 </ul>
-<h3 id="fixed-63"><a class="header" href="#fixed-63">Fixed</a></h3>
+<h3 id="fixed-64"><a class="header" href="#fixed-64">Fixed</a></h3>
 <ul>
 <li><strong>Localhost passkey compatibility</strong>: Gateway startup URLs and TLS redirect
 hints now use <code>localhost</code> for loopback hosts, while WebAuthn also allows
 <code>moltis.localhost</code> as an additional origin when RP ID is <code>localhost</code>.</li>
 </ul>
 <h2 id="083---2026-02-11"><a class="header" href="#083---2026-02-11">[0.8.3] - 2026-02-11</a></h2>
-<h3 id="fixed-64"><a class="header" href="#fixed-64">Fixed</a></h3>
+<h3 id="fixed-65"><a class="header" href="#fixed-65">Fixed</a></h3>
 <ul>
 <li><strong>Linux clippy <code>unused_mut</code> failure</strong>: Fixed a target-specific <code>unused_mut</code>
 warning in browser stale-container cleanup that failed release clippy on
 Linux with <code>-D warnings</code>.</li>
 </ul>
 <h2 id="082---2026-02-11"><a class="header" href="#082---2026-02-11">[0.8.2] - 2026-02-11</a></h2>
-<h3 id="fixed-65"><a class="header" href="#fixed-65">Fixed</a></h3>
+<h3 id="fixed-66"><a class="header" href="#fixed-66">Fixed</a></h3>
 <ul>
 <li><strong>Release clippy environment parity</strong>: The release workflow clippy job now
 runs in the same CUDA-capable environment as main CI, includes the llama
@@ -13552,7 +14011,7 @@ source git bootstrap step, and installs <code>rustfmt</code> alongside <code>cli
 fixes release clippy failures caused by missing CUDA toolchain/runtime.</li>
 </ul>
 <h2 id="081---2026-02-11"><a class="header" href="#081---2026-02-11">[0.8.1] - 2026-02-11</a></h2>
-<h3 id="fixed-66"><a class="header" href="#fixed-66">Fixed</a></h3>
+<h3 id="fixed-67"><a class="header" href="#fixed-67">Fixed</a></h3>
 <ul>
 <li><strong>Clippy validation parity</strong>: Unified local validation, CI (main), and
 release workflows to use the same clippy command and flags
@@ -13560,7 +14019,7 @@ release workflows to use the same clippy command and flags
 prevents release-only clippy failures from command drift.</li>
 </ul>
 <h2 id="080---2026-02-11"><a class="header" href="#080---2026-02-11">[0.8.0] - 2026-02-11</a></h2>
-<h3 id="added-47"><a class="header" href="#added-47">Added</a></h3>
+<h3 id="added-48"><a class="header" href="#added-48">Added</a></h3>
 <ul>
 <li><strong>Instance-scoped container naming</strong>: Browser and sandbox container/image
 prefixes now derive from the configured instance name, so multiple Moltis
@@ -13575,7 +14034,7 @@ unrelated containers.</li>
 the modern Apple container CLI flow (<code>container image pull --help</code>) without
 legacy fallback behavior.</li>
 </ul>
-<h3 id="fixed-67"><a class="header" href="#fixed-67">Fixed</a></h3>
+<h3 id="fixed-68"><a class="header" href="#fixed-68">Fixed</a></h3>
 <ul>
 <li><strong>Release workflow artifacts</strong>: Disabled docker build record artifact uploads
 in release CI to avoid release workflow failures from missing artifact paths.</li>
@@ -13583,14 +14042,14 @@ in release CI to avoid release workflow failures from missing artifact paths.</l
 release preflight checks with CI formatting/lint gates.</li>
 </ul>
 <h2 id="071---2026-02-11"><a class="header" href="#071---2026-02-11">[0.7.1] - 2026-02-11</a></h2>
-<h3 id="fixed-68"><a class="header" href="#fixed-68">Fixed</a></h3>
+<h3 id="fixed-69"><a class="header" href="#fixed-69">Fixed</a></h3>
 <ul>
 <li><strong>Release format gate</strong>: Included missing Rust formatting updates in release
 history so the release workflow <code>cargo fmt --all -- --check</code> passes for
 tagged builds.</li>
 </ul>
 <h2 id="070---2026-02-11"><a class="header" href="#070---2026-02-11">[0.7.0] - 2026-02-11</a></h2>
-<h3 id="added-48"><a class="header" href="#added-48">Added</a></h3>
+<h3 id="added-49"><a class="header" href="#added-49">Added</a></h3>
 <ul>
 <li><strong>HTTP endpoint throttling</strong>: Added gateway-level per-IP rate limits for
 login (<code>/api/auth/login</code>), auth API routes, general API routes, and WebSocket
@@ -13614,7 +14073,7 @@ static while the retry countdown is shown only on the button.</li>
 <code>docs/src/authentication.md</code>, and <code>docs/src/security.md</code>.</li>
 </ul>
 <h2 id="061---2026-02-10"><a class="header" href="#061---2026-02-10">[0.6.1] - 2026-02-10</a></h2>
-<h3 id="fixed-69"><a class="header" href="#fixed-69">Fixed</a></h3>
+<h3 id="fixed-70"><a class="header" href="#fixed-70">Fixed</a></h3>
 <ul>
 <li><strong>Release clippy</strong>: Aligned release workflow clippy command with nightly
 flags (<code>-Z unstable-options</code>, <code>--timings</code>).</li>
@@ -13622,7 +14081,7 @@ flags (<code>-Z unstable-options</code>, <code>--timings</code>).</li>
 <code>use</code> statement; replaced <code>.unwrap()</code> with <code>.expect()</code> in auth route tests.</li>
 </ul>
 <h2 id="060---2026-02-10"><a class="header" href="#060---2026-02-10">[0.6.0] - 2026-02-10</a></h2>
-<h3 id="added-49"><a class="header" href="#added-49">Added</a></h3>
+<h3 id="added-50"><a class="header" href="#added-50">Added</a></h3>
 <ul>
 <li><strong>CalDAV integration</strong>: New <code>moltis-caldav</code> crate providing calendar CRUD
 operations (list calendars, list/create/update/delete events) via the CalDAV
@@ -13641,7 +14100,7 @@ event names in the config file.</li>
 decision matrix, credential types, API key scopes, session endpoints,
 and WebSocket auth documentation.</li>
 </ul>
-<h3 id="fixed-70"><a class="header" href="#fixed-70">Fixed</a></h3>
+<h3 id="fixed-71"><a class="header" href="#fixed-71">Fixed</a></h3>
 <ul>
 <li><strong>Browser container lifecycle</strong>: Browser containers (browserless/chrome)
 now have proper lifecycle management — periodic cleanup removes idle
@@ -13668,7 +14127,7 @@ dropdown pattern as the chat model selector for consistent UX.</li>
 <li><strong>Branch favicon contrast</strong>: Non-main branches now use a high-contrast purple
 favicon variant so branch sessions are visually distinct from <code>main</code>.</li>
 </ul>
-<h3 id="security-42"><a class="header" href="#security-42">Security</a></h3>
+<h3 id="security-43"><a class="header" href="#security-43">Security</a></h3>
 <ul>
 <li><strong>Content-Security-Policy header</strong>: HTML pages now include a nonce-based CSP
 header (<code>script-src 'self' 'nonce-&lt;UUID&gt;'</code>), preventing inline script
@@ -13680,14 +14139,14 @@ on local connections, because the <code>has_password()</code> check returned fal
 even though <code>is_setup_complete()</code> was true.</li>
 </ul>
 <h2 id="050---2026-02-09"><a class="header" href="#050---2026-02-09">[0.5.0] - 2026-02-09</a></h2>
-<h3 id="added-50"><a class="header" href="#added-50">Added</a></h3>
+<h3 id="added-51"><a class="header" href="#added-51">Added</a></h3>
 <ul>
 <li><strong><code>moltis doctor</code> command</strong>: Comprehensive health check that validates config,
 audits security (file permissions, API keys in config), checks directory and
 database health, verifies provider readiness (API keys via config or env vars),
 inspects TLS certificates, and validates MCP server commands on PATH.</li>
 </ul>
-<h3 id="security-43"><a class="header" href="#security-43">Security</a></h3>
+<h3 id="security-44"><a class="header" href="#security-44">Security</a></h3>
 <ul>
 <li><strong>npm install –ignore-scripts</strong>: Skill dependency installation now passes
 <code>--ignore-scripts</code> to npm, preventing supply chain attacks via malicious
@@ -13697,13 +14156,13 @@ access instead of silently receiving full admin privileges. Keys must specify
 at least one scope explicitly (least-privilege by default).</li>
 </ul>
 <h2 id="041---2026-02-09"><a class="header" href="#041---2026-02-09">[0.4.1] - 2026-02-09</a></h2>
-<h3 id="fixed-71"><a class="header" href="#fixed-71">Fixed</a></h3>
+<h3 id="fixed-72"><a class="header" href="#fixed-72">Fixed</a></h3>
 <ul>
 <li><strong>Clippy lint in map test</strong>: Replace <code>is_some()</code>/<code>unwrap()</code> with <code>if let Some</code> to
 fix <code>clippy::unnecessary_unwrap</code> that broke the v0.4.0 release build.</li>
 </ul>
 <h2 id="040---2026-02-09"><a class="header" href="#040---2026-02-09">[0.4.0] - 2026-02-09</a></h2>
-<h3 id="added-51"><a class="header" href="#added-51">Added</a></h3>
+<h3 id="added-52"><a class="header" href="#added-52">Added</a></h3>
 <ul>
 <li><strong>Auto-import external OAuth tokens</strong>: At startup, auto-detected provider
 tokens (e.g. Codex CLI <code>~/.codex/auth.json</code>) are imported into the central
@@ -13746,7 +14205,7 @@ same validate-first flow as onboarding. Credentials are validated before
 saving (bad keys are never persisted), a model selector appears after
 validation, and OAuth flows show model selection after authentication.</li>
 </ul>
-<h3 id="fixed-72"><a class="header" href="#fixed-72">Fixed</a></h3>
+<h3 id="fixed-73"><a class="header" href="#fixed-73">Fixed</a></h3>
 <ul>
 <li><strong>Docker RAM detection</strong>: Fall back to <code>/proc/meminfo</code> when <code>sysinfo</code> returns
 0 bytes for memory inside Docker/cgroup environments.</li>
@@ -13769,34 +14228,34 @@ skip when no usable container runtime is available (backend = “none”).</li>
 <li><strong>Release CI parallelization</strong>: Split clippy and test into separate parallel
 jobs in the release workflow for faster feedback on GitHub-hosted runners.</li>
 </ul>
-<h3 id="fixed-73"><a class="header" href="#fixed-73">Fixed</a></h3>
+<h3 id="fixed-74"><a class="header" href="#fixed-74">Fixed</a></h3>
 <ul>
 <li><strong>CodSpeed workflow zizmor audit</strong>: Pinned <code>CodSpeedHQ/action@v4</code> to commit
 SHA to satisfy zizmor’s <code>unpinned-uses</code> audit.</li>
 </ul>
 <h2 id="037---2026-02-09"><a class="header" href="#037---2026-02-09">[0.3.7] - 2026-02-09</a></h2>
-<h3 id="fixed-74"><a class="header" href="#fixed-74">Fixed</a></h3>
+<h3 id="fixed-75"><a class="header" href="#fixed-75">Fixed</a></h3>
 <ul>
 <li><strong>Clippy warnings</strong>: Fixed <code>MutexGuard</code> held across await in telegram
 test, <code>field assignment outside initializer</code> in provider setup test, and
 <code>items after test module</code> in gateway services.</li>
 </ul>
 <h2 id="036---2026-02-09"><a class="header" href="#036---2026-02-09">[0.3.6] - 2026-02-09</a></h2>
-<h3 id="fixed-75"><a class="header" href="#fixed-75">Fixed</a></h3>
+<h3 id="fixed-76"><a class="header" href="#fixed-76">Fixed</a></h3>
 <ul>
 <li><strong>Release CI zizmor audit</strong>: Removed <code>rust-cache</code> from the release workflow’s
 clippy-test job entirely instead of using <code>save-if: false</code>, which zizmor does
 not recognize as a cache-poisoning mitigation.</li>
 </ul>
 <h2 id="035---2026-02-09"><a class="header" href="#035---2026-02-09">[0.3.5] - 2026-02-09</a></h2>
-<h3 id="fixed-76"><a class="header" href="#fixed-76">Fixed</a></h3>
+<h3 id="fixed-77"><a class="header" href="#fixed-77">Fixed</a></h3>
 <ul>
 <li><strong>Release CI cache-poisoning</strong>: Set <code>save-if: false</code> on <code>rust-cache</code> in the
 release workflow to satisfy zizmor’s cache-poisoning audit for tag-triggered
 workflows that publish artifacts.</li>
 </ul>
 <h2 id="034---2026-02-09"><a class="header" href="#034---2026-02-09">[0.3.4] - 2026-02-09</a></h2>
-<h3 id="fixed-77"><a class="header" href="#fixed-77">Fixed</a></h3>
+<h3 id="fixed-78"><a class="header" href="#fixed-78">Fixed</a></h3>
 <ul>
 <li><strong>Session file lock contention</strong>: Replaced non-blocking <code>try_write()</code> with
 blocking <code>write()</code> in <code>SessionStore::append()</code> and <code>replace_history()</code> so
@@ -13810,7 +14269,7 @@ format, clippy, and test checks before building any packages, ensuring code
 correctness before artifacts are produced.</li>
 </ul>
 <h2 id="033---2026-02-09"><a class="header" href="#033---2026-02-09">[0.3.3] - 2026-02-09</a></h2>
-<h3 id="fixed-78"><a class="header" href="#fixed-78">Fixed</a></h3>
+<h3 id="fixed-79"><a class="header" href="#fixed-79">Fixed</a></h3>
 <ul>
 <li><strong>OpenAI Codex token refresh panic</strong>: Made <code>get_valid_token()</code> async to fix
 <code>block_on</code> inside async runtime panic when refreshing expired OAuth tokens.</li>
@@ -13819,7 +14278,7 @@ binding, fixing <code>get_user_location</code> failures on first Telegram messag
 <li><strong>Cargo.lock sync</strong>: Lock file now matches workspace version.</li>
 </ul>
 <h2 id="030---2026-02-08"><a class="header" href="#030---2026-02-08">[0.3.0] - 2026-02-08</a></h2>
-<h3 id="added-52"><a class="header" href="#added-52">Added</a></h3>
+<h3 id="added-53"><a class="header" href="#added-53">Added</a></h3>
 <ul>
 <li>
 <p><strong>Silent replies</strong>: The system prompt instructs the LLM to return an empty
@@ -13937,7 +14396,7 @@ cache-miss token counters in the metrics subsystem.</p>
 <li><strong>Configurable model ordering</strong>: Added <code>chat.priority_models</code> in <code>moltis.toml</code> to pin preferred models at the top of model selectors without rebuilding. Runtime model selectors (<code>models.list</code>, chat model dropdown, Telegram <code>/model</code>) hide unsupported models, while Providers diagnostics continue to show full catalog entries (including unsupported flags).</li>
 <li><strong>Configurable provider offerings in UI</strong>: Added <code>[providers] offered = [...]</code> allowlist in <code>moltis.toml</code> to control which providers are shown in onboarding/provider-picker UI. New config templates default this to <code>["openai", "github-copilot"]</code>; setting <code>offered = []</code> shows all known providers. Configured providers remain visible for management.</li>
 </ul>
-<h3 id="fixed-79"><a class="header" href="#fixed-79">Fixed</a></h3>
+<h3 id="fixed-80"><a class="header" href="#fixed-80">Fixed</a></h3>
 <ul>
 <li>
 <p><strong>Web search DuckDuckGo fallback</strong>: When no search API key (Brave or
@@ -14009,7 +14468,7 @@ Rust structs instead of ad-hoc <code>serde_json::Value</code> maps.</li>
 personality bootstrapping.</li>
 </ul>
 <h2 id="029---2026-02-08"><a class="header" href="#029---2026-02-08">[0.2.9] - 2026-02-08</a></h2>
-<h3 id="added-53"><a class="header" href="#added-53">Added</a></h3>
+<h3 id="added-54"><a class="header" href="#added-54">Added</a></h3>
 <ul>
 <li><strong>Voice provider policy controls</strong>: Added provider-list allowlists so config templates and runtime voice setup can explicitly limit shown/allowed TTS and STT providers.</li>
 <li><strong>Typed voice provider metadata</strong>: Expanded voice provider metadata and preference handling to use typed flows across gateway and UI paths.</li>
@@ -14018,7 +14477,7 @@ personality bootstrapping.</li>
 <ul>
 <li><strong>Reply medium preference handling</strong>: Chat now prefers the same reply medium when possible and falls back to text when a medium cannot be preserved.</li>
 </ul>
-<h3 id="fixed-80"><a class="header" href="#fixed-80">Fixed</a></h3>
+<h3 id="fixed-81"><a class="header" href="#fixed-81">Fixed</a></h3>
 <ul>
 <li><strong>Chat UI reply badge visibility</strong>: Assistant footer now reliably shows the selected reply medium badge.</li>
 <li><strong>Voice UX polish</strong>: Improved microphone timing behavior and preserved settings scroll state in voice configuration views.</li>
@@ -14037,7 +14496,7 @@ plugins manifest and directory into the new unified location.</li>
 <code>[voice]</code> section with provider-list allowlists limited to ElevenLabs for TTS and
 Mistral + ElevenLabs for STT.</li>
 </ul>
-<h3 id="fixed-81"><a class="header" href="#fixed-81">Fixed</a></h3>
+<h3 id="fixed-82"><a class="header" href="#fixed-82">Fixed</a></h3>
 <ul>
 <li><strong>Update checker repository configuration</strong>: The update checker now reads
 <code>server.update_repository_url</code> from <code>moltis.toml</code>, defaults new configs to
@@ -14056,7 +14515,7 @@ hide <code>create_skill</code>/<code>update_skill</code> and leave only a subset
 Chat runs now use configured tool policy for runtime filtering without globally
 restricting tools based on discovered skill metadata.</li>
 </ul>
-<h3 id="added-54"><a class="header" href="#added-54">Added</a></h3>
+<h3 id="added-55"><a class="header" href="#added-55">Added</a></h3>
 <ul>
 <li>
 <p><strong>Voice Provider Management UI</strong>: Configure TTS and STT providers from Settings &gt; Voice</p>
@@ -14205,7 +14664,7 @@ Empty lists keep current behavior and show all providers.</p>
 <li><strong>Skill trust lifecycle</strong>: Installed marketplace skills/plugins now track a <code>trusted</code> state and must be trusted before they can be enabled; the skills UI now surfaces untrusted status and supports trust-before-enable.</li>
 <li><strong>Git metadata via gitoxide</strong>: Gateway now resolves branch names, repo HEAD SHAs, and commit timestamps using <code>gix</code> (gitoxide) instead of shelling out to <code>git</code> for those read-only operations.</li>
 </ul>
-<h3 id="fixed-82"><a class="header" href="#fixed-82">Fixed</a></h3>
+<h3 id="fixed-83"><a class="header" href="#fixed-83">Fixed</a></h3>
 <ul>
 <li><strong>OAuth callback on hosted deployments</strong>: OpenAI Codex OAuth now uses the web app origin callback (<code>/auth/callback</code>) in the UI flow instead of hardcoded localhost loopback, allowing DigitalOcean/Fly/Render deployments to complete OAuth successfully.</li>
 <li><strong>Sandbox startup on hosted Docker environments</strong>: Skip sandbox image pre-build when sandbox mode is off, and require Docker daemon accessibility (not just Docker CLI presence) before selecting the Docker sandbox backend.</li>
@@ -14225,7 +14684,7 @@ with vertical scrolling instead of being scaled down to fit the viewport.</li>
 <li><strong>Telegram typing indicator for long responses</strong>: Channel replies now wait for outbound delivery tasks to finish before chat completion returns, so periodic <code>typing...</code> updates continue until the Telegram message is actually sent.</li>
 <li><strong>Skills dependency install safety</strong>: <code>skills.install_dep</code> now requires explicit user confirmation and blocks host installs when sandbox mode is disabled (unless explicitly overridden in the RPC call).</li>
 </ul>
-<h3 id="security-44"><a class="header" href="#security-44">Security</a></h3>
+<h3 id="security-45"><a class="header" href="#security-45">Security</a></h3>
 <ul>
 <li><strong>Asset response hardening</strong>: Static assets now set <code>X-Content-Type-Options: nosniff</code>, and SVG responses include a restrictive <code>Content-Security-Policy</code> (<code>script-src 'none'</code>, <code>object-src 'none'</code>) to reduce stored-XSS risk if user-controlled SVGs are ever introduced.</li>
 <li><strong>Archive extraction hardening</strong>: Skills/plugin tarball installs now reject unsafe archive paths (<code>..</code>, absolute/path-prefix escapes) and reject symlink/hardlink archive entries to prevent path traversal and link-based escapes.</li>
@@ -14260,29 +14719,29 @@ with vertical scrolling instead of being scaled down to fit the viewport.</li>
 <li><strong>CI builds</strong>: Migrate all release build jobs from self-hosted to GitHub-hosted runners for full parallelism (<code>ubuntu-latest</code>, <code>ubuntu-latest-arm</code>, <code>macos-latest</code>), remove all cross-compilation toolchain steps</li>
 </ul>
 <h2 id="018---2026-02-06"><a class="header" href="#018---2026-02-06">[0.1.8] - 2026-02-06</a></h2>
-<h3 id="fixed-83"><a class="header" href="#fixed-83">Fixed</a></h3>
+<h3 id="fixed-84"><a class="header" href="#fixed-84">Fixed</a></h3>
 <ul>
 <li><strong>CI builds</strong>: Fix corrupted cargo config on all self-hosted runner jobs, fix macOS runner label, add llama-cpp build deps to Docker and Snap builds</li>
 </ul>
 <h2 id="017---2026-02-06"><a class="header" href="#017---2026-02-06">[0.1.7] - 2026-02-06</a></h2>
-<h3 id="fixed-84"><a class="header" href="#fixed-84">Fixed</a></h3>
+<h3 id="fixed-85"><a class="header" href="#fixed-85">Fixed</a></h3>
 <ul>
 <li><strong>CI builds</strong>: Use project-local <code>.cargo/config.toml</code> for cross-compilation instead of appending to global config (fixes duplicate key errors on self-hosted runners)</li>
 </ul>
 <h2 id="016---2026-02-06"><a class="header" href="#016---2026-02-06">[0.1.6] - 2026-02-06</a></h2>
-<h3 id="fixed-85"><a class="header" href="#fixed-85">Fixed</a></h3>
+<h3 id="fixed-86"><a class="header" href="#fixed-86">Fixed</a></h3>
 <ul>
 <li><strong>CI builds</strong>: Use macOS GitHub-hosted runners for apple-darwin binary builds instead of cross-compiling from Linux</li>
 <li><strong>CI performance</strong>: Run lightweight lint jobs (zizmor, biome, fmt) on GitHub-hosted runners to free up self-hosted runners</li>
 </ul>
 <h2 id="015---2026-02-06"><a class="header" href="#015---2026-02-06">[0.1.5] - 2026-02-06</a></h2>
-<h3 id="fixed-86"><a class="header" href="#fixed-86">Fixed</a></h3>
+<h3 id="fixed-87"><a class="header" href="#fixed-87">Fixed</a></h3>
 <ul>
 <li><strong>CI security</strong>: Use GitHub-hosted runners for PRs to prevent untrusted code from running on self-hosted infrastructure</li>
 <li><strong>CI security</strong>: Add <code>persist-credentials: false</code> to docs workflow checkout (fixes zizmor artipacked warning)</li>
 </ul>
 <h2 id="014---2026-02-06"><a class="header" href="#014---2026-02-06">[0.1.4] - 2026-02-06</a></h2>
-<h3 id="added-55"><a class="header" href="#added-55">Added</a></h3>
+<h3 id="added-56"><a class="header" href="#added-56">Added</a></h3>
 <ul>
 <li>
 <p><strong><code>--no-tls</code> CLI flag</strong>: <code>--no-tls</code> flag and <code>MOLTIS_NO_TLS</code> environment variable to disable
@@ -14464,7 +14923,7 @@ registration.</p>
 <code>clone_without_prefix("mcp__")</code> in all three call sites.</p>
 </li>
 </ul>
-<h3 id="fixed-87"><a class="header" href="#fixed-87">Fixed</a></h3>
+<h3 id="fixed-88"><a class="header" href="#fixed-88">Fixed</a></h3>
 <ul>
 <li>Push notifications not sending when chat uses agent mode (run_with_tools)</li>
 <li>Missing space in Safari install instructions (“usingFile” → “using File”)</li>
