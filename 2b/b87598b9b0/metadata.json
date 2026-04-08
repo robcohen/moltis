@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2bb87598b9b0",
+  "strategy": "manual-commit",
+  "branch": "bubble-carp",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2b/b87598b9b0/0/metadata.json",
+      "transcript": "/2b/b87598b9b0/0/full.jsonl",
+      "context": "/2b/b87598b9b0/0/context.md",
+      "content_hash": "/2b/b87598b9b0/0/content_hash.txt",
+      "prompt": "/2b/b87598b9b0/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 157,
+    "cache_creation_tokens": 124463,
+    "cache_read_tokens": 13149546,
+    "output_tokens": 36719,
+    "api_call_count": 134
+  }
+}
