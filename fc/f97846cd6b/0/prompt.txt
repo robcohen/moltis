@@ -1,0 +1,5 @@
+All channels have a bunch of  commands like /new /compact etc. I think Matrix does not, plan to add all those commands in Matrix too.
+
+---
+
+commit push create a PR
