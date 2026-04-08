@@ -1,0 +1,158 @@
+Implement the following plan:
+
+# Plan: Opt-in Model Availability Checking + Stop Button
+
+**Issue**: [#577](https://github.com/moltis-org/moltis/issues/577) — Model availability probing runs automatically after provider setup, consuming tokens/quota without user consent. No way to stop it.
+
+**Goal**: Make detection opt-in only (user clicks a button) and add a "Stop" button during active detection.
+
+---
+
+## Part A: Remove automatic background probing
+
+### Backend — `crates/gateway/src/methods/services.rs`
+
+Remove 4 `tokio::spawn` blocks that auto-trigger `detect_supported`:
+
+| Location | Trigger | Lines |
+|---|---|---|
+| After `providers.save_key` | Credentials saved | 3358-3365 |
+| After `providers.oauth.start` (already auth'd) | OAuth shortcircuit | 3401-3413 |
+| After `providers.oauth.complete` | OAuth flow done | 3450-3456 |
+| After `providers.save_models` | Preferred models saved | 3493-3499 |
+
+Also remove the `model_probe_params()` helper (lines 17-28) — no remaining callers.
+
+Clean up now-unused `provider_name` bindings in `save_key`, `oauth.start`, and `oauth.complete` handlers (they were only used for probe params). Keep the one in `save_models` if used by the `save_models` call itself (check — it's extracted from params but only used for probing, so remove it too).
+
+### Frontend
+
+| File | Lines | What to remove |
+|---|---|---|
+| `crates/web/src/assets/js/providers.js` | 1124-1128 | `sendRpc("models.detect_supported", ...)` after OAuth when no models found |
+| `crates/web/src/assets/js/onboarding-view.js` | 1563-1567 | Same pattern in onboarding flow |
+
+After removal, these paths just show the success state and let the user discover models manually via "Detect All Models" on the LLMs page.
+
+---
+
+## Part B: Add cancellation support
+
+### `crates/chat/Cargo.toml`
+Add `tokio-util = { workspace = true }` (already in workspace deps as `"0.7"`).
+
+### `crates/chat/src/lib.rs`
+
+1. **New field** on `LiveModelService`:
+   ```rust
+   detect_cancel: Arc<tokio::sync::RwLock<Option<CancellationToken>>>,
+   ```
+   Initialize as `None` in `new()`.
+
+2. **In `detect_supported()`** (after acquiring `_run_permit`):
+   - Create a new `CancellationToken`, store it in `detect_cancel`
+   - Change the main probe loop from `while let Some(joined) = tasks.next().await` to a `tokio::select!` that also watches for cancellation
+   - On cancel: break, broadcast `"cancelled"` phase, clear token, return partial results with `"cancelled": true`
+   - On normal completion: clear token (existing "complete" broadcast stays)
+
+3. **New method `cancel_detect()`**:
+   - Read the stored token, call `.cancel()` if present
+   - Return `{ ok: true, cancelled: true/false }`
+
+### `crates/service-traits/src/lib.rs`
+
+Add `cancel_detect(&self) -> ServiceResult` to `ModelService` trait + `NoopModelService` impl (returns ok, cancelled: false).
+
+### `crates/graphql/tests/integration.rs`
+
+Add `cancel_detect` to `MockModel` impl (line ~648): delegates to `self.0.call("models.cancel_detect", json!({}))`.
+
+### `crates/gateway/src/methods/services.rs`
+
+Register `"models.cancel_detect"` RPC (after `models.detect_supported` registration).
+
+### `crates/gateway/src/methods/mod.rs`
+
+Add `"models.cancel_detect"` to `WRITE_METHODS` (after line 175, next to `models.test`).
+
+---
+
+## Part C: Frontend — Stop button + cancelled phase
+
+### `crates/web/src/assets/js/page-providers.js`
+
+1. Add `cancelDetection()` function that calls `sendRpc("models.cancel_detect", {})`
+2. Handle `"cancelled"` phase in `handleModelsUpdatedEvent`: set `detectingModels = false`, keep progress for display
+3. Add a "Stop" button next to the progress bar (only visible during detection):
+   - Use existing classes: `provider-btn provider-btn-danger provider-btn-sm`
+   - Place it in a flex row alongside the progress bar
+
+### `crates/web/src/assets/js/locales/en/providers.js`
+
+Add:
+```js
+stopDetection: "Stop",
+detectionCancelled: "Detection stopped.",
+```
+
+### `crates/web/src/assets/js/locales/fr/providers.js` and `zh/providers.js`
+
+Add equivalent translations.
+
+---
+
+## Files to modify
+
+| File | Change |
+|---|---|
+| `crates/chat/Cargo.toml` | Add `tokio-util` dep |
+| `crates/chat/src/lib.rs` | CancellationToken field, modified detect loop, cancel_detect method |
+| `crates/service-traits/src/lib.rs` | Add cancel_detect to trait + noop |
+| `crates/graphql/tests/integration.rs` | Add cancel_detect to MockModel |
+| `crates/gateway/src/methods/services.rs` | Remove 4 auto-probe spawns, remove helper, register cancel RPC |
+| `crates/gateway/src/methods/mod.rs` | Add cancel_detect to WRITE_METHODS |
+| `crates/web/src/assets/js/page-providers.js` | Stop button, cancelled handler |
+| `crates/web/src/assets/js/providers.js` | Remove auto-probe after OAuth |
+| `crates/web/src/assets/js/onboarding-view.js` | Remove auto-probe after OAuth |
+| `crates/web/src/assets/js/locales/{en,fr,zh}/providers.js` | New i18n keys |
+
+---
+
+## What stays unchanged
+
+- "Detect All Models" button (manual, user-initiated) — stays as-is
+- `providers.validate_key` (single-provider validation during setup wizard) — stays, it's user-initiated
+- `models.test` (single model test) — stays
+- `run_single_probe` internals — no changes needed (spawned tasks detach on cancel; 20s timeout ensures cleanup)
+
+---
+
+## Verification
+
+1. `cargo +nightly-2025-11-30 fmt --all -- --check`
+2. `just lint`
+3. `just test`
+4. `biome check --write` (JS changes)
+5. Manual QA: connect a provider via OAuth/API key, verify no automatic probing starts, verify "Detect All Models" still works, verify "Stop" button cancels mid-detection
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-sapphire-lint/470afab8-8d28-4c7a-8779-3a898890c653.jsonl
+
+---
+
+<task-notification>
+<task-id>bxujr9fr9</task-id>
+<tool-use-id>toolu_015A1Ze1cFSZ2FCFjoTThs6J</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-sapphire-lint/470afab8-8d28-4c7a-8779-3a898890c653/tasks/bxujr9fr9.output</output-file>
+<status>completed</status>
+<summary>Background command "Check Rust compilation" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-sapphire-lint/470afab8-8d28-4c7a-8779-3a898890c653/tasks/bxujr9fr9.output
+
+---
+
+Fix PR comment and solve them
+
+---
+
+commit push and create a PR
