@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f1868ce0732c",
+  "strategy": "manual-commit",
+  "branch": "bumpy-hydrant",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/browser/src/container.rs",
+    "crates/browser/src/pool.rs",
+    "crates/httpd/src/tools_routes.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f1/868ce0732c/0/metadata.json",
+      "transcript": "/f1/868ce0732c/0/full.jsonl",
+      "context": "/f1/868ce0732c/0/context.md",
+      "content_hash": "/f1/868ce0732c/0/content_hash.txt",
+      "prompt": "/f1/868ce0732c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 53378,
+    "cache_read_tokens": 447553,
+    "output_tokens": 3075,
+    "api_call_count": 13
+  }
+}
