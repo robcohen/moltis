@@ -1,0 +1,122 @@
+Implement the following plan:
+
+# Fix: AGENTS.md and TOOLS.md silent truncation (#593)
+
+## Context
+
+AGENTS.md and TOOLS.md are silently truncated to 6,000 characters by `WORKSPACE_FILE_MAX_CHARS` in `crates/agents/src/prompt.rs:271`. There is no log warning, no web UI indicator, and no way to configure the limit. Users with non-trivial agent instructions (the reporter has 30K chars) lose 80% of their content with zero feedback — only an LLM-visible marker `*(AGENTS.md truncated for prompt size.)*` that operators never see.
+
+SOUL.md has no limit at all, making this inconsistent.
+
+## Plan
+
+### 1. Make the limit configurable via `moltis.toml` — `[chat] workspace_file_max_chars`
+
+**`crates/config/src/schema.rs`** (~line 1495):
+- Add `pub workspace_file_max_chars: usize` to `ChatConfig` with `#[serde(default = "default_workspace_file_max_chars")]`
+- Add `fn default_workspace_file_max_chars() -> usize { 50_000 }`
+- Update `Default` impl
+
+**`crates/config/src/validate.rs`** (`build_schema_map`, ~line 394):
+- Add `("workspace_file_max_chars", Leaf)` to the `"chat"` struct
+
+**`crates/config/src/template.rs`** (`[chat]` section, ~line 205):
+- Add commented line: `# workspace_file_max_chars = 50000  # Max chars from AGENTS.md / TOOLS.md (default: 50000)`
+
+### 2. Thread the config value into the prompt builder
+
+**`crates/agents/src/prompt.rs`**:
+- Remove `const WORKSPACE_FILE_MAX_CHARS: usize = 6_000;`
+- Add `pub workspace_file_max_chars: Option<usize>` to `PromptRuntimeContext` (defaults to `None`)
+- In `build_system_prompt_full`, read `runtime_context.workspace_file_max_chars.unwrap_or(50_000)` and pass it to `append_workspace_files_section`
+- Update `append_workspace_files_section` signature to accept `max_chars: usize`
+
+**`crates/chat/src/lib.rs`**:
+- In `build_prompt_runtime_context`, read `moltis_config::discover_and_load().chat.workspace_file_max_chars` and set it on the returned `PromptRuntimeContext`
+
+### 3. Add `warn!()` logging on truncation
+
+**`crates/agents/src/prompt.rs`** — `append_truncated_text_block()` (~line 779):
+- Add `warn!()` when truncation occurs, showing file label, original size, and limit
+- Change signature to accept a label string (e.g. `"AGENTS.md"`) for the log message
+- Example: `warn!(file = "AGENTS.md", original_chars = 30870, limit = 50000, "workspace file truncated for prompt size")`
+
+### 4. Surface truncation info in `chat.full_context` response
+
+**`crates/agents/src/prompt.rs`**:
+- Add a new struct `WorkspaceFileTruncation { file: String, original_chars: usize, limit: usize, truncated: bool }`
+- Make `append_workspace_files_section` return `Vec<WorkspaceFileTruncation>` (or add a field to `PromptRuntimeContext`)
+- Alternatively: compute truncation metadata separately — simpler and doesn't require changing the prompt builder's return type
+
+**`crates/chat/src/lib.rs`** — `full_context()` (~line 4959):
+- After building the system prompt, compute truncation info for AGENTS.md and TOOLS.md by comparing the raw text lengths against the configured limit
+- Add a `"workspace_files"` field to the response JSON:
+  ```json
+  {
+    "workspace_files": [
+      { "file": "AGENTS.md", "chars": 30870, "limit": 50000, "truncated": false },
+      { "file": "TOOLS.md", "chars": 1200, "limit": 50000, "truncated": false }
+    ]
+  }
+  ```
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `crates/config/src/schema.rs` | Add `workspace_file_max_chars` to `ChatConfig` |
+| `crates/config/src/validate.rs` | Add field to `build_schema_map()` |
+| `crates/config/src/template.rs` | Add commented config line |
+| `crates/agents/src/prompt.rs` | Remove hardcoded const, add to `PromptRuntimeContext`, add logging, update truncation functions |
+| `crates/chat/src/lib.rs` | Thread config value, add truncation info to `full_context` response |
+
+## Out of scope (follow-up issues)
+
+- **Web UI indicator** on Settings > Agent page showing AGENTS.md/TOOLS.md size and truncation status — this requires JS changes in `page-agents.js` and a new RPC endpoint or gon data, better as a separate PR
+- **Dynamic scaling** based on model context window — would need the model to be resolved before prompt construction, which changes the call order; better as a follow-up
+
+## Verification
+
+1. `cargo check` — ensure it compiles
+2. `just lint` — clippy clean
+3. `just test` — existing tests pass
+4. New unit tests in `prompt.rs`:
+   - Test that workspace text within the limit is not truncated
+   - Test that workspace text exceeding the limit is truncated with notice
+   - Test that the limit from `PromptRuntimeContext` is respected
+5. Manual test: set `workspace_file_max_chars = 100` in `moltis.toml`, start moltis, check logs for `warn!` about AGENTS.md truncation
+6. Manual test: call `chat.full_context` RPC and verify `workspace_files` field shows correct metadata
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-stealth-harp/7602505d-1b71-4aab-b07b-411c7da75500.jsonl
+
+---
+
+commit push and create a PR
+
+---
+
+## Context
+
+- Current git status: On branch stealth-harp
+nothing to commit, working tree clean
+- Current git diff (staged and unstaged changes): (Bash completed with no output)
+- Current branch: stealth-harp
+
+## Your task
+
+Based on the above changes:
+
+1. Create a new branch if on main
+2. Create a single commit with an appropriate message
+3. Push the branch to origin
+4. Create a pull request using `gh pr create`
+5. You have the capability to call multiple tools in a single response. You MUST do all of the above in a single message. Do not use any other tools or do anything else. Do not send any other text or messages besides these tool calls.
+
+---
+
+Fix and resolve PR comments
+
+---
+
+Fix and resolve new PR comments
