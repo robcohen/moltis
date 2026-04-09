@@ -2679,12 +2679,13 @@ moltis hooks info my-hook
 </code></pre>
 <h2 id="bundled-hooks"><a class="header" href="#bundled-hooks">Bundled Hooks</a></h2>
 <p>Moltis includes several built-in hooks:</p>
-<h3 id="boot-md"><a class="header" href="#boot-md">boot-md</a></h3>
-<p>Reads <code>BOOT.md</code> from the workspace on <code>GatewayStart</code> and injects it into the agent context.</p>
-<p><code>BOOT.md</code> is intended for short, explicit startup tasks (health checks, reminders,
-“send one startup message”, etc.). If the file is missing or empty, nothing is injected.</p>
 <h2 id="workspace-context-files"><a class="header" href="#workspace-context-files">Workspace Context Files</a></h2>
 <p>Moltis supports several workspace markdown files in <code>data_dir</code>.</p>
+<h3 id="bootmd"><a class="header" href="#bootmd">BOOT.md</a></h3>
+<p><code>BOOT.md</code> is loaded per session and injected into the system prompt as startup context.</p>
+<p>Best use is for short, explicit startup tasks (health checks, reminders,
+“send one startup message”, etc.). If the file is missing or empty, nothing is injected.</p>
+<p>Agent-specific overrides are supported: place <code>BOOT.md</code> in <code>agents/&lt;id&gt;/BOOT.md</code>.</p>
 <h3 id="toolsmd"><a class="header" href="#toolsmd">TOOLS.md</a></h3>
 <p><code>TOOLS.md</code> is loaded as a workspace context file in the system prompt.</p>
 <p>Best use is to combine:</p>
