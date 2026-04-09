@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "cf5d2cedd7fd",
+  "strategy": "manual-commit",
+  "branch": "courageous-freezer",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/provider-validation.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/cf/5d2cedd7fd/0/metadata.json",
+      "transcript": "/cf/5d2cedd7fd/0/full.jsonl",
+      "context": "/cf/5d2cedd7fd/0/context.md",
+      "content_hash": "/cf/5d2cedd7fd/0/content_hash.txt",
+      "prompt": "/cf/5d2cedd7fd/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 57,
+    "cache_creation_tokens": 59137,
+    "cache_read_tokens": 3196180,
+    "output_tokens": 12702,
+    "api_call_count": 51
+  }
+}
