@@ -1,0 +1,156 @@
+Implement the following plan:
+
+# Fix: MiniMax system role rejection (issue #592)
+
+## Context
+
+MiniMax API rejects `role: "system"` in the messages array with error 2013.
+This was previously fixed in commit `1bf8e9b9` (closed #508) by extracting
+system messages into a top-level `"system"` field in the request body.
+PR #586 (`f96dcc46`) incorrectly reverted that fix — it removed
+`requires_top_level_system_prompt()` and `prepare_request_messages()`,
+putting system messages back as `role: "system"` in the messages array.
+The PR was only verified with mocks, not against the real MiniMax API.
+
+## Approach
+
+Restore the system prompt extraction for MiniMax, following the same pattern
+used by the Anthropic provider (`to_anthropic_messages()` in `anthropic.rs`)
+and the Responses API (`split_responses_instructions_and_input()` in
+`openai_compat.rs`): extract all system messages from the messages array,
+join their content with `\n\n`, and place the result in a top-level `"system"`
+field on the request body.
+
+## Files to modify
+
+### `crates/providers/src/openai.rs`
+
+1. **Re-add `is_minimax()` helper** (after `requires_reasoning_content_on_tool_messages`, ~line 665):
+   ```rust
+   fn is_minimax(&self) -> bool {
+       self.model.starts_with("MiniMax-")
+           || self.provider_name.eq_ignore_ascii_case("minimax")
+           || self.base_url.to_ascii_lowercase().contains("minimax")
+   }
+   ```
+
+2. **Re-add `extract_system_prompt()` method** (after `is_minimax`):
+   ```rust
+   /// For providers that reject `role: "system"` in the messages array
+   /// (e.g. MiniMax), extract all system messages and return them as a
+   /// joined string alongside the remaining messages.
+   fn extract_system_prompt(
+       &self,
+       messages: Vec<serde_json::Value>,
+   ) -> (Vec<serde_json::Value>, Option<String>) {
+       if !self.is_minimax() {
+           return (messages, None);
+       }
+       let mut system_parts = Vec::new();
+       let mut out = Vec::with_capacity(messages.len());
+       for message in messages {
+           if message.get("role").and_then(Value::as_str) == Some("system") {
+               if let Some(content) = message.get("content").and_then(Value::as_str) {
+                   if !content.is_empty() {
+                       system_parts.push(content.to_string());
+                   }
+               }
+               continue;
+           }
+           out.push(message);
+       }
+       let system_prompt = (!system_parts.is_empty()).then(|| system_parts.join("\n\n"));
+       (out, system_prompt)
+   }
+   ```
+
+3. **Apply extraction in all three request paths** — add after `serialize_messages_for_request`:
+
+   - **`probe_chat_completions`** (~line 547):
+     ```rust
+     let openai_messages = self.serialize_messages_for_request(&messages);
+     let (mut openai_messages, system_prompt) = self.extract_system_prompt(openai_messages);
+     // ... build body ...
+     if let Some(sp) = system_prompt { body["system"] = Value::String(sp); }
+     ```
+
+   - **`stream_with_tools_sse`** (~line 1001):
+     ```rust
+     let openai_messages = self.serialize_messages_for_request(&messages);
+     let (mut openai_messages, system_prompt) = self.extract_system_prompt(openai_messages);
+     // ... build body ...
+     if let Some(sp) = system_prompt { body["system"] = Value::String(sp); }
+     ```
+
+   - **`complete`** (~line 1636):
+     ```rust
+     let openai_messages = self.serialize_messages_for_request(messages);
+     let (mut openai_messages, system_prompt) = self.extract_system_prompt(openai_messages);
+     // ... build body ...
+     if let Some(sp) = system_prompt { body["system"] = Value::String(sp); }
+     ```
+
+4. **Update tests** — the 4 existing MiniMax tests need to assert the opposite:
+   - `minimax_serialization_preserves_system_messages` -> rename to `minimax_serialization_extracts_system_messages`, assert system messages are removed from the array and returned separately
+   - `minimax_stream_request_preserves_system_role_messages` -> assert `body["system"]` is set, no system role in messages
+   - `minimax_complete_request_preserves_system_role_messages_regression_578` -> same
+   - `minimax_stream_preserves_multiple_system_messages_regression_578` -> same
+
+## Edge cases
+
+- **No system messages**: `extract_system_prompt` returns `None`, body unchanged
+- **Empty system content**: Skipped (not added to `system_parts`)
+- **Multiple system messages at different positions**: All extracted and joined
+- **Non-MiniMax providers**: `is_minimax()` returns false, pass-through unchanged
+- **Custom provider with MiniMax base URL**: Detected via URL contains check
+
+## Verification
+
+```bash
+# Unit tests
+cargo test minimax -- --nocapture
+
+# Full test + lint
+just test
+just lint
+```
+
+After deploying, verify against live MiniMax API with a simple chat message
+(the smoke test that was unchecked in PR #586).
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-glitter-saver/f343bee8-a26f-4424-977b-7f7c9b039aa4.jsonl
+
+---
+
+Can you make it future proof since we had that issue multiple times
+
+---
+
+<task-notification>
+<task-id>bp6dcirk9</task-id>
+<tool-use-id>toolu_01GPXXUY7hX4X2LTSBBrCJLG</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glitter-saver/f343bee8-a26f-4424-977b-7f7c9b039aa4/tasks/bp6dcirk9.output</output-file>
+<status>failed</status>
+<summary>Background command "Run clippy lint check" failed with exit code 101</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glitter-saver/f343bee8-a26f-4424-977b-7f7c9b039aa4/tasks/bp6dcirk9.output
+
+---
+
+<task-notification>
+<task-id>bdtr4iv15</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glitter-saver/f343bee8-a26f-4424-977b-7f7c9b039aa4/tasks/bdtr4iv15.output</output-file>
+<status>failed</status>
+<summary>Background command "Run all tests" failed with exit code 101</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-glitter-saver/f343bee8-a26f-4424-977b-7f7c9b039aa4/tasks/bdtr4iv15.output
+
+---
+
+commit push and create a PR
+
+---
+
+Fix and resolve PR comments
