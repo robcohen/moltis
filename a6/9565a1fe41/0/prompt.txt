@@ -1,0 +1,156 @@
+Implement the following plan:
+
+# Fix: boot-md hook is a no-op (GitHub #594)
+
+## Context
+
+`BOOT.md` is supposed to provide startup context to the agent, but the entire
+injection path is broken. The `boot-md` hook fires on `GatewayStart` (a read-only
+event), returns `ModifyPayload({"boot_message": content})`, and the result is
+silently discarded. The string `"boot_message"` has zero consumers in the codebase.
+This has never worked.
+
+## Approach: Follow the workspace markdown pattern
+
+The codebase already has a well-tested pattern for workspace markdown files
+(SOUL.md, AGENTS.md, TOOLS.md, MEMORY.md): loaded per-session via `PromptPersona`,
+injected into the system prompt via `build_system_prompt_*()` functions.
+
+BOOT.md should follow the same pattern. The hook-based approach is fundamentally
+wrong — `GatewayStart` fires once at server start, not per session, and is read-only.
+
+### Changes
+
+#### 1. `crates/config/src/loader.rs` — add `boot_path()` + `load_boot_md_for_agent()`
+
+Follow the exact pattern of `tools_path()` / `load_tools_md_for_agent()`:
+
+```rust
+pub fn boot_path() -> PathBuf {
+    data_dir().join("BOOT.md")
+}
+
+pub fn load_boot_md() -> Option<String> {
+    load_workspace_markdown(boot_path())
+}
+
+pub fn load_boot_md_for_agent(agent_id: &str) -> Option<String> {
+    let agent_path = agent_workspace_dir(agent_id).join("BOOT.md");
+    load_workspace_markdown(agent_path).or_else(load_boot_md)
+}
+```
+
+Export the new functions from the crate's public API.
+
+#### 2. `crates/chat/src/lib.rs` — add `boot_text` to `PromptPersona`
+
+```rust
+struct PromptPersona {
+    // ...existing fields...
+    boot_text: Option<String>,
+}
+```
+
+In `load_prompt_persona_for_agent()`, add:
+```rust
+boot_text: moltis_config::load_boot_md_for_agent(agent_id),
+```
+
+#### 3. `crates/agents/src/prompt.rs` — inject boot_text into system prompt
+
+Add `boot_text: Option<&str>` parameter to `build_system_prompt_with_session_runtime()`,
+`build_system_prompt_minimal_runtime()`, and `build_system_prompt_full()`.
+
+In `build_system_prompt_full()`, add a new `append_boot_section()` call right
+**before** the workspace files section (boot context should appear early, after
+identity/soul but before workspace-specific details):
+
+```rust
+fn append_boot_section(prompt: &mut String, boot_text: Option<&str>) {
+    let Some(text) = boot_text else { return };
+    prompt.push_str("## Startup Context (BOOT.md)\n\n");
+    append_truncated_text_block(
+        prompt,
+        text,
+        WORKSPACE_FILE_MAX_CHARS,
+        "\n*(BOOT.md truncated for prompt size.)*\n",
+    );
+    prompt.push_str("\n\n");
+}
+```
+
+#### 4. Thread `boot_text` through all call sites
+
+Update all 5 call sites in `crates/chat/src/lib.rs` that call
+`build_system_prompt_with_session_runtime()` / `build_system_prompt_minimal_runtime()`
+to pass `persona.boot_text.as_deref()`.
+
+Also update `build_system_prompt()` (the convenience wrapper) to pass `None`.
+
+#### 5. Remove the hook — `crates/plugins/src/bundled/boot_md.rs`
+
+- Delete `boot_md.rs`
+- Remove `pub mod boot_md;` from `crates/plugins/src/bundled/mod.rs`
+- Remove the `BootMdHook::new()` registration in `crates/gateway/src/server.rs`
+- Remove the hook description entry in the built-in hooks list
+- Remove the `use boot_md::BootMdHook` import
+
+#### 6. Fix documentation
+
+- Update `DEFAULT_BOOT_MD` in `crates/gateway/src/server.rs` — change the
+  comment to say "Loaded per session and injected into the system prompt" instead
+  of "Read on every GatewayStart by the built-in boot-md hook"
+- Update `docs/src/hooks.md` if it references the boot-md hook
+
+#### 7. Tests
+
+- Add `test_boot_text_injected_into_prompt` in `crates/agents/src/prompt.rs`
+  (follow the pattern of `test_memory_text_injected_into_prompt`)
+- Add `test_load_boot_md_for_agent` in `crates/config/src/loader.rs`
+  (follow the pattern of `load_soul_for_agent` tests)
+- The existing `boot_md.rs` unit tests get deleted along with the file
+
+### Files to modify
+
+| File | Action |
+|------|--------|
+| `crates/config/src/loader.rs` | Add `boot_path()`, `load_boot_md()`, `load_boot_md_for_agent()` |
+| `crates/chat/src/lib.rs` | Add `boot_text` to `PromptPersona`, thread through call sites |
+| `crates/agents/src/prompt.rs` | Add `boot_text` param + `append_boot_section()`, add test |
+| `crates/plugins/src/bundled/boot_md.rs` | **Delete** |
+| `crates/plugins/src/bundled/mod.rs` | Remove `pub mod boot_md` |
+| `crates/gateway/src/server.rs` | Remove hook registration, update `DEFAULT_BOOT_MD` docs |
+| `docs/src/hooks.md` | Remove boot-md hook reference (if present) |
+
+## Verification
+
+```bash
+cargo test -p moltis-agents -- boot       # new prompt injection test
+cargo test -p moltis-config -- boot        # new loader test
+cargo check --workspace                    # ensure no broken imports
+just lint                                  # clippy clean
+just format-check                          # fmt clean
+```
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-yielding-asp/dd444c0b-1040-4a58-90f7-ed0b7c67134c.jsonl
+
+---
+
+commit push and create a PR
+
+---
+
+Fix and resolve PR comments
+
+---
+
+Fix and resolve new PR comments
+
+---
+
+Fix and resolve new PR comments
+
+---
+
+merge main solve conflicts commit and push

@@ -1,0 +1,80 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a69565a1fe41",
+  "session_id": "fecb92ba-c4d2-42c6-b664-2b3ffcce0395",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T14:36:24.765792Z",
+  "branch": "yielding-asp",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/loader.rs",
+    "crates/config/src/lib.rs",
+    "crates/agents/src/prompt.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2f3620718fb0",
+  "token_usage": {
+    "input_tokens": 147,
+    "cache_creation_tokens": 223526,
+    "cache_read_tokens": 13225840,
+    "output_tokens": 32227,
+    "api_call_count": 135
+  },
+  "summary": {
+    "intent": "Fix GitHub #594 where BOOT.md startup context injection was silently broken — the hook-based approach fired on a read-only GatewayStart event and its output was never consumed. Replace it with the existing workspace markdown pattern (SOUL.md, AGENTS.md, etc.) so BOOT.md is loaded per-session and injected into the system prompt.",
+    "outcome": "Successfully replaced the broken boot-md hook with the workspace markdown pattern: added loader functions, threaded boot_text through PromptPersona and all build_system_prompt_* call sites, deleted the hook, updated docs, added tests, and merged main twice with conflict resolution. PR #614 created and pushed.",
+    "learnings": {
+      "repo": [
+        "Workspace markdown files (SOUL.md, AGENTS.md, TOOLS.md, MEMORY.md, now BOOT.md) all follow the same pattern: loaded via load_*_md_for_agent() in config/loader.rs, added to PromptPersona in chat/src/lib.rs, injected via append_*_section() in agents/src/prompt.rs",
+        "GatewayStart is a read-only event fired once at server start — it cannot be used for per-session context injection",
+        "The prompt build functions have both a public wrapper (build_system_prompt_with_session_runtime) and an internal _details variant — both need parameter updates when adding new prompt fields",
+        "gemini-3-* models gained reasoning variants via starts_with('gemini-3') check in providers/src/lib.rs, causing the model count test to need updating from 6 to 9 after the Gemini 3.x catalog update",
+        "WORKSPACE_FILE_MAX_CHARS was renamed to DEFAULT_WORKSPACE_FILE_MAX_CHARS and increased from 6000 to 32000 chars during a main branch update merged mid-PR",
+        "append_truncated_text_block gained a 'name' parameter and now returns WorkspaceFilePromptStatus after a main branch refactor"
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/prompt.rs",
+          "line": 257,
+          "end_line": 290,
+          "finding": "build_system_prompt_with_session_runtime delegates to build_system_prompt_with_session_runtime_details — both wrappers and both _details variants need boot_text parameter when adding new prompt fields"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 11390,
+          "end_line": 11390,
+          "finding": "list_and_list_all_return_all_registered_models hardcodes expected model count — must be updated whenever new reasoning variants are added to any provider"
+        },
+        {
+          "path": "crates/config/src/loader.rs",
+          "finding": "load_*_md_for_agent() functions follow agent-specific path first, fall back to global data_dir() path via or_else — new BOOT.md follows this same fallback pattern"
+        }
+      ],
+      "workflow": [
+        "replace_all edits are effective for threading a new parameter through many call sites with consistent indentation patterns, but indentation variations require separate replace_all calls",
+        "Spawning a subagent to handle bulk test call-site updates (20+ locations) keeps the main context clean",
+        "Greptile bot catches stale test assertions referencing deleted hook names — worth checking after deleting any registered component",
+        "The single uncovered line in Codecov (load_boot_md_for_agent call in persona loader) is acceptable as integration-level code, same as all other workspace markdown fields"
+      ]
+    },
+    "friction": [
+      "Multiple rounds of PR comment fixes required (stale hook test, pre-existing CI model count failure, then clean Greptile pass) — required 3 separate push/fix cycles",
+      "Merging main mid-PR introduced a breaking rename (WORKSPACE_FILE_MAX_CHARS → DEFAULT_WORKSPACE_FILE_MAX_CHARS), a new _details function variant pattern, and a changed append_truncated_text_block signature — required reading large sections of prompt.rs to reconcile",
+      "CI failures were mostly cascade failures from a local/E2E status gate system, making it hard to identify the single real test failure (model count assertion) among many dependent job failures",
+      "Indentation variations across call sites (3 different levels) meant replace_all could not be used uniformly — required three separate replacement passes"
+    ],
+    "open_items": [
+      "The load_boot_md_for_agent() call in load_prompt_persona_for_agent() (chat/src/lib.rs) has no unit test coverage — integration-level only, same as all other workspace markdown loaders",
+      "The CI local/E2E Validation gate system that caused cascading failures is opaque — unclear what triggers it or how to unblock it without a full environment"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T14:35:50.638762Z",
+    "agent_lines": 0,
+    "human_added": 1633,
+    "human_modified": 28,
+    "human_removed": 0,
+    "total_committed": 1633,
+    "agent_percentage": 0
+  }
+}
