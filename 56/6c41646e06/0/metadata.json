@@ -1,0 +1,113 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "566c41646e06",
+  "session_id": "f121323c-d69f-4896-b4bd-8826347073cf",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T10:29:44.762641Z",
+  "branch": "claude/plan-browser-viewing-HOHno",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/web/src/assets/js/page-browser.js",
+    "crates/web/ui/e2e/specs/browser.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "22d8ef189315",
+  "token_usage": {
+    "input_tokens": 4871,
+    "cache_creation_tokens": 5163645,
+    "cache_read_tokens": 596490672,
+    "output_tokens": 373262,
+    "api_call_count": 1311
+  },
+  "summary": {
+    "intent": "Build a complete browser-in-browser viewing UI for Moltis's Settings \u003e Browser page, enabling live CDP screencast viewing with full mouse/keyboard/scroll interaction, session management, cookie persistence, and chat integration.",
+    "outcome": "Delivered a fully functional interactive browser viewer with live streaming, session history (SQLite), per-agent cookie profiles, URL autocomplete, paste support, stealth Chrome flags, and 55+ e2e tests. PR #531 created with ~70 commits.",
+    "learnings": {
+      "repo": [
+        "WebSocket v4 protocol requires explicit event subscription — events not in the subscription list are silently dropped by the broadcast filter in gateway/src/broadcast.rs",
+        "BrowserManager uses Arc\u003cOnceCell\u003cArc\u003cBrowserManager\u003e\u003e\u003e for lazy initialization — manager() is async and inits on first use, so hooks must be registered inside the init closure, not at startup",
+        "The gateway has two separate BrowserManager instances (BrowserTool and RealBrowserService) that must share one via Arc\u003cOnceCell\u003e for sessions to be visible in the UI",
+        "biome organize-imports can create duplicate import names when merging separate import statements — must check after biome --write runs",
+        "The settings router strips query strings from paths, so session IDs must be passed via module-level variables (pendingSelectSession) rather than URL params",
+        "axum 0.8 path syntax uses {param} not :param",
+        "Chrome profile SingletonLock is a symlink, and exists() follows symlinks returning false for dangling ones — must use symlink_metadata() for cleanup",
+        "CDP mouseWheel requires BOTH deltaX and deltaY — omitting either causes 'deltaX and deltaY are expected' error and silent scroll failure",
+        "Canvas event listeners must use ref callbacks (not useEffect with [] deps) when canvas is conditionally rendered — useEffect fires once before canvas exists",
+        "The worktree path is /Users/penso/.superset/worktrees/moltis/claude/plan-browser-viewing-HOHno, data dir is .moltis/"
+      ],
+      "code": [
+        {
+          "path": "crates/browser/src/screencast.rs",
+          "line": 237,
+          "end_line": 239,
+          "finding": "Original relay exited on tx.send() with no receivers — caused 'Waiting for first frame' race condition. Fixed by ignoring SendError instead of breaking"
+        },
+        {
+          "path": "crates/browser/src/manager.rs",
+          "finding": "action_name from Display impl includes parameters ('mouse_input(x=1,y=2)'), so exact string matching for cleanup decisions fails silently — must use starts_with()"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "RealBrowserService uses session_store: OnceCell and action_hook: OnceCell so they can be set after db_pool is created (which happens after service construction)"
+        },
+        {
+          "path": "crates/browser/src/pool.rs",
+          "finding": "BrowserInstance.browser changed to Arc\u003cBrowser\u003e for tab reuse — same profile_id creates new tab in existing browser instance, sharing cookies without profile lock conflicts"
+        },
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "finding": "browser.screencast.frame must be in the eventHandlers subscription list passed to the server — it was missing, causing all screencast frames to be silently dropped"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-browser.js",
+          "finding": "inline-block on scrollbar wrapper div prevents proper height containment for aspect-ratio canvas — scrollbar renders below canvas. Must use block display (default div)"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "BrowserConfig.sandbox field only affects RealBrowserService (UI path). BrowserTool uses SandboxRouter and needs sandbox_override: Option\u003cbool\u003e set from config to respect sandbox=false"
+        },
+        {
+          "path": "crates/browser/src/container.rs",
+          "finding": "CHROME_FLAGS env var passes flags to browserless/chrome container's Chrome process — used to add --restore-session-cookies and stealth flags"
+        }
+      ],
+      "workflow": [
+        "local-validate.sh uses system biome (v2.4.6), NOT npx biome (v0.3.3) — formatting must use system biome or results won't match CI",
+        "YubiKey GPG signing blocks background tasks — foreground commits required or user must tap before task runs",
+        "Chrome SharedProfile strategy: same profile_id = new tab in existing browser (Arc\u003cBrowser\u003e), different profile_id = new container. One container per profile, multiple tabs per container",
+        "CDP EventFrameNavigated eliminates polling for URL changes; screencast frame metadata (scroll_offset_y) eliminates polling for scroll position",
+        "Rapid stop/start of CDP screencasts overwhelms Chrome — never call stop_screencast on session switch, use per-session frame filtering in the JS listener instead"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing blocked multiple background git commits — required repeated manual taps and foreground retries",
+      "biome organize-imports silently created duplicate 'navigate' import names when merging new imports into existing lines, causing runtime SyntaxErrors",
+      "Chrome SingletonLock as dangling symlink caused Chrome to refuse to start — very hard to debug because exists() returned false for a file that was blocking Chrome",
+      "LinkedIn's Chrome container kept timing out and freezing (CDPErrors, ERR_NETWORK_CHANGED) due to container networking overhead and memory pressure from JS-heavy pages",
+      "The action hook registration timing issue (manager lazy-inits after startup) meant session history was silently not working — no errors, just empty history",
+      "Canvas aspect-ratio + inline-block creates scrollbar positioning failure that looks correct in code but breaks in rendering",
+      "axum path syntax change (:param → {param}) caused a runtime panic, not a compile error",
+      "Agent (MiniMax M2.7) kept misinterpreting what was visible in screenshots (describing sign-in page when user was logged in) — not a code issue but significant workflow friction"
+    ],
+    "open_items": [
+      "WebRTC upgrade for sub-100ms latency (vs current 100-300ms CDP screencast) — neko/webrtc-rs identified as right approach",
+      "Binary WebSocket frames instead of base64 JSON for ~33% bandwidth reduction",
+      "Video recording/replay of browser sessions (JPEG snapshots on key actions were mentioned but not implemented)",
+      "Container memory/disk monitoring in Settings UI (user asked, explicitly deferred)",
+      "Chat screenshot persistence across page reloads (screenshots are transient media/ files, not persisted)",
+      "Per-session browser profiles UI allowing named profiles from config rather than auto-derived from session key",
+      "The 55+ e2e tests added cover UI interactions but require a live server — no mock/stub infrastructure exists for truly isolated browser feature testing",
+      "The scrollbar click-to-scroll feature uses estimated page height (from evaluate on navigate) rather than live updates — page height can change as content loads",
+      "Profile sharing means concurrent sessions in same profile can have cookie race conditions during heavy writes"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T10:28:39.748229Z",
+    "agent_lines": 1529,
+    "human_added": 36980,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 38509,
+    "agent_percentage": 3.970500402503311
+  }
+}
