@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "637b47c608ca",
+  "strategy": "manual-commit",
+  "branch": "unequaled-tennis",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/openai.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/63/7b47c608ca/0/metadata.json",
+      "transcript": "/63/7b47c608ca/0/full.jsonl",
+      "context": "/63/7b47c608ca/0/context.md",
+      "content_hash": "/63/7b47c608ca/0/content_hash.txt",
+      "prompt": "/63/7b47c608ca/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 100934,
+    "cache_read_tokens": 779238,
+    "output_tokens": 1436,
+    "api_call_count": 8
+  }
+}
