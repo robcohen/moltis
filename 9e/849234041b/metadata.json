@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9e849234041b",
+  "strategy": "manual-commit",
+  "branch": "glistening-amazonsaurus",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/oauth.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9e/849234041b/0/metadata.json",
+      "transcript": "/9e/849234041b/0/full.jsonl",
+      "context": "/9e/849234041b/0/context.md",
+      "content_hash": "/9e/849234041b/0/content_hash.txt",
+      "prompt": "/9e/849234041b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 4272,
+    "cache_read_tokens": 562757,
+    "output_tokens": 1472,
+    "api_call_count": 8
+  }
+}

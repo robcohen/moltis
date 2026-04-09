@@ -1,0 +1,57 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9e849234041b",
+  "session_id": "e4567973-2f85-4b67-8422-9c8f5153b055",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T10:11:55.848682Z",
+  "branch": "glistening-amazonsaurus",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/oauth.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2836c35e4141",
+  "checkpoint_transcript_start": 267,
+  "transcript_lines_at_start": 267,
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 4272,
+    "cache_read_tokens": 562757,
+    "output_tokens": 1472,
+    "api_call_count": 8
+  },
+  "summary": {
+    "intent": "Fix a flaky OAuth E2E test where a regex locator was matching multiple elements, then merge main into the branch to incorporate upstream changes.",
+    "outcome": "Scoped the locator to `#providerModalTitle` to fix the ambiguous match, then resolved a merge conflict by adopting main's `waitForOAuthConnectionComplete()` helper refactor.",
+    "learnings": {
+      "repo": [
+        "main branch introduced a `waitForOAuthConnectionComplete()` helper in oauth.spec.js as a canonical fix for OAuth connection waiting logic",
+        "The provider modal title element is `#providerModalTitle` — use this to scope locators and avoid matching label divs with similar text"
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/e2e/specs/oauth.spec.js",
+          "finding": "Regex `/connected successfully|Select Model/i` matched both `#providerModalTitle` and a label div; must scope to `#providerModalTitle` to uniquely target the modal title. Main's `waitForOAuthConnectionComplete()` helper encapsulates this correctly."
+        }
+      ],
+      "workflow": [
+        "When merging, prefer upstream helpers/abstractions over local fixes if they solve the same problem more cleanly",
+        "Conflict resolution at 3 sites in the same file suggests the local fix and main's refactor were parallel solutions to the same root cause"
+      ]
+    },
+    "friction": [
+      "Merge conflict required manually resolving 3 conflict sites in oauth.spec.js",
+      "Local fix and main's refactor were parallel solutions, meaning the local work was partially duplicated effort"
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T10:11:45.232311Z",
+    "agent_lines": 23,
+    "human_added": 16516,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 16539,
+    "agent_percentage": 0.13906523973638069
+  }
+}
