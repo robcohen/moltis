@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "db8597e1ab2c",
+  "strategy": "manual-commit",
+  "branch": "courageous-freezer",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/providers/src/openai.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/db/8597e1ab2c/0/metadata.json",
+      "transcript": "/db/8597e1ab2c/0/full.jsonl",
+      "context": "/db/8597e1ab2c/0/context.md",
+      "content_hash": "/db/8597e1ab2c/0/content_hash.txt",
+      "prompt": "/db/8597e1ab2c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 70,
+    "cache_creation_tokens": 64310,
+    "cache_read_tokens": 4069213,
+    "output_tokens": 14245,
+    "api_call_count": 62
+  }
+}

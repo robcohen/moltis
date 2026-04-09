@@ -1,0 +1,117 @@
+Implement the following plan:
+
+# Fix: 404 selecting Ollama model (issue #615)
+
+## Context
+
+Users on Linux selecting an Ollama model (e.g., `gemma4:e2b`) in the web UI get a 404 error.
+Model discovery works (models are listed via `/api/tags`), but the probe request to
+`/v1/chat/completions` fails. Two root causes identified:
+
+1. **Hostname divergence**: Discovery uses `localhost:11434`, but the probe uses
+   `127.0.0.1:11434`. On Linux with IPv6, these can resolve differently.
+2. **No fallback**: When the OpenAI-compat endpoint returns 404, there's no attempt
+   to use Ollama's native API.
+3. **Raw error**: The 404 is not humanized, so the user sees an opaque error string.
+
+## Changes
+
+### 1. Align Ollama default base URL
+
+**File:** `crates/providers/src/lib.rs:1397`
+
+Change `OPENAI_COMPAT_PROVIDERS` Ollama entry from `"http://127.0.0.1:11434/v1"` to
+`"http://localhost:11434/v1"`. This matches the `KnownProvider` definition in
+`crates/provider-setup/src/lib.rs:910`.
+
+Users who need a specific address can still override via `OLLAMA_BASE_URL` or config.
+
+### 2. Add Ollama-native probe fallback
+
+**File:** `crates/providers/src/openai.rs`
+
+In `probe_chat_completions()`, after the 404 error path (line ~595), detect
+`self.provider_name == "ollama"` and fall back to a native probe:
+
+- Add `probe_ollama_native(&self) -> anyhow::Result<()>` method
+- Derives API base from `self.base_url` by stripping `/v1` (reuse
+  `super::normalize_ollama_api_base_url`)
+- POSTs to `{api_base}/api/show` with `{"name": self.model}`
+- On success: return `Ok(())` (model exists, Ollama is reachable)
+- On failure: bail with a helpful message suggesting `ollama pull <model>`
+
+Important: the fallback fires **only** on 404 from the OpenAI-compat endpoint, not on
+other errors (connection refused, timeout, etc.).
+
+### 3. Humanize 404 probe errors in JS
+
+**File:** `crates/web/src/assets/js/provider-validation.js`
+
+Add a case in `humanizeProbeError()` (after the `connection refused` case):
+
+```javascript
+if (lower.includes("404") || lower.includes("not found")) {
+    return "Model not found at this endpoint. Make sure it is installed and try again.";
+}
+```
+
+### 4. Add 404 case in Rust error parser
+
+**File:** `crates/chat/src/chat_error.rs`
+
+Add `404` arm in `try_parse_known_error()` match block (between 429 and 500):
+
+```rust
+404 => {
+    return build_error(
+        "model_not_found",
+        "\u{26A0}\u{FE0F}",
+        "Model not found",
+        "...",
+        None,
+        None,
+        None,
+    );
+},
+```
+
+### 5. Tests
+
+| Test | File | What it verifies |
+|------|------|-----------------|
+| `ollama_probe_falls_back_to_native_api_show_on_404` | `openai.rs` | Mock returns 404 on `/v1/chat/completions`, 200 on `/api/show` -> probe succeeds |
+| `ollama_probe_native_fallback_also_fails` | `openai.rs` | Both endpoints return 404 -> error mentions `ollama pull` |
+| `non_ollama_provider_does_not_fallback_on_404` | `openai.rs` | Provider named "openai" with 404 -> no fallback attempted |
+| `test_http_404_maps_to_model_not_found` | `chat_error.rs` | Error with HTTP 404 parses as `model_not_found` type |
+| `ollama_default_base_url_uses_localhost` | `lib.rs` | Assert `OPENAI_COMPAT_PROVIDERS` Ollama entry uses `localhost` |
+
+## Files to modify
+
+- `crates/providers/src/lib.rs` — base URL alignment + optional visibility for normalize fn
+- `crates/providers/src/openai.rs` — probe fallback + tests
+- `crates/web/src/assets/js/provider-validation.js` — humanize 404
+- `crates/chat/src/chat_error.rs` — 404 error type + test
+
+## Verification
+
+1. `just format-check` (Rust fmt)
+2. `just lint` (clippy)
+3. `just test` (all unit tests including new ones)
+4. `biome check --write` (JS lint)
+5. Manual QA: with Ollama running, select a model in the web UI -> probe succeeds
+6. Manual QA: stop Ollama or select a non-existent model -> humanized error shown
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-courageous-freezer/ece686e4-3585-44d7-a0f5-fd3365290c24.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments
+
+---
+
+Fix and resolve PR comments
