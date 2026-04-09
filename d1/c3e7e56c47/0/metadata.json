@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d1c3e7e56c47",
+  "session_id": "ffc724ad-e37c-429d-88a4-5ea02d58129f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T17:30:44.649291Z",
+  "branch": "nervous-ironclad",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/tests/fireworks_integration.rs",
+    "crates/providers/tests/minimax_integration.rs",
+    "crates/providers/tests/moonshot_integration.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f2f6995b38e6",
+  "checkpoint_transcript_start": 625,
+  "transcript_lines_at_start": 625,
+  "token_usage": {
+    "input_tokens": 35,
+    "cache_creation_tokens": 35969,
+    "cache_read_tokens": 6008619,
+    "output_tokens": 16032,
+    "api_call_count": 31
+  },
+  "summary": {
+    "intent": "Add live integration tests for Fireworks, OpenAI, and Anthropic providers, following the pattern established for MiniMax and Moonshot.",
+    "outcome": "Fireworks (8/9 passing, 1 transient rate limit), Anthropic (9/9 passing after case-insensitive fix), and OpenAI (model discovery passed, live tests blocked by insufficient quota) integration tests were written and committed.",
+    "learnings": {
+      "repo": [
+        "MiniMax silently ignores the top-level `system` field; system content must be prepended to the first user message.",
+        "Moonshot's `reasoning_content` field for multi-turn tool use requires the original reasoning from step 1, which `ChatMessage` doesn't carry — a known structural limitation.",
+        "Fireworks is a standard OpenAI-compatible provider with no quirks; model discovery is enabled and returned 7 models, but only 3 were alive at test time.",
+        "OpenAI model discovery found 102 models not in the catalog.",
+        "Some LLM providers (e.g., Anthropic) may not preserve keyword casing in responses, requiring case-insensitive assertions in tests."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/tests/fireworks_integration.rs",
+          "finding": "Initial test model (llama-v3p1-70b-instruct) was dead; replaced with a working model after catalog check revealed only 3/7 models alive."
+        },
+        {
+          "path": "crates/providers/tests/anthropic_integration.rs",
+          "finding": "System prompt keyword assertion failed because Anthropic lowercased the response; fixed by making all keyword checks case-insensitive across all provider test files."
+        }
+      ],
+      "workflow": [
+        "Running a full test suite against a free-tier API account can exhaust rate limits mid-run, causing transient 429 failures on later tests (especially multi-turn).",
+        "Case-insensitive keyword assertions should be the default pattern for all provider integration tests to avoid false negatives from model response normalization.",
+        "Catalog/model discovery tests are valuable for detecting provider-side model deprecations before they affect users."
+      ]
+    },
+    "friction": [
+      "Fireworks free-tier rate limit caused a 429 on the multi-turn test, requiring manual cooldown and retry.",
+      "Fireworks default test model was dead, requiring a mid-session fix after the catalog check surfaced the issue.",
+      "OpenAI account had insufficient credits, blocking all live inference tests despite correct test code.",
+      "Anthropic system prompt test failed initially due to unexpected lowercasing behavior, requiring a case-insensitive fix across all test files."
+    ],
+    "open_items": [
+      "GitHub Copilot integration tests are not written — OAuth device flow requires special handling beyond a plain API key.",
+      "OpenAI live inference tests remain untested due to insufficient account quota; needs credits to validate.",
+      "Fireworks multi-turn test correctness is assumed but not confirmed against the live API due to rate limiting.",
+      "Moonshot `reasoning_content` multi-turn tool use limitation is documented but not resolved — `ChatMessage` would need to carry reasoning content to fix it.",
+      "13 new Moonshot models discovered in `/models` endpoint are not yet added to the catalog."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T17:30:21.731271Z",
+    "agent_lines": 384,
+    "human_added": 638,
+    "human_modified": 6,
+    "human_removed": 0,
+    "total_committed": 1028,
+    "agent_percentage": 37.35408560311284
+  }
+}
