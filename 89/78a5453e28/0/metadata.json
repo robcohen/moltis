@@ -1,0 +1,96 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8978a5453e28",
+  "session_id": "ffc724ad-e37c-429d-88a4-5ea02d58129f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-09T22:12:13.529892Z",
+  "branch": "nervous-ironclad",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/tests/anthropic_integration.rs",
+    "crates/providers/tests/deepseek_integration.rs",
+    "crates/providers/tests/fireworks_integration.rs",
+    "crates/providers/tests/gemini_integration.rs",
+    "crates/providers/tests/minimax_integration.rs",
+    "crates/providers/tests/mistral_integration.rs",
+    "crates/providers/tests/moonshot_integration.rs",
+    "crates/providers/tests/openai_integration.rs",
+    "crates/providers/tests/openrouter_integration.rs",
+    "crates/providers/tests/zai_integration.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "42204224daaf",
+  "checkpoint_transcript_start": 1055,
+  "transcript_lines_at_start": 1055,
+  "token_usage": {
+    "input_tokens": 140,
+    "cache_creation_tokens": 314634,
+    "cache_read_tokens": 29519760,
+    "output_tokens": 39428,
+    "api_call_count": 110
+  },
+  "summary": {
+    "intent": "Add integration tests for all supported AI providers in a multi-provider Rust library, wire them into a daily CI workflow, and fix a probe bug affecting GPT-5 and reasoning models.",
+    "outcome": "101 integration tests across 11 providers committed and pushed to PR; daily CI workflow created; PR review comment about Secret\u003cT\u003e handling fixed. Kimi Code skipped due to membership cost; Gemini and Mistral had transient issues resolved.",
+    "learnings": {
+      "repo": [
+        "Integration tests are #[ignore]'d and must be explicitly opted in with --ignored flag",
+        "Gemini API returns model IDs with 'models/' prefix that must be stripped when comparing against catalog",
+        "Gemini and Moonshot both require thought_signature on replayed tool calls in multi-turn conversations — needs graceful handling in tests",
+        "Kimi Code is a separate paid subscription from Moonshot despite being the same company; minimal coverage gain over existing Moonshot tests",
+        "Z.AI models glm-4.7-flash and glm-4.7-flashx return 500s; two undocumented models discovered: glm-5-turbo and glm-5.1",
+        "OpenRouter has cache control for Anthropic models but is otherwise standard OpenAI-compatible",
+        "GPT-5 and o1/o3/o4 reasoning models require max_completion_tokens \u003e= 16 (not 1) for probe requests",
+        "OAuth token lacks 'workflow' scope for pushing .github/workflows files; SSH key required for that"
+      ],
+      "code": [
+        {
+          "path": "crates/providers/tests/minimax_integration.rs",
+          "finding": "Raw std::env::var reads into plain String for API key in model discovery tests — should use api_key() helper with Secret\u003cT\u003e and expose_secret()"
+        },
+        {
+          "path": "crates/providers/tests/gemini_integration.rs",
+          "finding": "Multi-turn tool call test needs graceful skip when thought_signature is missing, same pattern as Moonshot"
+        },
+        {
+          "path": ".github/workflows/provider-integration.yml",
+          "finding": "Daily cron workflow for provider integration tests; runs sequentially per provider to avoid rate limits; uses ubuntu-latest (not self-hosted CUDA runner)"
+        }
+      ],
+      "workflow": [
+        "Integration tests should run on schedule (daily/nightly) not every PR to avoid API costs",
+        "Running provider test suites sequentially (--test-threads=1) avoids rate limit issues",
+        "gh secret set \u003cNAME\u003e prompts for value interactively; can also pipe: echo 'key' | gh secret set NAME",
+        "gh workflow run \u003cname\u003e.yml triggers a manual workflow run for immediate testing",
+        "Fireworks free tier has aggressive rate limits; expect occasional test failures"
+      ]
+    },
+    "friction": [
+      "OAuth token lacked 'workflow' scope, blocking push of CI workflow file — required manual SSH push",
+      "Bash tool doesn't inherit direnv-loaded env vars; had to source .envrc from main checkout path explicitly",
+      "Gemini API returns models with 'models/' prefix, causing catalog comparison mismatches not caught until runtime",
+      "Gemini free tier quota exhausted on gemini-2.0-flash-lite; required billing enablement",
+      "Mistral API had transient 503s during test run, making pass/fail status ambiguous",
+      "Kimi Code 402 error revealed a paid membership requirement not obvious from the API key alone",
+      "Duplicate env: key in initial provider-integration.yml required a fix pass"
+    ],
+    "open_items": [
+      "Cerebras integration tests not yet written (CEREBRAS_API_KEY not added)",
+      "Venice integration tests not yet written (VENICE_API_KEY not added)",
+      "Z.AI Code integration tests not yet written (Z_CODE_API_KEY not added; same key as Z_API_KEY)",
+      "Kimi Code tests exist but are blocked by membership requirement — consider removing or marking permanently skipped",
+      "Z.AI catalog outdated: glm-4.7-flash and glm-4.7-flashx return 500s; glm-5-turbo and glm-5.1 discovered but not in catalog",
+      "ChatMessage doesn't carry provider-specific metadata (thought_signature), causing multi-turn failures on Gemini and Moonshot — architectural limitation to address",
+      "Mistral, Gemini, Cerebras, Z.AI Code, Venice CI secrets still need to be added via gh secret set"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-09T22:11:41.690918Z",
+    "agent_lines": 1464,
+    "human_added": 373,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1837,
+    "agent_percentage": 79.69515514425694
+  }
+}

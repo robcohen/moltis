@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8978a5453e28",
+  "strategy": "manual-commit",
+  "branch": "nervous-ironclad",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/tests/anthropic_integration.rs",
+    "crates/providers/tests/deepseek_integration.rs",
+    "crates/providers/tests/fireworks_integration.rs",
+    "crates/providers/tests/gemini_integration.rs",
+    "crates/providers/tests/minimax_integration.rs",
+    "crates/providers/tests/mistral_integration.rs",
+    "crates/providers/tests/moonshot_integration.rs",
+    "crates/providers/tests/openai_integration.rs",
+    "crates/providers/tests/openrouter_integration.rs",
+    "crates/providers/tests/zai_integration.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/89/78a5453e28/0/metadata.json",
+      "transcript": "/89/78a5453e28/0/full.jsonl",
+      "context": "/89/78a5453e28/0/context.md",
+      "content_hash": "/89/78a5453e28/0/content_hash.txt",
+      "prompt": "/89/78a5453e28/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 140,
+    "cache_creation_tokens": 314634,
+    "cache_read_tokens": 29519760,
+    "output_tokens": 39428,
+    "api_call_count": 110
+  }
+}

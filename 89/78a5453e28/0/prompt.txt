@@ -1,0 +1,98 @@
+If you look at https://github.com/moltis-org/moltis/issues/592 https://github.com/moltis-org/moltis/issues/582 https://github.com/moltis-org/moltis/issues/578 There are minimax issue. 
+
+My .envrc has MINIMAX_API_KEY which works with credit, write tests to ensure every fix is done, I'll add this secret to the repo too for the CI jobs. Add something to detect models too so when new models are available, I'm aware of it and we can fix it.
+
+We'll do the same things with other providers. I'll add all API keys.
+
+---
+
+Yes. commit , push, create a PR.
+
+---
+
+I also have a FIREWORKS_API_KEY add similar tests
+
+---
+
+<task-notification>
+<task-id>bf4cz07v2</task-id>
+<tool-use-id>toolu_01SWm1qVWeYrT4hGESKsVoez</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/bf4cz07v2.output</output-file>
+<status>completed</status>
+<summary>Background command "Run Anthropic integration tests (with case-insensitive fix)" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/bf4cz07v2.output
+
+---
+
+Try openai again, I added credit
+
+---
+
+Fix the gpt-5 probe bug.
+
+---
+
+<task-notification>
+<task-id>bd7s3uqqv</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/bd7s3uqqv.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push probe fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/bd7s3uqqv.output
+
+---
+
+shall I add those variables on the CI now so it runs there too?
+
+---
+
+Add the daily CI job yourself, add the rate limiting. Tell me, using `gh` how to add those secrets
+
+---
+
+what env do I need for other providers? Give me the exhaustive list so I create tokens everywhere with credits
+
+---
+
+I just added MISTRAL_API_KEY, OPENROUTER_API_KEY and KIMI_API_KEY in .envrc and github secrets, please add tests
+
+---
+
+I just added DEEPSEEK_API_KEY
+
+---
+
+I just added GEMINI_API_KEY
+
+---
+
+what integration is missing and i should get api keys for?
+
+---
+
+I added Z_API_KEY
+
+---
+
+<task-notification>
+<task-id>b2nc4wfqw</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/b2nc4wfqw.output</output-file>
+<status>completed</status>
+<summary>Background command "Run Z.AI integration tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-nervous-ironclad/ffc724ad-e37c-429d-88a4-5ea02d58129f/tasks/b2nc4wfqw.output
+
+---
+
+what's the mistral transcient 503, and I need membership for kimi code?! it's expensive just to run tests...
+
+---
+
+commit and push
+
+---
+
+Fix and resolve PR comments
