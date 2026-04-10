@@ -1,0 +1,97 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4e75121cffec",
+  "session_id": "959bfef8-a00a-4af3-b88e-6afa4446d238",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T14:31:26.849469Z",
+  "branch": "bubble-milk",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/voice/src/stt/whisper.rs",
+    "crates/gateway/src/voice.rs",
+    "crates/config/src/template.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b4f55628e1c6",
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 119108,
+    "cache_read_tokens": 1524066,
+    "output_tokens": 9644,
+    "api_call_count": 29
+  },
+  "summary": {
+    "intent": "Investigate why GitHub issue #631 (whisper.model and whisper.language config fields never worked) and implement a fix.",
+    "outcome": "Fixed both the WhisperStt struct (added language field, with_options constructor, language fallback in transcribe) and the gateway factory (wired config through to with_options). Added config template documentation for [voice.stt.whisper]. All tests pass.",
+    "learnings": {
+      "repo": [
+        "GroqStt is the canonical reference implementation for STT providers — struct holds model+language, with_options takes both, transcribe uses request.language.or_else(|| self.language.clone()).",
+        "The gateway factory (create_provider) rebuilds STT providers on every request via discover_and_load — wasteful but intentional at this time.",
+        "bd (beads) issue tracker is used: create issue before writing code, claim it, close on commit.",
+        "Commit convention: conventional commits format e.g. 'fix(voice): ...', no Co-Authored-By.",
+        "Pre-commit workflow: just format, just lint, just test — but just lint has a pre-existing CUDA/macOS failure unrelated to changes.",
+        "Config template (crates/config/src/template.rs) must be updated in the same PR as user-facing behavior changes per CLAUDE.md."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/voice.rs",
+          "line": 519,
+          "end_line": 524,
+          "finding": "WhisperStt was constructed with WhisperStt::new(Some(k)) — hardcoded model 'whisper-1', no language. Config was never passed through despite being loaded on every call."
+        },
+        {
+          "path": "crates/voice/src/stt/whisper.rs",
+          "line": 30,
+          "end_line": 34,
+          "finding": "WhisperStt struct only had client, api_key, model — no language field, making whisper.language a dead config key."
+        },
+        {
+          "path": "crates/voice/src/stt/whisper.rs",
+          "line": 121,
+          "end_line": 121,
+          "finding": "transcribe only used request.language; no fallback to a configured language even after fix to struct."
+        },
+        {
+          "path": "crates/voice/src/stt/whisper.rs",
+          "line": 64,
+          "end_line": 64,
+          "finding": "with_model constructor existed but was only used in unit tests (L242), never in production — dead production path."
+        },
+        {
+          "path": "crates/voice/src/stt/groq.rs",
+          "line": 33,
+          "end_line": 34,
+          "finding": "Groq struct already had model+language fields; lines 67-77 show with_options, 129-131 show language fallback — used as template for Whisper fix."
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "line": 648,
+          "end_line": 651,
+          "finding": "VoiceWhisperConfig already had model and language fields defined — schema was correct, only the factory and provider struct were broken."
+        }
+      ],
+      "workflow": [
+        "When just lint fails globally due to platform issues (CUDA/macOS), run targeted clippy on only the touched crates instead.",
+        "Filing a bd issue before writing code and claiming it is part of the standard contribution workflow in this repo."
+      ]
+    },
+    "friction": [
+      "just lint has a pre-existing CUDA/macOS build failure that blocks global lint runs — requires targeted clippy workaround.",
+      "with_model existed as a partial solution but was misleadingly named and only wired to tests, not production, causing confusion about what was actually broken."
+    ],
+    "open_items": [
+      "The create_provider pattern rebuilds STT providers on every request (via discover_and_load) — wasteful, noted as tech debt but out of scope for this fix.",
+      "with_model constructor is now redundant (only had test callers) — could be removed or made to delegate to with_options in a follow-up cleanup.",
+      "Verify docs/src/ voice page doesn't claim whisper model/language fields work or don't work — a quick grep was recommended but may not have been completed."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T14:31:01.943223Z",
+    "agent_lines": 65,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 65,
+    "agent_percentage": 100
+  }
+}

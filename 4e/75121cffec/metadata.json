@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4e75121cffec",
+  "strategy": "manual-commit",
+  "branch": "bubble-milk",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/template.rs",
+    "crates/gateway/src/voice.rs",
+    "crates/voice/src/stt/whisper.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4e/75121cffec/0/metadata.json",
+      "transcript": "/4e/75121cffec/0/full.jsonl",
+      "context": "/4e/75121cffec/0/context.md",
+      "content_hash": "/4e/75121cffec/0/content_hash.txt",
+      "prompt": "/4e/75121cffec/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 119108,
+    "cache_read_tokens": 1524066,
+    "output_tokens": 9644,
+    "api_call_count": 29
+  }
+}
