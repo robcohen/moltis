@@ -1,0 +1,81 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "01700b0e7250",
+  "session_id": "9d35cd11-24eb-47d1-b6e1-512c226cd905",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:33:38.557038Z",
+  "branch": "boulder-penalty",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/oauth/src/redirect.rs",
+    "crates/oauth/src/lib.rs",
+    "crates/mcp/src/auth.rs",
+    "crates/provider-setup/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "93cdb9f40bc6",
+  "checkpoint_transcript_start": 264,
+  "transcript_lines_at_start": 264,
+  "token_usage": {
+    "input_tokens": 33,
+    "cache_creation_tokens": 31486,
+    "cache_read_tokens": 3781215,
+    "output_tokens": 16385,
+    "api_call_count": 28
+  },
+  "summary": {
+    "intent": "Fix RFC 8252 compliance for loopback OAuth redirect URIs in the MCP OAuth provider, then extend the fix to shared infrastructure and provider-setup.",
+    "outcome": "Promoted normalize_loopback_redirect to a shared moltis-oauth crate, applied it in both MCP and provider-setup OAuth flows, committed the follow-up, and prepared a PR; a tracking issue was filed for the unresolved manual [mcp.servers.*.oauth] override complaint.",
+    "learnings": {
+      "repo": [
+        "normalize_loopback_redirect logic now lives in crates/oauth/src/redirect.rs and is re-exported from crates/oauth/src/lib.rs for use across MCP and provider-setup crates.",
+        "moltis_tls::serve_tls_with_http_redirect transparently bounces plain-HTTP OAuth callbacks to the HTTPS handler, preserving path and query — loopback normalization relies on this.",
+        "Non-loopback hosts (e.g. https://moltis.lan) are intentionally unaffected by the normalization helper.",
+        "build_auth_provider in manager.rs has a branch (~line 242) that skips discovery for manual [mcp.servers.*.oauth] overrides — this path appeared correct but could not be reproduced against a live provider.",
+        "provider-oauth.js uses ${window.location.origin}/auth/callback for redirect URIs; the provider-setup oauth_start use_server_callback branch is the Rust-side counterpart that was updated."
+      ],
+      "code": [
+        {
+          "path": "crates/oauth/src/redirect.rs",
+          "finding": "New shared module containing normalize_loopback_redirect: rewrites https:// to http:// when host is localhost, 127.0.0.1, or ::1; hosts all 10 unit tests for the helper."
+        },
+        {
+          "path": "crates/mcp/src/auth.rs",
+          "finding": "Removed local normalize_loopback_redirect implementation and its 10 unit tests; now imports from moltis_oauth::redirect. Retained the start_web_oauth_flow integration test (mockito-based)."
+        },
+        {
+          "path": "crates/provider-setup/src/lib.rs",
+          "finding": "Added import of moltis_oauth::redirect::normalize_loopback_redirect and applied it in the oauth_start function to normalize redirect URIs before passing them downstream."
+        },
+        {
+          "path": "crates/mcp/src/manager.rs",
+          "line": 242,
+          "finding": "Manual oauth override branch skips discovery entirely — logic appeared correct but needs a live repro against Attio to verify."
+        }
+      ],
+      "workflow": [
+        "Tracking issues (bds) were filed for unresolvable complaints that lacked a reproducible test case rather than attempting blind fixes.",
+        "boulder-penalty branch is ephemeral with no upstream; push + PR creation was deferred to a subsequent step.",
+        "cargo fmt, clippy -D warnings, and cargo test were all run and confirmed clean before committing."
+      ]
+    },
+    "friction": [
+      "The manual [mcp.servers.*.oauth] override complaint (from issue #629 sub-complaint) could not be reproduced without a live Attio instance, blocking a proper fix.",
+      "boulder-penalty had no upstream remote, requiring an explicit push step before PR creation."
+    ],
+    "open_items": [
+      "Investigate and fix the reported behavior where [mcp.servers.*.oauth] manual overrides appear to be ignored — needs a dedicated repro against Attio (tracking bd filed).",
+      "Assess whether provider-oauth.js needs client-side loopback normalization in addition to the server-side fix applied in provider-setup.",
+      "Push boulder-penalty branch and create the PR (was committed but not yet pushed/PR'd at end of transcript)."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:33:16.393004Z",
+    "agent_lines": 149,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 149,
+    "agent_percentage": 100
+  }
+}

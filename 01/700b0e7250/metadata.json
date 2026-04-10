@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "01700b0e7250",
+  "strategy": "manual-commit",
+  "branch": "boulder-penalty",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/mcp/src/auth.rs",
+    "crates/oauth/src/lib.rs",
+    "crates/oauth/src/redirect.rs",
+    "crates/provider-setup/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/01/700b0e7250/0/metadata.json",
+      "transcript": "/01/700b0e7250/0/full.jsonl",
+      "context": "/01/700b0e7250/0/context.md",
+      "content_hash": "/01/700b0e7250/0/content_hash.txt",
+      "prompt": "/01/700b0e7250/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 33,
+    "cache_creation_tokens": 31486,
+    "cache_read_tokens": 3781215,
+    "output_tokens": 16385,
+    "api_call_count": 28
+  }
+}
