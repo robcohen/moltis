@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "bb462d614b47",
+  "strategy": "manual-commit",
+  "branch": "codex/fix-node-selector-e2e-races",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/agents.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bb/462d614b47/0/metadata.json",
+      "transcript": "/bb/462d614b47/0/full.jsonl",
+      "context": "/bb/462d614b47/0/context.md",
+      "content_hash": "/bb/462d614b47/0/content_hash.txt",
+      "prompt": "/bb/462d614b47/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 78,
+    "cache_creation_tokens": 105987,
+    "cache_read_tokens": 3948755,
+    "output_tokens": 20924,
+    "api_call_count": 59
+  }
+}
