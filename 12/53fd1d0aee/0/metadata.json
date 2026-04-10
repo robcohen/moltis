@@ -1,0 +1,90 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1253fd1d0aee",
+  "session_id": "f024d2bf-daa2-42a8-9ab7-7f217e777303",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:25:06.605056Z",
+  "branch": "warm-pond",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7892f915b13d",
+  "token_usage": {
+    "input_tokens": 63,
+    "cache_creation_tokens": 65395,
+    "cache_read_tokens": 3210882,
+    "output_tokens": 15433,
+    "api_call_count": 48
+  },
+  "summary": {
+    "intent": "Fix the dcg-guard hook silently passing through all commands when `dcg` is not on the gateway process PATH, particularly under systemd where $HOME/.local/bin is stripped from PATH.",
+    "outcome": "All three changes were implemented (PATH augmentation in handler, loud stderr warning, startup log, updated HOOK.md), 4 unit tests added and passing, fmt/clippy clean, bd issue created/closed, and PR committed and pushed.",
+    "learnings": {
+      "repo": [
+        "dcg-guard hook runs in the gateway process environment, not inside any sandbox — hooks always inherit the gateway's PATH via ShellHookHandler (shell_hook.rs:101-117)",
+        "The `which` crate is available as a workspace dependency in moltis; can be used for binary resolution without spawning a subprocess",
+        "Existing hook seeder tests pattern exists in the tests mod at server.rs:4778+; new tests follow the same tempdir-based pattern",
+        "bd CLI is used for issue tracking: `bd create` then `bd update --status=in_progress` then `bd close`",
+        "The project uses `just lint` wrapping clippy with nightly-2025-11-30 toolchain and `--features local-llm-metal` flag",
+        "CLAUDE.md rule: commit only when explicitly asked — changes were left staged in working tree after implementation"
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 4402,
+          "end_line": 4438,
+          "finding": "DCG_GUARD_HANDLER_SH constant containing the hook shell script — was fail-open silent no-op; now prepends PATH and warns loudly"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 4154,
+          "end_line": 4154,
+          "finding": "seed_dcg_guard_hook() function — augmented to call log_dcg_guard_status() helper using same PATH as handler"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 4373,
+          "end_line": 4373,
+          "finding": "DCG_GUARD_HOOK_MD constant — seeded HOOK.md that incorrectly referenced `cargo install dcg` (which doesn't work)"
+        },
+        {
+          "path": "crates/plugins/src/hook_eligibility.rs",
+          "line": 63,
+          "end_line": 70,
+          "finding": "bin_exists() pattern used as reference for binary resolution idiom in this codebase"
+        },
+        {
+          "path": "crates/plugins/src/shell_hook.rs",
+          "line": 101,
+          "end_line": 117,
+          "finding": "ShellHookHandler spawns sh -c inheriting gateway process env — root cause of narrow PATH under systemd"
+        }
+      ],
+      "workflow": [
+        "End-to-end shell testing with `env -i` to simulate minimal systemd PATH is effective for validating PATH augmentation fixes without needing a real systemd environment",
+        "Running `cargo +nightly-2025-11-30 fmt --all` (without --check) first, then re-running with --check to verify, is more reliable than fixing fmt issues manually",
+        "Background task notifications from earlier runs can arrive late and be safely ignored when the same command already completed in the foreground"
+      ]
+    },
+    "friction": [
+      "A stale background task notification arrived after the work was already complete, requiring recognition that it was a duplicate of a foreground result",
+      "The `cargo install dcg` instruction in the seeded HOOK.md was misleading — dcg is a Python tool installable only via uv/pipx, not cargo; this was a pre-existing doc bug compounding the issue"
+    ],
+    "open_items": [
+      "Manual verification checklist items deferred to operator: delete ~/.moltis/hooks/dcg-guard/ and restart Moltis to confirm startup log line appears; test actual rm -rf blocking with dcg installed vs uninstalled",
+      "CI does not run the end-to-end shell test (PATH simulation with env -i) — only unit tests run in CI; E2E test is documented as 'run locally' only",
+      "No docs page for dcg-guard/hooks exists yet in docs/src/ — the plan noted this but no page was created since grep confirmed none existed"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:24:41.06281Z",
+    "agent_lines": 245,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 245,
+    "agent_percentage": 100
+  }
+}
