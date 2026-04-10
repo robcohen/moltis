@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8bc95e294f39",
+  "session_id": "1fef816f-ddaa-4e79-b52a-c8c91467ceb8",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T14:44:17.92257Z",
+  "branch": "clear-thorium",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/telegram/src/handlers.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "db837dae12a0",
+  "token_usage": {
+    "input_tokens": 76,
+    "cache_creation_tokens": 189322,
+    "cache_read_tokens": 5545899,
+    "output_tokens": 37566,
+    "api_call_count": 62
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #632 where Telegram voice message transcription failures sent placeholder strings to the LLM, causing nonsensical TTS replies instead of graceful error handling.",
+    "outcome": "Extracted voice handling into a `handle_voice_message` helper that either falls back to caption text or sends a direct user-facing reply and returns early, preventing placeholder strings from ever reaching LLM dispatch. 103 tests passing, clippy clean, 8 new scenario tests added.",
+    "learnings": {
+      "repo": [
+        "The correct pattern for non-recoverable early exits in Telegram handlers is to call `outbound.send_text(...)` and return `Ok(())`, mirroring the existing STT-not-configured branch at handlers.rs:242-258.",
+        "Project uses `bd` CLI for task/issue tracking with conventional commit messages; issues are filed with `discovered-from:` metadata for traceability.",
+        "Matrix (crates/matrix/src/handler.rs:744-773) and WhatsApp (crates/whatsapp/src/handlers.rs:548-578) have the same class of placeholder-dispatch bug.",
+        "Workspace `just lint` has a pre-existing macOS `llama-cpp-sys-2` CMake/CUDA build failure tracked as `moltis-csq`, unrelated to application code changes.",
+        "Nightly formatter pinned to `nightly-2025-11-30` per CLAUDE.md conventions."
+      ],
+      "code": [
+        {
+          "path": "crates/telegram/src/handlers.rs",
+          "line": 242,
+          "end_line": 258,
+          "finding": "Reference pattern for voice error early-exit: call outbound.send_text() with user-facing message and return Ok(()) without touching LLM dispatch."
+        },
+        {
+          "path": "crates/telegram/src/handlers.rs",
+          "line": 272,
+          "end_line": 322,
+          "finding": "Original buggy voice failure branches substituted placeholder strings into body that flowed into normal LLM dispatch, causing ~0-second TTS replies."
+        }
+      ],
+      "workflow": [
+        "Scoping clippy to affected crates (`-p moltis-telegram`) is a reliable way to distinguish pre-existing workspace failures from regressions.",
+        "Parameterized test helpers (e.g., `run_voice_scenario`) reduce boilerplate when covering multiple branches of the same logic.",
+        "Filing follow-up issues for sibling channels immediately after finding a bug class prevents silent technical debt."
+      ]
+    },
+    "friction": [
+      "The voice-handling block was deeply nested inside a large `if let` expression (~80 lines), requiring careful extraction to avoid type mismatches with `Arc\u003cTelegramOutbound\u003e` vs `\u0026dyn ChannelOutbound`.",
+      "Multiple read passes of handlers.rs were needed to understand the full structure before editing, suggesting the file is large and densely organized.",
+      "Hit rate limit at session end before being able to commit the changes."
+    ],
+    "open_items": [
+      "Changes not yet committed — needs a single `fix(telegram):` conventional commit.",
+      "Matrix bug: same placeholder-dispatch pattern in crates/matrix/src/handler.rs:744-773, filed as P2 bd issue.",
+      "WhatsApp bug: same placeholder-dispatch pattern + missing empty-transcript check in crates/whatsapp/src/handlers.rs:548-578, filed as P2 bd issue.",
+      "Pre-existing `llama-cpp-sys-2` macOS CMake/CUDA build failure tracked as moltis-csq remains unresolved."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T14:43:58.075029Z",
+    "agent_lines": 471,
+    "human_added": 24,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 495,
+    "agent_percentage": 95.15151515151516
+  }
+}

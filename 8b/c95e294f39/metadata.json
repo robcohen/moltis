@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8bc95e294f39",
+  "strategy": "manual-commit",
+  "branch": "clear-thorium",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/telegram/src/handlers.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/8b/c95e294f39/0/metadata.json",
+      "transcript": "/8b/c95e294f39/0/full.jsonl",
+      "context": "/8b/c95e294f39/0/context.md",
+      "content_hash": "/8b/c95e294f39/0/content_hash.txt",
+      "prompt": "/8b/c95e294f39/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 76,
+    "cache_creation_tokens": 189322,
+    "cache_read_tokens": 5545899,
+    "output_tokens": 37566,
+    "api_call_count": 62
+  }
+}
