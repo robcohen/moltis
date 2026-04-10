@@ -1,0 +1,16 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Look at those 3 CI fails and fix all issues:
+
+https://github.com/moltis-org/moltis/actions/runs/24218069824
+https://github.com/moltis-org/moltis/actions/runs/24218069848
+https://github.com/moltis-org/moltis/actions/runs/24228784342
+
+### Prompt 2
+
+commit and push
+
