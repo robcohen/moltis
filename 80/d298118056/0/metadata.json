@@ -1,0 +1,67 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "80d298118056",
+  "session_id": "965e95c2-a25d-4fa3-98a4-11aedc71d2d5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:40:41.573787Z",
+  "branch": "gregarious-helper",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cc74caf4ba1e",
+  "checkpoint_transcript_start": 315,
+  "transcript_lines_at_start": 315,
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 14070,
+    "cache_read_tokens": 1629032,
+    "output_tokens": 3925,
+    "api_call_count": 12
+  },
+  "summary": {
+    "intent": "Fix a bug where the agent loop's auto-continue logic was replacing long substantive final answers with terse summaries, then address PR review comments.",
+    "outcome": "PR #634 merged (closes #628) with a gated auto-continue check (`is_substantive_answer_text()`, ≥40 chars) and a reworded nudge prompt; two Greptile style comments resolved in a follow-up commit.",
+    "learnings": {
+      "repo": [
+        "Auto-continue logic lives in `crates/agents/src/runner.rs` and applies to both `run_agent_loop` and `run_agent_loop_streaming` branches.",
+        "CLAUDE.md mandates `#[must_use]` on pure predicate functions like `is_substantive_answer_text`.",
+        "`moltis-csq` has a pre-existing llama-cpp-sys-2 CUDA build failure on macOS that blocks `just lint` and `just test` locally — CI is the fallback for full workspace checks.",
+        "Beads issue tracking uses `bd close \u003cissue-id\u003e --reason` CLI; issue ID format is alphanumeric (e.g. `moltis-t1a`).",
+        "PR review bot is Greptile, raising style-level (P2) comments."
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/runner.rs",
+          "finding": "New helper `is_substantive_answer_text()` (threshold: ≥40 trimmed chars) gates both non-streaming and streaming auto-continue branches to prevent overwriting long final answers."
+        },
+        {
+          "path": "crates/agents/src/runner.rs",
+          "finding": "`AUTO_CONTINUE_NUDGE` prompt rewording: removed 'restate or shorten' language, now instructs model to 'continue executing' or 'reply with exactly: done'."
+        }
+      ],
+      "workflow": [
+        "Greptile PR comments are accessible via `gh api repos/\u003corg\u003e/\u003crepo\u003e/pulls/\u003cnumber\u003e/comments` (not `gh pr view --comments`).",
+        "Formatting and clippy scoped to affected crates (`-p moltis-agents`) is sufficient for PR validation when workspace build is broken on macOS.",
+        "Test suite for `moltis-agents` runs 294 tests; targeted runner tests can be isolated with `--lib -- runner::tests::test_auto_continue runner::tests::test_is_substantive`."
+      ]
+    },
+    "friction": [
+      "Pre-existing llama-cpp-sys-2 CUDA build failure in `moltis-csq` blocks `just lint` and `just test` on macOS, forcing reliance on CI for full workspace validation."
+    ],
+    "open_items": [
+      "`just lint` and `just test` (full workspace) deferred to CI due to macOS CUDA build failure in `moltis-csq`.",
+      "Manual QA steps (regression check with real Sonnet 4.6 session and Hevy training-volume flow) were documented but not confirmed completed in the transcript."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:40:24.200568Z",
+    "agent_lines": 9,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 9,
+    "agent_percentage": 100
+  }
+}

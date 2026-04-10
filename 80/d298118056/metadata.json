@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "80d298118056",
+  "strategy": "manual-commit",
+  "branch": "gregarious-helper",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/80/d298118056/0/metadata.json",
+      "transcript": "/80/d298118056/0/full.jsonl",
+      "context": "/80/d298118056/0/context.md",
+      "content_hash": "/80/d298118056/0/content_hash.txt",
+      "prompt": "/80/d298118056/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 14070,
+    "cache_read_tokens": 1629032,
+    "output_tokens": 3925,
+    "api_call_count": 12
+  }
+}
