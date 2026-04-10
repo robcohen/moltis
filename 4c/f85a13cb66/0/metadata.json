@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4cf85a13cb66",
+  "session_id": "f024d2bf-daa2-42a8-9ab7-7f217e777303",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:43:07.848483Z",
+  "branch": "warm-pond",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "729bea592cdf",
+  "checkpoint_transcript_start": 202,
+  "transcript_lines_at_start": 202,
+  "token_usage": {
+    "input_tokens": 25,
+    "cache_creation_tokens": 27994,
+    "cache_read_tokens": 2016571,
+    "output_tokens": 14058,
+    "api_call_count": 20
+  },
+  "summary": {
+    "intent": "Fix a silent no-op bug in the dcg-guard hook where `dcg` binary was not resolvable on the gateway process PATH under systemd, causing destructive commands to pass through unchallenged, and then address subsequent PR review comments.",
+    "outcome": "Two commits were pushed to the `warm-pond` branch (PR #635): the initial fix adding PATH augmentation and loud warnings, followed by a second commit addressing reviewer feedback to refresh stale on-disk handlers via fingerprinting and switch to async `tokio::process::Command` for the version probe. All 5 tests pass and clippy is clean.",
+    "learnings": {
+      "repo": [
+        "Shell hooks always run in the gateway process environment, not the interactive shell — confirmed at `crates/plugins/src/shell_hook.rs:101-117`.",
+        "Systemd ExecStart with `bash -lc` still strips `$HOME/.local/bin` from the inherited environment, so tools installed via `uv tool install` or `pipx` are invisible to hook handlers.",
+        "The dcg-guard seeding logic was gated on `HOOK.md` existence, which meant existing installations kept stale pre-fix handlers while the startup log falsely reported the guard as active.",
+        "The `seed_*` sibling helpers in `prepare_gateway_core` use synchronous file I/O — this is an established convention in the codebase.",
+        "dcg cannot be installed via `cargo install` (the seeded HOOK.md previously gave this incorrect instruction); correct installers are `uv tool install destructive-command-guard` or `pipx install destructive-command-guard`."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "seed_dcg_guard_hook and log_dcg_guard_status were made async to allow use of tokio::process::Command for the dcg --version probe, avoiding blocking inside the async prepare_gateway_core."
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "finding": "Stale handler detection uses string fingerprinting: checks for 'export PATH=' in handler.sh and 'uv tool install destructive-command-guard' in HOOK.md to determine if files need refreshing."
+        },
+        {
+          "path": "crates/plugins/src/shell_hook.rs",
+          "line": 101,
+          "end_line": 117,
+          "finding": "Hooks execute in the gateway process environment — the ShellHookHandler was intentionally left untouched to avoid globally augmenting PATH for all hooks."
+        }
+      ],
+      "workflow": [
+        "macOS local `just lint` times out on unrelated CUDA feature builds; the workaround is to lint the specific gateway crate directly with `--features local-llm-metal`.",
+        "Greptile automated review caught both the stale-handler false-positive (P1) and the blocking subprocess in async context (P2) before human reviewers, providing actionable structured feedback.",
+        "Fingerprint-based file refresh (checking for marker strings rather than version numbers) is a pragmatic approach for auto-remediating deployed config files without requiring version tracking infrastructure."
+      ]
+    },
+    "friction": [
+      "macOS `just lint` times out on unrelated CUDA feature builds, requiring direct per-crate clippy invocation as a workaround.",
+      "The original seeding logic's `if !hook_md.exists()` guard created a silent false-positive: existing broken installations appeared healthy at startup, making the bug invisible to operators post-deployment."
+    ],
+    "open_items": [
+      "`just lint` on Linux CI has not yet run — macOS local lint was done as a workaround.",
+      "`just test` full suite on CI is pending.",
+      "Manual QA on a real systemd deployment needed: delete hook dir, restart Moltis, confirm exactly one startup log line appears.",
+      "Manual QA with dcg installed: verify `rm -rf` through exec tool is blocked.",
+      "Manual QA with dcg uninstalled: verify `NOT scanned` warning appears in gateway logs per invocation."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:42:42.267093Z",
+    "agent_lines": 148,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 148,
+    "agent_percentage": 100
+  }
+}

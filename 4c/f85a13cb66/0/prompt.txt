@@ -1,0 +1,192 @@
+Implement the following plan:
+
+# Fix: dcg-guard silently no-ops when `dcg` is not on PATH
+
+Tracking: [moltis-org/moltis#626](https://github.com/moltis-org/moltis/issues/626)
+
+## Context
+
+The seeded `dcg-guard` hook is supposed to block destructive shell commands
+issued via the `exec` tool. On a Raspberry Pi running Moltis as a systemd
+service, the reporter observed that `rm -rf /home/vini/dcg-test-dir` went
+through even though `dcg` was installed at `/home/vini/.local/bin/dcg` and
+the hook was registered.
+
+Root cause — two bugs compound:
+
+1. **Fail-open silent no-op.** `crates/gateway/src/server.rs::DCG_GUARD_HANDLER_SH`
+   (lines 4402–4438) starts with:
+   ```sh
+   if ! command -v dcg >/dev/null 2>&1; then
+       cat >/dev/null
+       exit 0
+   fi
+   ```
+   When `dcg` is not resolvable on the handler's `PATH`, every command is
+   allowed with zero log output. Operators cannot tell the guard is inert.
+
+2. **Narrow `PATH` in the handler process.** `ShellHookHandler` in
+   `crates/plugins/src/shell_hook.rs:101-117` spawns `sh -c <command>`
+   inheriting the gateway process environment. When Moltis runs as a
+   systemd service, even with `ExecStart=/bin/bash -lc 'moltis …'`, the
+   inherited `PATH` often excludes `$HOME/.local/bin`, so `command -v dcg`
+   fails even though `dcg` is installed for the service user.
+
+Note on the reporter's framing: the issue claims hooks run *inside* the
+sandbox with the sandbox's `PATH`. That is not accurate — hooks always run
+in the gateway process (confirmed at `shell_hook.rs:101-117`). The
+symptom is real, but the cause is the gateway's own `PATH`, not the
+sandbox. The fix is the same either way.
+
+Secondary issue from the report: `HOOK.md` and docs tell users to run
+`cargo install dcg`, which does not work (see
+[upstream README](https://github.com/Dicklesworthstone/destructive_command_guard#installation)).
+
+Goal: make the dcg-guard actually guard when `dcg` is installed in a
+normal user location, and make it impossible to miss when it is not.
+
+## Approach
+
+Three changes, all in `crates/gateway/src/server.rs`, plus docs and tests.
+
+### 1. Handler script (`DCG_GUARD_HANDLER_SH`, `crates/gateway/src/server.rs:4402`)
+
+- Prepend common user/local bin directories to `PATH` before any
+  resolution:
+  ```sh
+  export PATH="${HOME:-/root}/.local/bin:/usr/local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+  ```
+- Replace the silent no-op branch with a loud stderr warning and a
+  distinctive exit code so gateway logs surface it every invocation:
+  ```sh
+  if ! command -v dcg >/dev/null 2>&1; then
+      echo "dcg-guard: 'dcg' binary not found on PATH (PATH=$PATH); command NOT scanned. Install dcg to enable the guard." >&2
+      cat >/dev/null
+      exit 0
+  fi
+  ```
+  Keep the exit code at `0` (fail-open) so we do not suddenly block every
+  user whose install is incomplete. The loud stderr plus the startup
+  warning (below) give operators clear signal without breaking exec.
+- Keep the existing dcg pipeline and `exit 1` on destructive detection.
+
+### 2. Startup check in `seed_dcg_guard_hook` (`crates/gateway/src/server.rs:4154`)
+
+After seeding (or when the hook already exists), resolve `dcg` using the
+same augmented `PATH` the handler will use. Reuse the existing
+`bin_exists` pattern from `crates/plugins/src/hook_eligibility.rs:63-70`
+(or an inline `which::which` call) and emit exactly one of:
+
+- `info!("dcg-guard: dcg {version} detected, guard active")` on success
+- `warn!("dcg-guard: 'dcg' not found on PATH; destructive command guard is INACTIVE. Install dcg from https://github.com/Dicklesworthstone/destructive_command_guard")` on failure
+
+This keeps the failure visible at service boot, not only when a user
+happens to run a command.
+
+### 3. Seeded `HOOK.md` install instructions (`crates/gateway/src/server.rs:4373`)
+
+Replace the `cargo install dcg` snippet with a link to the upstream
+install section and the two supported commands from that README
+(`uv tool install destructive-command-guard` and the `pipx` alternative).
+Also add a one-liner clarifying that the hook runs in the **Moltis
+service environment**, so `dcg` must be resolvable on the service's
+`PATH` — not only in the user's interactive shell.
+
+### Non-changes
+
+- Do **not** change `ShellHookHandler` to augment `PATH` globally. The
+  handler already inherits the gateway env, which is the right default;
+  fixing PATH at the dcg-guard handler is a targeted fix that does not
+  surprise other hooks.
+- Do **not** flip dcg-guard to fail-closed. Blocking all exec calls when
+  a single optional dependency is missing would be a regression for
+  users who never installed dcg.
+
+## Files to modify
+
+| File | Change |
+|---|---|
+| `crates/gateway/src/server.rs` | Update `DCG_GUARD_HANDLER_SH`, `DCG_GUARD_HOOK_MD`, and `seed_dcg_guard_hook()` startup log |
+| `crates/gateway/src/server.rs` (tests mod) | Add unit tests — see below |
+| `docs/src/` (the dcg-guard / hooks page if present; grep confirms none yet) | Only touch if an existing page references `cargo install dcg` |
+
+No new crates, no workspace changes. `which` crate is already a
+workspace dependency (used by sandbox/tool code) — verify before use; if
+not, fall back to the `std::process::Command::new("which")` idiom
+already in `hook_eligibility.rs:63`.
+
+## Tests
+
+All tests live in the existing `#[cfg(test)] mod tests` block at
+`crates/gateway/src/server.rs:4778`.
+
+1. `dcg_guard_handler_has_path_augmentation` — assert
+   `DCG_GUARD_HANDLER_SH.contains(".local/bin")` and
+   `DCG_GUARD_HANDLER_SH.contains("/usr/local/bin")`.
+2. `dcg_guard_handler_warns_when_dcg_missing` — assert the missing-dcg
+   branch writes to stderr (`>&2`) and the string `"NOT scanned"` is
+   present; assert the old silent `cat >/dev/null\n    exit 0` form is
+   gone (regression guard).
+3. `dcg_guard_hook_md_removes_cargo_install` — assert the seeded
+   manifest does **not** contain `"cargo install dcg"` and does contain
+   a link to the upstream install section.
+4. `seed_dcg_guard_hook_writes_handler_with_path_fix` — temp-dir based,
+   mirrors existing seeder tests if any; read back `handler.sh` and
+   assert the augmented PATH line.
+
+End-to-end shell test (run locally, not in CI):
+
+```bash
+# simulate the reporter's environment
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  bash -c 'printf %s "{\"tool_name\":\"exec\",\"arguments\":{\"command\":\"rm -rf /tmp/xxx\"}}" \
+    | ~/.moltis/hooks/dcg-guard/handler.sh; echo exit=$?'
+```
+
+With the fix applied and `dcg` installed at `~/.local/bin/dcg`, this
+must exit `1` (destructive) instead of `0` (silent pass-through).
+
+## Verification checklist
+
+- [ ] `cargo +nightly-2025-11-30 fmt --all -- --check`
+- [ ] `just lint`
+- [ ] `just test -p moltis-gateway`
+- [ ] Manual: delete `~/.moltis/hooks/dcg-guard/`, start Moltis, confirm
+      one of the two startup log lines appears
+- [ ] Manual: with `dcg` installed, run an `rm -rf` through the exec
+      tool, confirm it is blocked
+- [ ] Manual: with `dcg` uninstalled, run any `exec` call, confirm the
+      `dcg-guard: 'dcg' binary not found` warning appears in gateway
+      logs once per call (not once per process)
+
+## Beads
+
+Create a single `bug` issue referencing GitHub #626:
+
+```
+bd create "dcg-guard fails open when dcg not on gateway PATH" \
+  --description="GitHub #626. Seeded handler silently no-ops when 'dcg' is not resolvable on the gateway process PATH (common under systemd). Fix: augment PATH in handler, warn loudly at startup and per-invocation, correct install docs." \
+  -t bug -p 1 --json
+```
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-warm-pond/0c5bac72-7bcd-4226-a6f0-6fda6b37d4f6.jsonl
+
+---
+
+<task-notification>
+<task-id>by9wpb594</task-id>
+<tool-use-id>toolu_012ww2Rv7a2T45FBTctsQZsx</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-warm-pond/0c5bac72-7bcd-4226-a6f0-6fda6b37d4f6/tasks/by9wpb594.output</output-file>
+<status>completed</status>
+<summary>Background command "cargo test -p moltis-gateway --lib dcg_guard 2&gt;&amp;1 | tail -40" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-warm-pond/0c5bac72-7bcd-4226-a6f0-6fda6b37d4f6/tasks/by9wpb594.output
+
+---
+
+commit push and create a PR
+
+---
+
+Fix and solve PR comments
