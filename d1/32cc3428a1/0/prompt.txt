@@ -1,0 +1,17 @@
+Look at https://github.com/moltis-org/moltis/issues/630 and plan for a fix
+
+---
+
+I mean 629
+
+---
+
+The issue I see is, what about people running moltis on a specific IP or host? Like I run mine on https://moltis.lan
+
+---
+
+I thought we had something in place already where if http://localhost is called, it detects it and redirect to https://localhost -- Is this still the case? If so we could give http://localhost and it'd work?
+
+---
+
+proceed and implement

@@ -1,0 +1,105 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d132cc3428a1",
+  "session_id": "9d35cd11-24eb-47d1-b6e1-512c226cd905",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:25:51.796803Z",
+  "branch": "boulder-penalty",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/mcp/src/auth.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b197a21dd299",
+  "token_usage": {
+    "input_tokens": 93,
+    "cache_creation_tokens": 163867,
+    "cache_read_tokens": 4502223,
+    "output_tokens": 31158,
+    "api_call_count": 58
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #629 where MCP OAuth dynamic client registration fails with `invalid_redirect_uri` because Moltis sends `https://localhost` instead of `http://localhost` as the redirect URI.",
+    "outcome": "Implemented a `normalize_loopback_redirect` helper in `crates/mcp/src/auth.rs` that rewrites `https://` to `http://` for loopback hosts, leveraging the existing HTTP→HTTPS 301 redirect in the TLS layer. All 87 tests pass and the fix is committed.",
+    "learnings": {
+      "repo": [
+        "Moltis has a peek-based HTTP→HTTPS redirect in `crates/tls/src/lib.rs` (lines 472-615): if the first byte of a connection isn't a TLS handshake (0x16), it parses the request line and Host header, sends a 301 to `https://\u003chost\u003e:\u003cport\u003e/\u003cpath+query\u003e`, preserving path and query string.",
+        "The `/auth/callback` route is unauthenticated (confirmed in `auth_middleware.rs:222`), so no session/cookie is required to complete the OAuth flow after the HTTP→HTTPS bounce.",
+        "The UI sends `${window.location.origin}/auth/callback` as `redirectUri` for MCP OAuth flows, which becomes `https://localhost:\u003cport\u003e/auth/callback` on loopback deployments — the root cause of the bug.",
+        "RFC 8252 §8.3 only applies to loopback redirects; real TLS hostnames like `https://moltis.lan` are accepted by strict AS's like Attio without issue.",
+        "The worktree for this work was at `/Users/penso/.superset/worktrees/moltis/boulder-penalty/`.",
+        "Project uses `bd` (beads) for issue tracking and `just` as a task runner with targets like `format-check`, `lint`, and `test`."
+      ],
+      "code": [
+        {
+          "path": "crates/tls/src/lib.rs",
+          "line": 472,
+          "end_line": 615,
+          "finding": "Peek-based HTTP→HTTPS redirect implementation. Detects non-TLS connections, parses Host header, and 301 redirects preserving full path+query. Port is also preserved via Host header."
+        },
+        {
+          "path": "crates/mcp/src/auth.rs",
+          "line": 226,
+          "end_line": 293,
+          "finding": "`McpOAuthProvider::start_web_oauth_flow` — where `redirect_uri` is used for dynamic client registration (RFC 7591) and the authorization request. This is where the normalizer was inserted."
+        },
+        {
+          "path": "crates/mcp/src/auth.rs",
+          "line": 478,
+          "end_line": 483,
+          "finding": "Dynamic client registration uses `redirect_uri` as the sole entry in `redirect_uris` — strict AS's (e.g. Attio) reject `https://` scheme for loopback here per RFC 8252 §8.3."
+        },
+        {
+          "path": "crates/gateway/src/mcp_service.rs",
+          "line": 358,
+          "end_line": 617,
+          "finding": "Gateway plumbs `redirectUri` from UI through `mcp.oauth.start` / `mcp.add` / `mcp.enable` / `reauth` RPC calls to the MCP manager."
+        },
+        {
+          "path": "crates/mcp/src/manager.rs",
+          "line": 128,
+          "end_line": 146,
+          "finding": "Manual OAuth override from `moltis.toml` (`[mcp.servers.*.oauth]`) is plumbed here via `build_auth_provider` — may not actually reach SSE remotes (secondary bug, unverified)."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-mcp.js",
+          "line": 105,
+          "end_line": 107,
+          "finding": "Builds OAuth redirect URI from `window.location.origin`, producing `https://localhost:\u003cport\u003e/auth/callback` on loopback deployments."
+        },
+        {
+          "path": "crates/oauth/src/callback_server.rs",
+          "finding": "`CallbackServer::wait_for_code` exists for in-process loopback callback handling, with a 60s timeout. Not needed for this fix but relevant to alternative approaches considered."
+        }
+      ],
+      "workflow": [
+        "The initial issue number was wrong (#630 vs #629) — always verify issue numbers before diving into research.",
+        "The simplest fix leveraged existing infrastructure (HTTP→HTTPS redirect) rather than adding new components (loopback callback server), reducing the change to ~20 lines of production code.",
+        "The design went through three iterations: (1) loopback callback server, (2) branch on origin strategy, (3) simple scheme rewrite leveraging existing TLS redirect — each triggered by a user question revealing a constraint.",
+        "Used `cargo nextest run -p moltis-mcp` for targeted crate testing rather than full workspace tests.",
+        "Format check required a fix before the commit — always run `just format-check` before committing in this repo."
+      ]
+    },
+    "friction": [
+      "Initial issue number mismatch (#630 vs #629) required clarification before work could begin.",
+      "The design required three full iterations due to incrementally revealed constraints (non-loopback deployments like `moltis.lan`, then the existing HTTP→HTTPS redirect discovery).",
+      "Format check failed after initial implementation and required a fixup edit before the commit."
+    ],
+    "open_items": [
+      "Secondary bug: `[mcp.servers.\u003cname\u003e.oauth]` manual override in `moltis.toml` may be silently ignored for SSE remote servers — needs a separate investigation and `bd` issue.",
+      "Provider OAuth (`provider-oauth.js`) has the same `${window.location.origin}/auth/callback` pattern and the same potential loopback-scheme bug — apply `normalize_loopback_redirect` if/when an AS rejects it there too.",
+      "Consider whether `CallbackServer::wait_for_code` 60s timeout should be configurable via a const or config option.",
+      "E2E test coverage for MCP OAuth with loopback scenario was noted as 'optional but recommended' and not implemented in this session.",
+      "IPv6-only host support: if `127.0.0.1` won't bind, consider falling back to `::1` — not handled in current fix."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:25:17.553174Z",
+    "agent_lines": 215,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 215,
+    "agent_percentage": 100
+  }
+}
