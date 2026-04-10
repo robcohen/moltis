@@ -1,0 +1,91 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f9183e9f4000",
+  "session_id": "965e95c2-a25d-4fa3-98a4-11aedc71d2d5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:23:28.884361Z",
+  "branch": "gregarious-helper",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/agents/src/runner.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "153b65a80f67",
+  "token_usage": {
+    "input_tokens": 84,
+    "cache_creation_tokens": 140217,
+    "cache_read_tokens": 6281497,
+    "output_tokens": 37668,
+    "api_call_count": 69
+  },
+  "summary": {
+    "intent": "Investigate and fix GitHub issue #628 where the agent auto-continue mechanism was dropping long assistant responses, replacing them with short closing summaries that got persisted to the session.",
+    "outcome": "Fixed both streaming and non-streaming auto-continue paths in runner.rs by gating auto-continue on a 40-char substantive text threshold, rewording the nudge prompt, and adding 5 new regression tests. All 294 tests pass; PR created after commit and push.",
+    "learnings": {
+      "repo": [
+        "Auto-continue logic lives in two separate paths in crates/agents/src/runner.rs: run_agent_loop (non-streaming, ~line 1135-1188) and run_agent_loop_streaming (~line 1838-1893).",
+        "Session persistence uses result.text from the runner, set via display_text in crates/chat/src/lib.rs:6879 — both the final WebSocket broadcast and session JSON come from this single field.",
+        "The existing test test_auto_continue_triggers_after_tool_calls validated the cap/iteration logic but never asserted on result.text, so the bug was untested.",
+        "just lint is blocked on macOS by a pre-existing moltis-csq llama-cpp-sys-2 CUDA build failure; per-crate clippy is the workaround.",
+        "The project uses a beads (bd) internal issue tracker alongside GitHub issues; bugs get filed in bd and linked to GH numbers."
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/runner.rs",
+          "line": 1135,
+          "end_line": 1188,
+          "finding": "Non-streaming auto-continue branch: was firing even when response.text was substantive; now gated on is_substantive_answer_text()."
+        },
+        {
+          "path": "crates/agents/src/runner.rs",
+          "line": 1838,
+          "end_line": 1893,
+          "finding": "Streaming auto-continue branch: same bug — was firing on any iteration with no tool calls regardless of accumulated_text length."
+        },
+        {
+          "path": "crates/agents/src/runner.rs",
+          "line": 1164,
+          "end_line": 1169,
+          "finding": "Existing last_answer_text fallback in non-streaming path was already present but only reached on the tool-call exit path, not the auto-continue path."
+        },
+        {
+          "path": "crates/agents/src/runner.rs",
+          "line": 6807,
+          "end_line": 6807,
+          "finding": "test_auto_continue_triggers_after_tool_calls: only asserted on iterations/tool_calls_made, never on result.text — silent regression hole."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 6879,
+          "end_line": 6879,
+          "finding": "display_text = result.text is the single source for both WebSocket final broadcast and session persistence — fixing result.text is sufficient, no UI changes needed."
+        }
+      ],
+      "workflow": [
+        "The 'longest wins' approach to preserving text across auto-continue iterations broke existing tests; narrower scoping (only preserve text abandoned by an explicit auto-continue decision via a dedicated variable) was the correct fix.",
+        "Nudge prompt wording directly influenced model behavior — the old prompt said 'provide a brief final answer' which actively caused the regression; prompt engineering is a correctness concern, not just UX.",
+        "Running cargo clippy per-crate (-p moltis-agents, -p moltis-chat) is a reliable substitute when just lint is blocked by unrelated build failures."
+      ]
+    },
+    "friction": [
+      "just lint is permanently broken on macOS due to a pre-existing llama-cpp-sys-2 CUDA build failure in moltis-csq, requiring per-crate clippy as a workaround.",
+      "The 'longest wins' preserve strategy had to be abandoned after it broke existing tests — required a second design iteration to scope preservation to only auto-continue-abandoned text.",
+      "bd CLI search commands (bd search '628', bd search 'auto-continue') returned no useful results, requiring manual code archaeology to find the affected lines."
+    ],
+    "open_items": [
+      "The 'approval timed out' tool-error flow visible in the user's original transcript is a separate bug — explicitly deferred and not addressed in this fix.",
+      "The UI delta→final replacement behavior (streaming text deltas then a 'final' frame overwrites) is correct once result.text is fixed, but the interaction between streaming UI state and session persistence could be worth auditing independently.",
+      "The existing test test_auto_continue_triggers_after_tool_calls was updated to keep text below the 40-char threshold so it still exercises cap logic — but it could be strengthened to also assert result.text correctness.",
+      "PR not yet reviewed or merged at time of transcript end."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:23:00.223568Z",
+    "agent_lines": 509,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 509,
+    "agent_percentage": 100
+  }
+}
