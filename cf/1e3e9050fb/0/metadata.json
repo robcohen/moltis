@@ -1,0 +1,82 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "cf1e3e9050fb",
+  "session_id": "50b1daa3-487c-4a10-a026-cb2288316181",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T10:28:57.832072Z",
+  "branch": "robust-monday",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/skill_tools.rs",
+    "crates/gateway/tests/read_skill_tool.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "aaa1c9549124",
+  "checkpoint_transcript_start": 378,
+  "transcript_lines_at_start": 378,
+  "token_usage": {
+    "input_tokens": 63,
+    "cache_creation_tokens": 72925,
+    "cache_read_tokens": 10706568,
+    "output_tokens": 37672,
+    "api_call_count": 53
+  },
+  "summary": {
+    "intent": "Implement a secure ReadSkillTool for the moltis gateway that lets the AI agent read skill files without leaking absolute paths, then harden it with hermes-agent-inspired robustness improvements (binary file handling, assets/ directory support, sorted sidecar listings).",
+    "outcome": "Delivered two commits: the initial ReadSkillTool implementation (PR #630, commit 66ad3c22) with injection scanning and traversal guards, followed by a robustness follow-up commit adding binary-file detection, assets/ sidecar support, sorted listings, and 23 additional tests (55 tool tests + 8 gateway integration tests, all green).",
+    "learnings": {
+      "repo": [
+        "Skills live under a sidecar directory structure with references/, templates/, scripts/, and assets/ subdirectories alongside the primary SKILL.md.",
+        "The gateway registers tools in a skill-tools block using a shared FsSkillDiscoverer instance in crates/gateway/src/server.rs.",
+        "Path safety reuses normalize_relative_skill_file_path from an existing helper — no need to reinvent containment logic.",
+        "Pre-existing macOS llama-cpp-sys CUDA build failure (tracked as moltis-csq) prevents a full `just lint` run; targeted per-crate clippy is the accepted workaround.",
+        "The session-close protocol includes `bd dolt pull` for Dolt sync, but no Dolt remote is configured in ephemeral worktrees.",
+        "hermes-agent has a parallel Python skill system (skills_tool.py, skill_view) that was used as a reference for porting robustness patterns."
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool implements primary + sidecar read paths with 128 KB cap, symlink-escape rejection, binary-file detection, and assets/ directory support. Containment guards reuse normalize_relative_skill_file_path."
+        },
+        {
+          "path": "crates/skills/src/safety.rs",
+          "finding": "Warn-only injection scanner ported from hermes-agent with 9 patterns and 11 tests — does not block, only annotates."
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "Dropped path= attribute and absolute SKILL.md path from \u003cavailable_skills\u003e to prevent path leakage; activation instruction now names read_skill(name=..., file_path=...)."
+        },
+        {
+          "path": "crates/gateway/tests/read_skill_tool.rs",
+          "finding": "Integration tests cover: registry presence, primary read with sidecar listing, sidecar read, unknown-name error, traversal rejection, assets/ directory, and binary file handling (8 cases total)."
+        }
+      ],
+      "workflow": [
+        "Running targeted per-crate clippy (cargo clippy -p \u003ccrate\u003e) is the reliable alternative when full `just lint` is blocked by an unrelated build failure.",
+        "Background task notification summaries can be mislabeled (exit code 101 reported as 'completed') — always read the output file to get the true result.",
+        "Beads issues were created and immediately closed within the same session for the follow-up robustness work, used as lightweight task tracking.",
+        "Format check (cargo fmt --check) was run as a gate before each commit alongside clippy."
+      ]
+    },
+    "friction": [
+      "Pre-existing macOS llama-cpp-sys CUDA build failure (moltis-csq) blocked full `just lint` runs throughout the session, requiring manual per-crate clippy workarounds.",
+      "Background task notification for bcalmwoi9 reported exit code 0 in the summary but the actual exit code was 101 — misleading status reporting.",
+      "Dolt remote not configured in the ephemeral worktree, causing `bd dolt pull` to fail at session close.",
+      "A validate_name call caused a compile error that required an edit fix mid-test iteration."
+    ],
+    "open_items": [
+      "moltis-avv: token-budget fallback for ReadSkillTool — intentionally left open per the original plan.",
+      "moltis-csq: pre-existing macOS llama-cpp-sys CUDA build failure blocking full lint runs — unrelated to this work but needs resolution.",
+      "The commit is local-only in the ephemeral worktree; PR #630 was pushed but the worktree branch is ephemeral and may not persist."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T10:28:29.352448Z",
+    "agent_lines": 795,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 795,
+    "agent_percentage": 100
+  }
+}
