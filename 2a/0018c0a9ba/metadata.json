@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2a0018c0a9ba",
+  "strategy": "manual-commit",
+  "branch": "fortuna/patch-1",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/src/hooks.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2a/0018c0a9ba/0/metadata.json",
+      "transcript": "/2a/0018c0a9ba/0/full.jsonl",
+      "context": "/2a/0018c0a9ba/0/context.md",
+      "content_hash": "/2a/0018c0a9ba/0/content_hash.txt",
+      "prompt": "/2a/0018c0a9ba/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 50602,
+    "cache_read_tokens": 624144,
+    "output_tokens": 3097,
+    "api_call_count": 15
+  }
+}
