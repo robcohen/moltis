@@ -1,0 +1,69 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "80f5a1368a8b",
+  "session_id": "80926b43-603a-4cff-98b7-492fe77d6cfe",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T13:40:05.347978Z",
+  "branch": "cstewart-hc/feat/deterministic-compaction",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/compaction_run.rs",
+    "crates/chat/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "51e3dabeca84",
+  "checkpoint_transcript_start": 1374,
+  "transcript_lines_at_start": 1374,
+  "token_usage": {
+    "input_tokens": 33,
+    "cache_creation_tokens": 28122,
+    "cache_read_tokens": 12060574,
+    "output_tokens": 16112,
+    "api_call_count": 28
+  },
+  "summary": {
+    "intent": "Audit and complete PR #653 implementing four compaction modes (deterministic, llm_replace, recency_preserving, structured) for the moltis project to ensure nothing was missing before review.",
+    "outcome": "Found and fixed a real bug where memory-file snapshot and AfterCompaction hook received wrong content for recency_preserving and structured modes; added regression tests including an iterative re-compaction test; all 219 tests pass with clean fmt/clippy/build across both feature configurations.",
+    "learnings": {
+      "repo": [
+        "compaction_run.rs is the central dispatcher; shared helpers (compute_boundaries, finalize_kept, in_place_prune_or_err, prune_tool_results_before, sanitize_tool_pairs, build_middle_marker, extract_previous_summary) are reused across recency_preserving and structured strategies",
+        "llm-compaction is a cargo feature (default-on) that gates both LLM strategies; disabling it leaves the two deterministic modes available and everything still compiles clean",
+        "Feature is forwarded through moltis-gateway and into moltis-cli default feature list",
+        "structured mode has iterative re-compaction: detects prior summary in head and passes it to the prompt, with automatic fallback to recency_preserving on LLM failure or empty summary",
+        "summary_model and max_summary_tokens fields exist on CompactionConfig but are not yet wired into provider resolution (deferred to moltis-8me)"
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/lib.rs",
+          "finding": "Bug: for recency_preserving and structured modes, compacted[0] is the first head message (e.g. 'user 0'), not the summary — so memory-file snapshot and AfterCompaction hook received wrong content. Fixed by extracting summary via extract_summary_body helper."
+        },
+        {
+          "path": "crates/chat/src/compaction_run.rs",
+          "finding": "Added extract_summary_body helper covering all four modes, regression tests for it, and structured_mode_forwards_previous_summary_on_recompaction test using Arc\u003cMutex\u003cbool\u003e\u003e flag to verify the previous summary reaches the provider prompt."
+        }
+      ],
+      "workflow": [
+        "Systematic PR audit checklist approach: memory-file correctness, hook payloads, serialization, stale test references, workspace build, and PR description freshness",
+        "Use Arc\u003cMutex\u003cbool\u003e\u003e flag pattern in tests to verify provider receives expected prompt content without requiring full integration setup",
+        "Verify both feature configurations (default and --no-default-features) compile and lint clean before pushing"
+      ]
+    },
+    "friction": [
+      "Multiple fmt/clippy/test cycles were needed to get the new tests into a clean state, requiring iterative edits to compaction_run.rs",
+      "PR description had gone stale after post-push fixes were added, requiring an update commit"
+    ],
+    "open_items": [
+      "moltis-8me (p3): auxiliary-model subsystem to route compaction to a cheap model (e.g. Gemini Flash) different from the session primary model — summary_model and max_summary_tokens on CompactionConfig are defined but not wired into provider resolution",
+      "PR #653 description needed updating after the memory-file fix commit was added post-push"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T13:39:38.180087Z",
+    "agent_lines": 169,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 169,
+    "agent_percentage": 100
+  }
+}
