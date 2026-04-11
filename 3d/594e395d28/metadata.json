@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3d594e395d28",
+  "strategy": "manual-commit",
+  "branch": "spurious-idea",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/templates/setup-required.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3d/594e395d28/0/metadata.json",
+      "transcript": "/3d/594e395d28/0/full.jsonl",
+      "context": "/3d/594e395d28/0/context.md",
+      "content_hash": "/3d/594e395d28/0/content_hash.txt",
+      "prompt": "/3d/594e395d28/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 27052,
+    "cache_read_tokens": 1427076,
+    "output_tokens": 6301,
+    "api_call_count": 15
+  }
+}
