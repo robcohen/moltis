@@ -1,0 +1,110 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3f899112cf65",
+  "session_id": "16075abc-3bfc-4552-8419-f5a1e68b2b4f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T19:47:54.818868Z",
+  "branch": "inexpensive-primrose",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/fs/read.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a5b1cf2358aa",
+  "token_usage": {
+    "input_tokens": 235,
+    "cache_creation_tokens": 358563,
+    "cache_read_tokens": 34534860,
+    "output_tokens": 136049,
+    "api_call_count": 185
+  },
+  "summary": {
+    "intent": "Fix moltis issue #657 by implementing native filesystem tools (Read, Write, Edit, MultiEdit, Glob, Grep) to replace shell-based exec workarounds, improving model quality, path-level security, and observability.",
+    "outcome": "Phase 1 MVP fully implemented and committed across three commits (db08bd64, 515dc54a, a54fc317): six native AgentTool impls in crates/tools/src/fs/, wired into gateway and policy system, with 761 passing tests and three P1 follow-up beads resolved (cwd defaulting, MCP collision policy, typed error taxonomy).",
+    "learnings": {
+      "repo": [
+        "AgentTool trait is defined in crates/agents/src/tool_registry.rs:12 with name/description/parameters_schema/execute interface",
+        "ExecTool (crates/tools/src/exec.rs:194) is the canonical template for new tools — already wired to ApprovalManager, SandboxRouter, NodeExecProvider, policy.rs",
+        "file_io.rs is internal-only (used by send_image/send_document), not an agent-facing tool — do not confuse with fs tools",
+        "MCP tools are already namespaced as mcp__{server}__{tool} so no collision risk with native tool names",
+        "ToolRegistry::register silently overwrites on duplicate keys — no warning emitted prior to this session's fix",
+        "The 'coding' policy profile only allowed ['exec', 'browser', 'memory'] — new tools must be explicitly added or they are silently blocked for users on that profile",
+        "moltis_metrics pipeline uses moltis_tool_executions_total / moltis_tool_execution_errors_total — no new custom counters needed",
+        "just lint fails due to pre-existing llama-cpp-sys-2 CUDA build error unrelated to tools crate — run clippy scoped to specific crate instead",
+        "workspace lints deny unused_qualifications — must remove fully-qualified paths where type is already imported",
+        "Glob/Grep working directory defaults to process cwd (server launch dir), not workspace root — requires explicit path or workspace_root builder field"
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/tool_registry.rs",
+          "line": 12,
+          "end_line": 12,
+          "finding": "AgentTool trait definition with name/description/parameters_schema/execute"
+        },
+        {
+          "path": "crates/tools/src/exec.rs",
+          "line": 194,
+          "end_line": 194,
+          "finding": "ExecTool — 1.7K LOC, canonical template for new tools; already wired to ApprovalManager, SandboxRouter, NodeExecProvider, policy.rs"
+        },
+        {
+          "path": "crates/tools/src/policy.rs",
+          "line": 33,
+          "end_line": 33,
+          "finding": "coding profile hardcoded to allow only ['exec', 'browser', 'memory'] — must be extended for any new tool to work under that profile"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3575,
+          "end_line": 3575,
+          "finding": "Tool registration point — new fs tools registered here next to CalcTool"
+        },
+        {
+          "path": "crates/gateway/src/mcp_service.rs",
+          "finding": "McpToolBridge namespaces all MCP tools as mcp__{server}__{tool}, preventing collision with native tool names"
+        }
+      ],
+      "workflow": [
+        "Reference repo survey order: catalog-only repos (claw-code) establish taxonomy; integration-heavy repos (openclaw) reveal edge-case semantics; shell-based repos (hermes-agent) reveal agent-loop concerns even if their approach is what you're replacing",
+        "File typed errors as Ok(Value) with a kind field rather than Err — LLM can branch on structured error kinds; Err should be reserved for unexpected internal failures",
+        "Match LLM provider's exact parameter names from day one (file_path, old_string, etc.) to avoid paying normalization cost later (openclaw paid this with CLAUDE_PARAM_GROUPS)",
+        "Run cargo fetch --locked before committing when adding workspace deps to ensure Cargo.lock consistency",
+        "Audit plan completeness separately from execution completeness — the post-phase-1 audit caught gaps in the original plan (typed errors, MCP collision) that were distinct from implementation bugs",
+        "File discovered-from beads during implementation for anything surfaced that wasn't in the original scope",
+        "Claiming beads before starting work and closing immediately on commit keeps the tracker accurate"
+      ]
+    },
+    "friction": [
+      "bd dolt pull failed at session start ('remote origin not found') — beads may be out of sync with shared store, no local fix available",
+      "just lint unusable due to pre-existing llama-cpp-sys-2 CUDA build failure — required scoping clippy directly to the target crate",
+      "ToolRegistry::register silent overwrite behavior required investigation to confirm MCP collision risk was zero before filing the bead",
+      "workspace lint deny(unused_qualifications) caused compile failures after typed error refactor requiring a second pass to remove qualified paths",
+      "metrics API in the codebase required reading process.rs and exec.rs to understand the correct invocation pattern before applying to new files",
+      "Glob/Grep cwd-defaulting-to-process-cwd was a silent correctness bug that only surfaced during post-implementation audit, not during initial design"
+    ],
+    "open_items": [
+      "moltis-sug: Phase 2 — sandbox bridge (FsBridge trait, tar round-trip for Edit/Write in sandbox, native Read/Glob/Grep bridge)",
+      "moltis-8o1: Phase 3 — UX polish (adaptive paging, edit recovery, re-read loop detection, must-read-before-write invariant, session-key plumbing)",
+      "moltis-6co: Phase 4 — [tools.fs] config section (allow_paths, deny_paths, binary_policy, gitignore, symlinks, docs, hook payload docs)",
+      "moltis-tqh: Read has no total-byte output cap (2000 lines × 2000 chars = up to 4MB per call)",
+      "moltis-a2l: No contract test for register_fs_tools through ToolRegistry pipeline",
+      "moltis-5dz: No fs-tools Cargo feature flag in crates/cli for opt-out path",
+      "moltis-tm8: No _session_key plumbing through fs tools (needed for phase 3 re-read tracker)",
+      "moltis-oc4: Unknown whether Write/Edit/MultiEdit need to emit checkpoint events for branch-session system",
+      "Phase 5 WASM-isolated fs tools explicitly out of scope but noted on epic for future consideration",
+      "Code committed to worktree branch only — not merged to local main, not pushed to remote",
+      "Streaming reads for large files: currently loads full file into memory even for small offset+limit requests",
+      "No performance benchmark gate for Grep vs ripgrep subprocess on large file trees",
+      "Cross-session read-tracker persistence: in-memory tracker resets on resumed sessions, must-read-before-write becomes process-lifetime scoped"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T19:47:10.357176Z",
+    "agent_lines": 114,
+    "human_added": 143,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 257,
+    "agent_percentage": 44.3579766536965
+  }
+}
