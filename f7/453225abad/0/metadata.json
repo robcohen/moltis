@@ -1,0 +1,76 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f7453225abad",
+  "session_id": "80926b43-603a-4cff-98b7-492fe77d6cfe",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T13:21:41.422005Z",
+  "branch": "cstewart-hc/feat/deterministic-compaction",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/compaction_run.rs",
+    "crates/config/src/validate.rs",
+    "docs/src/compaction.md",
+    "crates/config/src/template.rs",
+    "crates/config/src/schema.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f26880154d6c",
+  "checkpoint_transcript_start": 1219,
+  "transcript_lines_at_start": 1219,
+  "token_usage": {
+    "input_tokens": 30,
+    "cache_creation_tokens": 35000,
+    "cache_read_tokens": 12022305,
+    "output_tokens": 24647,
+    "api_call_count": 30
+  },
+  "summary": {
+    "intent": "Implement the 'Structured' compaction mode in a Rust chat compaction system, making it fully functional after it had been stubbed out as 'not yet implemented'.",
+    "outcome": "Structured mode was fully implemented with happy path, fallback, and iterative behaviors; 4 new tests added (215 chat tests total); all clippy, fmt, and feature configuration checks pass; committed and issue closed.",
+    "learnings": {
+      "repo": [
+        "Compaction modes (RecencyPreserving, Structured, LLM-replace) live in crates/chat/src/compaction_run.rs and are dispatched via a match on mode enum.",
+        "Boundary computation and post-splice cleanup logic was shared between RecencyPreserving and Structured by extracting helper functions.",
+        "Structured mode previously had a validation warning in crates/config/src/validate.rs marking it as unimplemented — this guard was removed on completion.",
+        "Documentation for compaction modes lives in docs/src/compaction.md; rustdoc for template/schema in crates/config/src/template.rs and crates/config/src/schema.rs.",
+        "The project uses a stub-provider pattern for LLM-dependent tests in compaction_run.rs.",
+        "Feature flag `--no-default-features` is a required CI check; `extract_previous_summary` needed a cfg attribute to suppress dead-code warnings under that configuration."
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/compaction_run.rs",
+          "finding": "Boundary computation and assembly were refactored into reusable helpers shared by recency_preserving_strategy and the new structured_strategy."
+        },
+        {
+          "path": "crates/config/src/validate.rs",
+          "finding": "Contained a 'not yet implemented' guard for Structured mode that was removed once the implementation shipped."
+        },
+        {
+          "path": "crates/chat/src/compaction_run.rs",
+          "finding": "extract_previous_summary triggered a dead-code warning under --no-default-features and required a conditional compilation attribute."
+        }
+      ],
+      "workflow": [
+        "Issue claiming and closing are managed via Bash scripts integrated into the commit workflow.",
+        "The full green check sequence is: clippy → fmt → tests → no-default-features compile → commit.",
+        "fmt issues required multiple iterative fix-and-recheck cycles before the final clean state.",
+        "Test counts were verified explicitly after implementation to confirm the expected delta (+4 structured tests)."
+      ]
+    },
+    "friction": [
+      "Multiple fmt fix-recheck cycles were needed — fmt issues were not caught until after the initial compile and test pass.",
+      "dead-code warning for extract_previous_summary under --no-default-features required a separate cleanup pass after the main implementation was complete.",
+      "Two compile errors required edits after the initial implementation before tests could run."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T13:21:19.095062Z",
+    "agent_lines": 569,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 569,
+    "agent_percentage": 100
+  }
+}
