@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "28e2275b3ebe",
+  "strategy": "manual-commit",
+  "branch": "delirious-gymnast",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/28/e2275b3ebe/0/metadata.json",
+      "transcript": "/28/e2275b3ebe/0/full.jsonl",
+      "context": "/28/e2275b3ebe/0/context.md",
+      "content_hash": "/28/e2275b3ebe/0/content_hash.txt",
+      "prompt": "/28/e2275b3ebe/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 67,
+    "cache_creation_tokens": 120814,
+    "cache_read_tokens": 2887928,
+    "output_tokens": 16317,
+    "api_call_count": 47
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "28e2275b3ebe",
+  "session_id": "cb411428-397c-49a6-a865-3ef5e769a5d8",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T18:28:37.948026Z",
+  "branch": "delirious-gymnast",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "751d455b9bb8",
+  "token_usage": {
+    "input_tokens": 67,
+    "cache_creation_tokens": 120814,
+    "cache_read_tokens": 2887928,
+    "output_tokens": 16317,
+    "api_call_count": 47
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #656 where agents.presets tools.deny silently has no effect on the main agent session, misleading users who configure deny lists under presets expecting main-session security enforcement.",
+    "outcome": "Added a validation warning, improved doc comments, and updated the config template to clarify sub-agent-only scope of preset tool policies. All 192 tests pass, fmt and clippy clean, committed and ready for PR.",
+    "learnings": {
+      "repo": [
+        "agents.presets tool policies apply ONLY to sub-agents spawned via spawn_agent; main session tool filtering requires [tools.policy]",
+        "Validation diagnostics use a category string taxonomy in validate.rs; 'security' was chosen as the category for the new silent-misconfig warning",
+        "Commit shape follows conventional commits: fix(scope): message; git-cliff handles CHANGELOG generation automatically",
+        "Quality gates: cargo +nightly-2025-11-30 fmt --all, just lint, cargo test -p moltis-config",
+        "The config template (template.rs) round-trips through load_config in loader.rs tests, so template edits are implicitly covered by the full test suite"
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/validate.rs",
+          "line": 1202,
+          "end_line": 1213,
+          "finding": "Existing default_preset validation check — new silent-misconfig warning was added adjacent to this block"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "line": 249,
+          "end_line": 254,
+          "finding": "AgentsConfig struct and default_preset field — doc comments were too terse and did not warn about sub-agent-only scope"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "line": 345,
+          "end_line": 349,
+          "finding": "AgentPreset struct — tools field access pattern: !preset.tools.allow.is_empty() || !preset.tools.deny.is_empty()"
+        },
+        {
+          "path": "crates/config/src/template.rs",
+          "line": 208,
+          "end_line": 222,
+          "finding": "SPAWN PRESETS section header — renamed to SUB-AGENT SPAWN PRESETS with a scope warning note added"
+        },
+        {
+          "path": "crates/config/src/template.rs",
+          "line": 387,
+          "end_line": 393,
+          "finding": "[tools.policy] section — added reciprocal comment clarifying this is main-session only"
+        }
+      ],
+      "workflow": [
+        "Plan was shared with user for approval before coding; open questions on warning granularity and trigger conditions were resolved upfront",
+        "Tests were written alongside the feature (3 cases: trigger, no-trigger variants, edge cases) before running quality gates",
+        "fmt was applied (not just checked) when it found issues, then verified clean before proceeding to clippy"
+      ]
+    },
+    "friction": [
+      "Needed multiple reads of schema.rs to locate ToolPolicyConfig and confirm the allow/deny field access pattern before writing the validation logic",
+      "Template test coverage was not obvious — required tracing through loader.rs to confirm template edits were already covered by the existing 192-test suite"
+    ],
+    "open_items": [
+      "Breaking rename of default_preset to default_subagent_preset was intentionally deferred — not worth the churn per reporter and user agreement",
+      "No behavioral bridge added between preset tool policies and the main session (effective_tool_policy in crates/chat/src/lib.rs) — would require separate design discussion on precedence rules and interaction with profile",
+      "PR was committed and pushed but transcript ends before PR creation is confirmed"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T18:28:19.112903Z",
+    "agent_lines": 236,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 236,
+    "agent_percentage": 100
+  }
+}
