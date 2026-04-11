@@ -1,0 +1,98 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f63026f15bae",
+  "session_id": "815083b0-f629-4a24-90d4-47187cb61197",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T20:17:53.545818Z",
+  "branch": "precious-tibia",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2c4f13667f10",
+  "token_usage": {
+    "input_tokens": 188,
+    "cache_creation_tokens": 359568,
+    "cache_read_tokens": 15614825,
+    "output_tokens": 40482,
+    "api_call_count": 140
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #655: honor `[skills] enabled = false` config flag at runtime so skills are not injected into LLM prompts when the operator has disabled them.",
+    "outcome": "PR #663 was created, merged, and all CI checks passed. The fix added a `discover_skills_if_enabled` helper in `crates/chat/src/lib.rs` replacing 4 inline `FsSkillDiscoverer` usages, with two regression tests. A follow-up Greptile comment about reusing an in-scope `config` variable at callsite 2 was also addressed.",
+    "learnings": {
+      "repo": [
+        "CLAUDE.md explicitly forbids `Mutex\u003c()\u003e` as a test serialization primitive; `tokio::sync::Semaphore` with 1 permit is the approved alternative.",
+        "CI depends on `local/*` commit statuses published by `./scripts/local-validate.sh`; workflow jobs wait on these statuses and will stay pending/fail if the script hasn't been run for the branch.",
+        "Conventional commits (`fix(skills):`) drive automatic changelog generation — no manual docs changes needed for bug fixes that match already-documented behavior.",
+        "The worktree path is `/Users/penso/.superset/worktrees/moltis/precious-tibia`; the active branch is `precious-tibia`.",
+        "moltis-config exposes `set_data_dir` / `clear_data_dir` for test isolation of filesystem-dependent config discovery.",
+        "Non-chat callsites (cli, gateway/services, gateway/server, skills/watcher, tools/skill_tools, httpd/server) also call FsSkillDiscoverer unconditionally but were intentionally left out of this PR scope."
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 1134,
+          "end_line": 1161,
+          "finding": "New `discover_skills_if_enabled` async helper placed after `prompt_build_limits_from_config`; short-circuits to `Vec::new()` when `config.skills.enabled` is false."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 3712,
+          "end_line": 3721,
+          "finding": "Send path callsite — no persona in scope here, uses `moltis_config::discover_and_load()` to get config, matching surrounding patterns."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 4957,
+          "end_line": 4976,
+          "finding": "Model-probe path callsite — `config` was already in scope at ~L4859; Greptile caught the redundant `discover_and_load()` call and it was fixed to reuse the in-scope variable."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5048,
+          "end_line": 5055,
+          "finding": "load_prompt_persona_for_session path 1 — persona already loaded, uses `persona.config` directly."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5165,
+          "end_line": 5172,
+          "finding": "load_prompt_persona_for_session path 2 — identical pattern to path 1, uses `persona.config`."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 13938,
+          "end_line": 14006,
+          "finding": "Two regression tests added: `discover_skills_if_enabled_short_circuits_when_disabled` and `discover_skills_if_enabled_runs_discoverer_when_enabled`, serialized via `SKILLS_TEST_DATA_DIR_LOCK: Semaphore` because they mutate the global data_dir override across await points."
+        }
+      ],
+      "workflow": [
+        "After pushing to a PR branch, `./scripts/local-validate.sh \u003cPR_NUMBER\u003e` must be run manually to publish `local/*` commit statuses before CI workflow jobs will pass.",
+        "Greptile performs automated P2-level code review and posts inline comments; threads must be explicitly resolved via GraphQL `resolveReviewThread` after addressing feedback.",
+        "Failed CI jobs that were waiting on missing statuses can be re-run with `gh run rerun` once the statuses are published.",
+        "The `check-pr` skill was used to fetch and triage PR review comments systematically."
+      ]
+    },
+    "friction": [
+      "CI jobs silently waited on missing `local/*` commit statuses rather than failing with a clear message, requiring manual investigation of the CI log to discover the root cause.",
+      "The `TaskOutput` tool required multiple polling attempts to retrieve the background `local-validate.sh` output.",
+      "Clippy flagged `tokio::sync::Mutex` with fully-qualified path as unused-qualifications; required iterative edits to resolve the import conflict.",
+      "Rate limit hit mid-session ('You've hit your limit · resets 8pm Europe/Lisbon'), causing an interruption before resolving the Greptile review thread."
+    ],
+    "open_items": [
+      "Non-chat callsites that invoke FsSkillDiscoverer unconditionally regardless of `[skills] enabled`: `crates/cli/src/main.rs:495`, `crates/gateway/src/services.rs:236,863`, `crates/gateway/src/server.rs:3887`, `crates/skills/src/watcher.rs:115`, `crates/tools/src/skill_tools.rs:368`, `crates/httpd/src/server.rs:2492` — intentionally deferred to a follow-up issue.",
+      "No snapshot/prompt-builder test asserting the `\u003cavailable_skills\u003e` block is absent from the rendered prompt when skills are disabled — noted as optional during planning but not implemented."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T20:17:14.954854Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}

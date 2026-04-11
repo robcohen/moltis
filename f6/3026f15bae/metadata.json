@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f63026f15bae",
+  "strategy": "manual-commit",
+  "branch": "precious-tibia",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f6/3026f15bae/0/metadata.json",
+      "transcript": "/f6/3026f15bae/0/full.jsonl",
+      "context": "/f6/3026f15bae/0/context.md",
+      "content_hash": "/f6/3026f15bae/0/content_hash.txt",
+      "prompt": "/f6/3026f15bae/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 188,
+    "cache_creation_tokens": 359568,
+    "cache_read_tokens": 15614825,
+    "output_tokens": 40482,
+    "api_call_count": 140
+  }
+}
