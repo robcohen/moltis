@@ -1,0 +1,112 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "326832094d27",
+  "session_id": "16075abc-3bfc-4552-8419-f5a1e68b2b4f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T19:38:56.288819Z",
+  "branch": "inexpensive-primrose",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/fs/shared.rs",
+    "crates/tools/src/fs/glob.rs",
+    "crates/tools/src/fs/grep.rs",
+    "crates/tools/src/fs/mod.rs",
+    "crates/gateway/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a5b1cf2358aa",
+  "token_usage": {
+    "input_tokens": 204,
+    "cache_creation_tokens": 311316,
+    "cache_read_tokens": 25617408,
+    "output_tokens": 112512,
+    "api_call_count": 154
+  },
+  "summary": {
+    "intent": "Fix moltis issue #657 by implementing native filesystem tools (Read, Write, Edit, MultiEdit, Glob, Grep) to replace the existing exec-based approach, which caused model quality regressions, lacked path-level security, and had poor auditability.",
+    "outcome": "Phase 1 MVP fully implemented and committed (db08bd64): six native AgentTool impls in crates/tools/src/fs/, wired into gateway and policy, 761 tests passing. Post-implementation audit surfaced 8 follow-up beads; moltis-ung (cwd defaulting to process cwd) was fixed and committed in the same session.",
+    "learnings": {
+      "repo": [
+        "AgentTool trait is defined in crates/agents/src/tool_registry.rs:12 — name/description/parameters_schema/execute",
+        "ExecTool (crates/tools/src/exec.rs:194, ~1.7K LOC) is the canonical template for new tools: ApprovalManager, SandboxRouter, NodeExecProvider, policy.rs all wired there",
+        "file_io.rs is NOT an agent-facing tool — it's an internal helper for send_image/send_document with a 20MB cap",
+        "tools.policy is name-based glob matching — adding tool names to allow/deny is free once the tool names are registered",
+        "The 'coding' policy profile at crates/tools/src/policy.rs:33 only allows ['exec','browser','memory'] — new tools must be explicitly added or they're silently blocked",
+        "Gateway tool registration happens in crates/gateway/src/server.rs:3575, adjacent to CalcTool",
+        "moltis_metrics pipeline already provides moltis_tool_executions_total and moltis_tool_execution_errors_total — no new custom counters needed",
+        "Workspace uses nightly-2025-11-30 for fmt and clippy; just lint fails on a pre-existing llama-cpp-sys-2 CUDA build error unrelated to tools",
+        "crates/tools/src/fs/ glob/grep tools need a workspace_root set via builder or explicit absolute path — they cannot safely fall back to process cwd"
+      ],
+      "code": [
+        {
+          "path": "crates/agents/src/tool_registry.rs",
+          "line": 12,
+          "end_line": 12,
+          "finding": "AgentTool trait definition: name/description/parameters_schema/execute"
+        },
+        {
+          "path": "crates/tools/src/exec.rs",
+          "line": 194,
+          "end_line": 194,
+          "finding": "ExecTool — canonical template for new tools, wired to ApprovalManager/SandboxRouter/policy"
+        },
+        {
+          "path": "crates/tools/src/policy.rs",
+          "line": 33,
+          "end_line": 33,
+          "finding": "coding profile only allows exec/browser/memory — must extend for any new tool names"
+        },
+        {
+          "path": "crates/tools/src/lib.rs",
+          "line": 55,
+          "end_line": 55,
+          "finding": "pub mod fs added here to expose the new fs module"
+        },
+        {
+          "path": "crates/gateway/src/server.rs",
+          "line": 3575,
+          "end_line": 3575,
+          "finding": "register_fs_tools called here next to CalcTool registration"
+        }
+      ],
+      "workflow": [
+        "Reference repo audit order matters: claw-code was catalog-only (taxonomy value), openclaw was best for edge-case semantics (adaptive paging, edit recovery, param compat), hermes was best for agent-loop concerns (re-read tracking, path policy)",
+        "Post-implementation self-audit before committing caught 15 real gaps — habit of explicit audit pass before closing a task is high value",
+        "Discovered-from beads filed with parent links keep the gap trail visible without polluting the original task",
+        "Claude-exact parameter names (file_path, old_string, new_string, etc.) from day one avoids the normalization layer openclaw paid for post-hoc",
+        "cargo fetch --locked must be verified before commit when workspace deps are added — Cargo.lock consistency is a gate per CLAUDE.md",
+        "Clippy --all-targets -D warnings on scoped crate is faster than just lint when the workspace has pre-existing unrelated failures"
+      ]
+    },
+    "friction": [
+      "bd dolt pull failed at session start with 'remote origin not found' — beads may be out of sync with shared store, no local fix available",
+      "just lint fails on pre-existing llama-cpp-sys-2 CUDA build error, forcing manual scoped clippy invocation per crate",
+      "Initial 'policy is free' claim was wrong — coding profile silently blocked all new tools; required a second read of policy.rs to catch",
+      "Glob/Grep cwd defaulting to process cwd was a silent failure mode (not a build error) that only surfaced during post-implementation audit",
+      "metrics integration required reading multiple files (process.rs, moltis_metrics) to find the existing pattern before stripping custom counter code"
+    ],
+    "open_items": [
+      "moltis-sug: Phase 2 — sandbox bridge (FsBridge trait, tar round-trip for Edit/Write in sandbox, native Read/Glob/Grep bridge)",
+      "moltis-8o1: Phase 3 — UX polish (adaptive paging, edit recovery, re-read loop detection, must-read-before-write invariant)",
+      "moltis-6co: Phase 4 — [tools.fs] config block + allow/deny paths, binary policy, gitignore respect, hook payload docs",
+      "moltis-ehp: P1 bug — typed error taxonomy for Read (nonexistent/permission_denied/too_large/binary/symlink as structured FsErrorKind)",
+      "moltis-rtm: P1 — MCP/plugin tool name-collision policy; 'Read' from native fs will shadow or be shadowed by any MCP Filesystem server",
+      "moltis-oc4: P2 — verify Write/Edit/MultiEdit integration with checkpoint/branch-session system",
+      "moltis-tqh: P2 bug — Read has no total-byte output cap (2000 lines × 2000 chars could return 4MB per call)",
+      "moltis-a2l: P2 — no contract test for register_fs_tools through ToolRegistry::register + execute pipeline",
+      "moltis-5dz: P2 — no fs-tools Cargo feature flag in crates/cli/Cargo.toml for opt-out",
+      "moltis-tm8: P3 — no _session_key plumbing through fs tools yet (needed for phase 3 re-read tracker)",
+      "Phase 5 / explicit out-of-scope: WASM-isolated fs tools (noted on epic but no bead)",
+      "Changes not yet merged to main — worktree is clean at db08bd64 but merge to local main is pending user confirmation"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T19:38:18.281374Z",
+    "agent_lines": 221,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 221,
+    "agent_percentage": 100
+  }
+}
