@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f6501ff01cc2",
+  "strategy": "manual-commit",
+  "branch": "inexpensive-primrose",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "crates/gateway/src/server.rs",
+    "crates/tools/Cargo.toml",
+    "crates/tools/src/fs/edit.rs",
+    "crates/tools/src/fs/glob.rs",
+    "crates/tools/src/fs/grep.rs",
+    "crates/tools/src/fs/mod.rs",
+    "crates/tools/src/fs/multi_edit.rs",
+    "crates/tools/src/fs/read.rs",
+    "crates/tools/src/fs/shared.rs",
+    "crates/tools/src/fs/write.rs",
+    "crates/tools/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f6/501ff01cc2/0/metadata.json",
+      "transcript": "/f6/501ff01cc2/0/full.jsonl",
+      "context": "/f6/501ff01cc2/0/context.md",
+      "content_hash": "/f6/501ff01cc2/0/content_hash.txt",
+      "prompt": "/f6/501ff01cc2/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 150,
+    "cache_creation_tokens": 269886,
+    "cache_read_tokens": 17298473,
+    "output_tokens": 84352,
+    "api_call_count": 120
+  }
+}
