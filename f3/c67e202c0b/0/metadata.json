@@ -1,0 +1,99 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f3c67e202c0b",
+  "session_id": "815083b0-f629-4a24-90d4-47187cb61197",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T18:34:27.79439Z",
+  "branch": "precious-tibia",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "21937bb21f5b",
+  "token_usage": {
+    "input_tokens": 96,
+    "cache_creation_tokens": 104829,
+    "cache_read_tokens": 5279300,
+    "output_tokens": 25375,
+    "api_call_count": 77
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #655 in the moltis repo: honor the `[skills] enabled = false` config flag at runtime so skills are not injected into the LLM prompt when disabled.",
+    "outcome": "Implemented a `discover_skills_if_enabled` helper in `crates/chat/src/lib.rs` that gates skill discovery on `config.skills.enabled`, replaced all 4 inline `FsSkillDiscoverer` callsites with the helper, added two regression tests, and submitted a PR after passing clippy/fmt/test checks.",
+    "learnings": {
+      "repo": [
+        "The `[skills] enabled` flag lives in `SkillsConfig` at `crates/config/src/schema.rs:1275` and was documented but never enforced at runtime.",
+        "All LLM-facing skill discovery callsites live in `crates/chat/src/lib.rs`; non-chat callsites (cli, gateway, httpd, tools, watcher) also bypass the flag but are considered out of scope for this fix.",
+        "Two callsites (send path L3712, model-probe path L4957) lack a `persona` in scope and must use `moltis_config::discover_and_load()` directly; two others (L5048, L5165) have `persona.config` already available.",
+        "The `moltis_config` crate exposes `set_data_dir` / `clear_data_dir` helpers for overriding the global data directory in tests.",
+        "Tests that mutate the global `data_dir` override must be serialized — achieved with a module-level `tokio::sync::Mutex` (needed because guards are held across `.await` points).",
+        "The project uses a nightly toolchain (`nightly-2025-11-30`) for fmt and clippy, and a `just lint` recipe for quality gates.",
+        "Conventional commit format (`fix(skills):`) triggers automatic changelog generation."
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 1134,
+          "end_line": 1161,
+          "finding": "New `discover_skills_if_enabled` async helper added here, between `prompt_build_limits_from_config` and `resolve_channel_runtime_context`."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 3712,
+          "end_line": 3721,
+          "finding": "First callsite (main send path): replaced inline FsSkillDiscoverer block with helper; config loaded via `moltis_config::discover_and_load()` since no persona is in scope."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 4957,
+          "end_line": 4976,
+          "finding": "Second callsite (model-probe / supports_tools path): replaced inline discoverer; config also loaded via `discover_and_load()`."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5048,
+          "end_line": 5055,
+          "finding": "Third callsite (load_prompt_persona_for_session path 1): replaced with helper using already-loaded `persona.config`."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5165,
+          "end_line": 5172,
+          "finding": "Fourth callsite (load_prompt_persona_for_session path 2): same as above, `replace_all` was used since both blocks were identical."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 13938,
+          "end_line": 14006,
+          "finding": "Two regression tests added at end of test module: one asserts empty result when disabled (even with a planted SKILL.md on disk), one asserts live discovery when enabled."
+        }
+      ],
+      "workflow": [
+        "Using `replace_all: true` on the Edit tool is effective when two callsites have identical code blocks.",
+        "Clippy flagged `tokio::sync::Mutex` type annotation as unused-qualifications when `Mutex` was already imported — using the unqualified `Mutex\u003c()\u003e` resolved it.",
+        "Running `cargo check` before the full clippy pass catches compile errors faster.",
+        "The beads issue was created and claimed before implementation, then closed after the PR was submitted — standard workflow for this repo."
+      ]
+    },
+    "friction": [
+      "Clippy flagged `std::sync::Mutex` usage in async tests (guard held across `.await`) — required switching to `tokio::sync::Mutex`.",
+      "The `tokio::sync::Mutex` fully-qualified type annotation then triggered an unused-qualifications lint, requiring a second edit to use the unqualified form.",
+      "Multiple Read passes on `lib.rs` were needed to locate exact line numbers for callsites because the file shifted after inserting the helper."
+    ],
+    "open_items": [
+      "Non-chat callsites that bypass `[skills] enabled`: `crates/cli/src/main.rs:495`, `crates/gateway/src/services.rs:236` and `863`, `crates/gateway/src/server.rs:3887`, `crates/skills/src/watcher.rs:115`, `crates/tools/src/skill_tools.rs:368`, `crates/httpd/src/server.rs:2492` — these don't inject into LLM prompts but still ignore the flag.",
+      "A follow-up issue should be filed to expand the `enabled` gate to non-chat callsites for full coverage.",
+      "Optional: add a prompt-builder snapshot test asserting the `\u003cavailable_skills\u003e` block is absent when skills are disabled."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T18:33:50.960447Z",
+    "agent_lines": 107,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 107,
+    "agent_percentage": 100
+  }
+}
