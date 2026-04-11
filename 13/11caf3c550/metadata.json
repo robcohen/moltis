@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1311caf3c550",
+  "strategy": "manual-commit",
+  "branch": "cstewart-hc/feat/deterministic-compaction",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/13/11caf3c550/0/metadata.json",
+      "transcript": "/13/11caf3c550/0/full.jsonl",
+      "context": "/13/11caf3c550/0/context.md",
+      "content_hash": "/13/11caf3c550/0/content_hash.txt",
+      "prompt": "/13/11caf3c550/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 22304,
+    "cache_read_tokens": 10659519,
+    "output_tokens": 15558,
+    "api_call_count": 14
+  }
+}
