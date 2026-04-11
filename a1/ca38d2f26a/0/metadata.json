@@ -1,0 +1,83 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a1ca38d2f26a",
+  "session_id": "80926b43-603a-4cff-98b7-492fe77d6cfe",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-11T13:14:09.764945Z",
+  "branch": "cstewart-hc/feat/deterministic-compaction",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/chat/src/compaction_run.rs",
+    "crates/config/src/validate.rs",
+    "docs/src/compaction.md",
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f26880154d6c",
+  "checkpoint_transcript_start": 977,
+  "transcript_lines_at_start": 977,
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 54384,
+    "cache_read_tokens": 16813455,
+    "output_tokens": 38103,
+    "api_call_count": 47
+  },
+  "summary": {
+    "intent": "Implement the RecencyPreserving compaction mode (moltis-h0c) for the moltis chat session history compaction system, which was previously stubbed out as NotYetImplemented.",
+    "outcome": "RecencyPreserving mode fully implemented in compaction_run.rs with head/tail boundary preservation, tool call pruning, middle-cut marker insertion, and 10 passing tests. All clippy/fmt/test gates green; issue closed and committed.",
+    "learnings": {
+      "repo": [
+        "The project uses a nightly Rust toolchain pinned to nightly-2025-11-30 for fmt/clippy.",
+        "Cargo features: `llm-compaction` is default-on and gates the LlmReplace streaming-summary path; `--no-default-features` builds must stay clean.",
+        "Compaction modes are tracked via beads issues (moltis-dxw epic with child issues moltis-g37, moltis-h0c, moltis-aff, moltis-8me).",
+        "validate.rs emits semantic `not-implemented` warnings for stubbed CompactionMode variants that reference their tracking issues by name.",
+        "The default model context window is 200K tokens, which makes tail budgets enormous — tests that need to trigger middle-cut behavior must call the private strategy function directly with a small synthetic context window."
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/compaction_run.rs",
+          "finding": "RecencyPreserving strategy implemented here: head/tail boundary calculation, tool-call content pruning above char threshold, PRUNED_TOOL_PLACEHOLDER sentinel, middle-cut marker insertion, and dispatcher routing. TooSmallToCompact error variant added."
+        },
+        {
+          "path": "crates/config/src/validate.rs",
+          "finding": "Semantic warning for RecencyPreserving removed now that the mode is implemented; remaining stubs (Structured) still emit not-implemented warnings."
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "CompactionMode::RecencyPreserving rustdoc updated from stub description to accurate trade-off documentation."
+        },
+        {
+          "path": "docs/src/compaction.md",
+          "finding": "Status markers updated: recency_preserving now shown as shipped; comparison table and config reference reflect live behavior."
+        }
+      ],
+      "workflow": [
+        "When tests can't trigger a code path due to environment defaults (e.g., 200K context window), call the private strategy function directly in tests with controlled parameters rather than going through the public dispatcher.",
+        "Clippy's `collapsible_if` lint requires combining nested if-guards into a single compound condition.",
+        "fmt and clippy are run as separate gates; fmt issues (closure inlining) can pass clippy and vice versa — both must be checked independently.",
+        "Issues are claimed before implementation begins and closed after the commit lands."
+      ]
+    },
+    "friction": [
+      "Default 200K context window prevented dispatcher-level tests from exercising the middle-cut path — required refactoring tests to call the private strategy directly.",
+      "Multiple rounds of clippy/fmt iteration: collapsible_if and inline closure formatting required separate fixes after initial compile success.",
+      "fmt check and clippy check caught different issues, requiring several edit-check cycles before achieving a fully clean state."
+    ],
+    "open_items": [
+      "moltis-aff (Structured compaction mode) — blocked on moltis-h0c merge, still returns NotYetImplemented.",
+      "moltis-8me (auxiliary-model subsystem) — p3 follow-up, no assignee, deferred until someone needs a cheap auxiliary model.",
+      "PR #653 not yet merged to main; moltis-h0c and moltis-aff are planned as two separate follow-up PRs after merge."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-11T13:13:41.126653Z",
+    "agent_lines": 683,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 683,
+    "agent_percentage": 100
+  }
+}
