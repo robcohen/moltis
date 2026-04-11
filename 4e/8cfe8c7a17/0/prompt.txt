@@ -1,0 +1,148 @@
+Implement the following plan:
+
+# Fix: Remote deployment auth setup dead-end (#646)
+
+## Context
+
+A user running Moltis via docker-compose on a remote server (with `MOLTIS_NO_TLS=true`) reports that visiting the web UI shows a page titled **"Authentication Not Configured"** that tells them to run `moltis auth reset-password`. Running that command in the container does not help — they are stuck and cannot complete first-time setup remotely.
+
+The irony: the onboarding UI already has a working setup-code flow for remote users (entered via the terminal stdout), and the auth gate already allows `/onboarding` to render for non-local connections during setup. The only thing missing is that remote users are never sent there — they hit a static dead-end page instead.
+
+### What the code actually does today
+
+- `crates/httpd/src/auth_middleware.rs:146-162` — when setup is required and the request is **remote** and the path is **not** `/onboarding`, the middleware redirects to `/setup-required`.
+- `crates/web/src/spa.rs:49-60` + `crates/web/src/templates/setup-required.html` — render a static page whose only advice is: run `moltis auth reset-password`. That CLI command wipes credentials (`crates/cli/src/auth_commands.rs:204-217`) — it does **not** help a fresh install where no credentials exist yet; the server still prints a new setup code on the next start, but the web page gives no hint of that.
+- `crates/web/src/assets/js/onboarding-view.js:175-526` — `AuthStep` already supports remote setup: when `GET /api/auth/status` returns `setup_code_required: true`, it renders a "Setup code" input and sends it with `POST /api/auth/setup` (validated at `crates/httpd/src/auth_routes.rs:166-213` against the in-memory code generated at `crates/gateway/src/server.rs:3373-3381`).
+- `crates/web/src/spa.rs:30-43` + `crates/web/src/templates.rs:793-795` — `should_redirect_from_onboarding` already returns `false` when `auth_setup_pending=true`, so `/onboarding` will stay on the onboarding page during remote setup (the original redirect-loop #350 was already solved at the template layer).
+
+### Why the current `/setup-required` redirect existed
+
+Commit `fd01fb94` (PR #356) added the `/setup-required` redirect to fix both a redirect loop between `/` and `/onboarding`, and a security concern that a remote user could "claim" the instance before the owner. The loop was fixed separately (onboarding handler no longer bounces away while auth is pending), and the security concern is already mitigated by the **setup code** requirement — the code is only visible in stdout on the server, so a remote attacker without terminal access cannot complete setup even if they can reach `/onboarding`.
+
+## Goal
+
+Remote visitors on a fresh deployment should land on the onboarding wizard, see the "Enter setup code" input, paste the 6-digit code from `docker compose logs`, and complete auth setup — exactly like local users already do.
+
+## Plan
+
+### 1. Redirect remote SetupRequired traffic to `/onboarding`
+
+**File:** `crates/httpd/src/auth_middleware.rs`
+
+In `auth_gate` (the `AuthResult::SetupRequired` branch, around lines 156-162), replace `Redirect::to("/setup-required")` with `Redirect::to("/onboarding")`. Update the surrounding comment to reflect the new behavior and reference #646 alongside #350.
+
+Local connections and `/onboarding` itself continue to pass through unchanged. API/WS paths continue to return `AUTH_SETUP_REQUIRED`.
+
+### 2. Repurpose `/setup-required` as a stale-bookmark fallback that links to onboarding
+
+**File:** `crates/web/src/templates/setup-required.html`
+
+Rewrite the body so it:
+- Explains that first-time setup requires a one-time setup code printed to the server's stdout (`docker compose logs moltis` for the reporter's case).
+- Has a prominent link/button to `/onboarding` ("Continue setup →").
+- Drops the `moltis auth reset-password` line — that command is misleading for fresh installs. Keep a short note that the CLI command exists for recovering a locked-out instance with filesystem access (link to docs) but do not recommend it as the primary path.
+
+Keep the `spa::setup_required_handler` guard at `crates/web/src/spa.rs:49-60` (redirect to `/login` when setup is complete) — it is still useful for stale bookmarks once auth exists. The page is now reached only via direct navigation/bookmark, never via automatic redirect.
+
+### 3. Update tests that asserted the old behavior
+
+- **`crates/httpd/tests/auth_middleware.rs`** (or the equivalent integration test file) — look for assertions expecting `/setup-required` as the redirect target for remote SetupRequired requests; change them to expect `/onboarding`. The commit history shows this test was added in `fd01fb94`.
+- **`crates/web/src/templates.rs:836-858`** — `setup_required_template_renders_html` currently asserts the page contains `"moltis auth reset-password"`. Update to assert the new body (e.g., contains `"/onboarding"` link and a phrase like `"setup code"`).
+- **`crates/web/ui/e2e/specs/onboarding-auth.spec.js`** — the comment in `fd01fb94` mentions this test was updated to navigate directly to `/onboarding` because `/` redirected to `/setup-required`. Restore the test so that visiting `/` as a remote client redirects to `/onboarding` and lands on the AuthStep with the setup-code input visible.
+
+### 4. Add regression coverage
+
+Add a unit test in `crates/httpd/src/auth_middleware.rs` (or the integration tests file, wherever `auth_disabled_still_requires_setup_for_remote_requests` lives) that confirms a non-local request to `/` with an unconfigured store receives a redirect to `/onboarding` (not `/setup-required`).
+
+## Critical files
+
+| File | Change |
+|---|---|
+| `crates/httpd/src/auth_middleware.rs` | Redirect target + comment + regression test |
+| `crates/web/src/templates/setup-required.html` | Rewrite body with `/onboarding` link, drop bad CLI advice |
+| `crates/web/src/templates.rs` | Update `setup_required_template_renders_html` assertions |
+| `crates/httpd/tests/auth_middleware.rs` (or equivalent) | Update remote-root redirect assertion |
+| `crates/web/ui/e2e/specs/onboarding-auth.spec.js` | Restore remote `/` → onboarding auth step flow |
+
+## Reuse, don't invent
+
+- `AuthStep` in `crates/web/src/assets/js/onboarding-view.js` already handles remote setup-code entry (password + passkey) — no JS changes needed.
+- `/api/auth/status` already returns `setup_code_required` — no API changes needed.
+- `should_redirect_from_onboarding` already stays on `/onboarding` while auth is pending — no SPA routing changes needed.
+
+## Verification
+
+### Unit/integration
+
+```bash
+cargo test -p moltis-httpd auth_middleware
+cargo test -p moltis-web templates
+```
+
+### Local format + lint (per CLAUDE.md)
+
+```bash
+cargo +nightly-2025-11-30 fmt --all -- --check
+just lint
+just test
+```
+
+### E2E (Playwright)
+
+```bash
+cd crates/web/ui
+npx playwright test e2e/specs/onboarding-auth.spec.js
+```
+
+### Manual repro (mirror the bug report)
+
+1. Build the image: `docker build -t moltis-local .`
+2. Start with `MOLTIS_NO_TLS=true` bound to a non-loopback interface (or access via LAN IP).
+3. Visit `http://<host>:<port>/` from a different machine.
+4. Expect: redirected to `/onboarding`, AuthStep shows "Setup code" input with the hint "Find this code in the moltis process log (stdout)."
+5. `docker compose logs moltis` prints the 6-digit code.
+6. Paste the code, set a password (or register a passkey), complete the wizard.
+7. Confirm no redirect loop, no `/setup-required` dead-end, and subsequent visits after logout land on `/login` as usual.
+
+### Security sanity check
+
+- Remote visitor without the setup code cannot complete `/api/auth/setup` (validated at `crates/httpd/src/auth_routes.rs:179-183`).
+- `/api/*` remote calls during SetupRequired still return `AUTH_SETUP_REQUIRED` 401 — unchanged.
+- Once setup is complete, `/onboarding` gets the normal auth gate back (unchanged, per `0067459b` design).
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-spurious-idea/5329ff02-6122-4460-bbd0-b0f8cbeccbf2.jsonl
+
+---
+
+<task-notification>
+<task-id>bexz8lh59</task-id>
+<tool-use-id>toolu_01HPoPkiH8iWaJA2QTqxQZad</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-spurious-idea/5329ff02-6122-4460-bbd0-b0f8cbeccbf2/tasks/bexz8lh59.output</output-file>
+<status>completed</status>
+<summary>Background command "Check crates compile" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-spurious-idea/5329ff02-6122-4460-bbd0-b0f8cbeccbf2/tasks/bexz8lh59.output
+
+---
+
+proceed
+
+---
+
+<task-notification>
+<task-id>bstsotsfu</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-spurious-idea/5329ff02-6122-4460-bbd0-b0f8cbeccbf2/tasks/bstsotsfu.output</output-file>
+<status>completed</status>
+<summary>Background command "Run updated auth middleware tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-spurious-idea/5329ff02-6122-4460-bbd0-b0f8cbeccbf2/tasks/bstsotsfu.output
+
+---
+
+proceed
+
+---
+
+commit push and create a PR
