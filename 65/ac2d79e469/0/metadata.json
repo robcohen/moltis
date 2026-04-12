@@ -1,0 +1,107 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "65ac2d79e469",
+  "session_id": "a32f3caf-c67d-4014-90f0-822248e174e9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T20:21:08.574408Z",
+  "branch": "quiver-fact",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/schema.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "95ea7a279e83",
+  "token_usage": {
+    "input_tokens": 441,
+    "cache_creation_tokens": 275963,
+    "cache_read_tokens": 66378378,
+    "output_tokens": 94073,
+    "api_call_count": 411
+  },
+  "summary": {
+    "intent": "Harden the Moltis web application's remote access security surface, starting from a GitHub issue about disabling the terminal on public deployments, then progressively fixing all discovered security vulnerabilities.",
+    "outcome": "Implemented 4 commits of security hardening: terminal disable feature (config + env var), brute-force IP ban + account lockout, 9-item hardening pass (HSTS, session cap, HMAC-SHA256 API keys, password min 12, audit log, scope enforcement), and a second-pass fixing WS scope bypass, timing side-channel, setup code entropy, and startup TLS warning.",
+    "learnings": {
+      "repo": [
+        "Config is structured with top-level sections: [server], [tools.web], etc. — WebConfig lives under [tools.web], not a top-level [web]",
+        "Gon pattern is used to inject server-side config into the frontend JS (e.g. terminal_enabled, voice_enabled, graphql_enabled)",
+        "build_schema_map() in validate.rs must be updated whenever new config fields are added to avoid 'unknown field' warnings",
+        "Env vars like MOLTIS_TERMINAL_DISABLED follow the pattern of MOLTIS_VERSION for deployment-level overrides that bypass the config editor",
+        "WebSocket RPC dispatch uses authorize_method + MethodContext::client_scopes for per-method scope enforcement — scopes ARE enforced at RPC level",
+        "The beads CLI is used for issue tracking: pull beads, create issue, claim issue, close issue workflow",
+        "CUDA crates cause build failures on macOS — clippy and tests must be run with --exclude flags for those crates",
+        "unsafe {} blocks are fully denied by lint in this codebase — std::env::set_var/remove_var cannot be used in tests",
+        "Two build_gateway_base_internal functions exist (cfg-gated) — both need updating when AuthState changes",
+        "AuthIdentity is inserted into request extensions by auth_gate middleware and readable by subsequent handlers"
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/schema.rs",
+          "line": 3800,
+          "end_line": 3800,
+          "finding": "Test calling is_terminal_enabled() was fragile — reads MOLTIS_TERMINAL_DISABLED env var which could be set in CI; fixed to test field directly"
+        },
+        {
+          "path": "crates/httpd/src/ws.rs",
+          "line": 144,
+          "end_line": 183,
+          "finding": "WS handler tracks api_key_scopes and passes them via MethodContext, but header-based bearer API key auth discarded scopes — fixed by returning AuthIdentity from websocket_header_authenticated"
+        },
+        {
+          "path": "crates/httpd/src/request_throttle.rs",
+          "finding": "resolve_client_ip was private — needed to be made pub to share with login_guard.rs"
+        },
+        {
+          "path": "crates/auth/src/credential_store.rs",
+          "finding": "verify_password returned immediately when no password set (~0ms vs ~100ms with Argon2), leaking password existence via timing; fixed with DUMMY_ARGON2_HASH constant"
+        },
+        {
+          "path": "crates/httpd/src/auth_middleware.rs",
+          "finding": "AuthIdentity struct needed scopes field added; all construction sites required updating"
+        },
+        {
+          "path": "crates/httpd/src/tools_routes.rs",
+          "finding": "require_config_access() needed AuthIdentity parameter to enforce operator.admin scope on config_save and restart — axum Extension\u003cAuthIdentity\u003e extractor used to pass identity"
+        },
+        {
+          "path": "crates/gateway/src/auth.rs",
+          "finding": "Setup code was 6 numeric digits (~900K combinations, brute-forceable in minutes); upgraded to 8 alphanumeric characters"
+        }
+      ],
+      "workflow": [
+        "axum Extension\u003cT\u003e extractor reads from request.extensions() — same map that extensions_mut().insert(T) writes to",
+        "When axum handler state type doesn't implement FromRef\u003cS\u003e for a needed type, Extension\u003cT\u003e extractors are the workaround",
+        "Cargo workspace deps (hmac, sha2) need to be explicitly added to crate-level Cargo.toml even if defined at workspace level",
+        "SQLite migrations are date-prefixed files in crates/gateway/migrations/ — test init methods also need manual schema updates",
+        "Playwright E2E tests run against a live server — testing gon-gated features requires either config file manipulation or client-side gon overrides"
+      ]
+    },
+    "friction": [
+      "CUDA crates cause persistent build failures on macOS, requiring --exclude flags on every clippy/test invocation",
+      "unsafe{} lint denial makes env var testing impossible — had to remove the env var override test entirely",
+      "scope enforcement on config routes required multiple approaches before finding a working pattern (RequireAdmin extractor failed due to FromRef bounds; fell back to Extension\u003cAuthIdentity\u003e)",
+      "require_config_access() refactor was messy — the function didn't have access to request extensions, requiring signature changes and multiple edit attempts",
+      "tools_routes.rs scope enforcement went through ~6 failed approaches before settling on Extension\u003cAuthIdentity\u003e pattern",
+      "cleanup test in login_guard failed because the cleanup logic kept IPs with consecutive_failures \u003e 0 — required adding last_failure_at staleness tracking",
+      "password length test failures in auth_middleware integration tests after raising minimum to 12 chars — required updating hardcoded test passwords"
+    ],
+    "open_items": [
+      "Per-message rate limiting on WebSocket RPC — expensive operations like agents.run can be spammed by authenticated users",
+      "CSP style-src 'unsafe-inline' remains due to Tailwind — needs build pipeline change to use nonce-based injection",
+      "Audit logging for password changes and passkey registration (currently only logs login and API key events)",
+      "Session binding to originating IP — deferred due to breaking mobile/VPN use cases",
+      "API key rotation mechanism — currently manual (create, migrate, revoke); no atomic rotation",
+      "auth.disabled = true config flag could be set via the TOML editor — could add startup warning similar to TLS warning",
+      "E2E spec for terminal-disabled state was added but tests gon override client-side rather than testing real server config path"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T20:20:28.583432Z",
+    "agent_lines": 0,
+    "human_added": 44,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 44,
+    "agent_percentage": 0
+  }
+}
