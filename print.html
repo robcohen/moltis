@@ -7830,6 +7830,193 @@ the head + LLM summary + tail strategy that inspired <code>structured</code> mod
 <li><code>crates/chat/src/compaction.rs</code> — current <code>deterministic</code> mode
 implementation.</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="filesystem-tools"><a class="header" href="#filesystem-tools">Filesystem Tools</a></h1>
+<p>Moltis ships six native filesystem tools that agents use for structured,
+typed file I/O: <code>Read</code>, <code>Write</code>, <code>Edit</code>, <code>MultiEdit</code>, <code>Glob</code>, and <code>Grep</code>.
+Their schemas match Claude Code exactly so LLMs trained on those tools
+work without adaptation. See <a href="https://github.com/moltis-org/moltis/issues/657">GitHub #657</a>
+for background.</p>
+<p>Prefer these over shelling out via the <code>exec</code> tool running <code>cat</code> / <code>sed</code> /
+<code>rg</code> — the native tools give the model line-numbered reads, uniqueness-
+enforced edits, typed error payloads, and structured audit logs.</p>
+<h2 id="tools-1"><a class="header" href="#tools-1">Tools</a></h2>
+<h3 id="read"><a class="header" href="#read"><code>Read</code></a></h3>
+<p>Read a file with line-numbered output.</p>
+<pre><code class="language-json">{
+  "file_path": "/absolute/path/to/file.rs",
+  "offset": 1,
+  "limit": 2000
+}
+</code></pre>
+<ul>
+<li><code>file_path</code> — absolute path (required). Relative paths are rejected.</li>
+<li><code>offset</code> — 1-indexed line to start at. Default <code>1</code>.</li>
+<li><code>limit</code> — max lines to return. Default <code>2000</code>.</li>
+</ul>
+<p>Returns one of the following typed payloads (the <code>kind</code> field is the
+discriminator the LLM branches on):</p>
+<ul>
+<li><code>kind: "text"</code> — happy path. Includes <code>content</code> (cat-n style line
+numbers), <code>total_lines</code>, <code>rendered_lines</code>, <code>start_line</code>, <code>truncated</code>.</li>
+<li><code>kind: "binary"</code> — file detected as binary. Includes <code>bytes</code>. With
+<code>binary_policy = "base64"</code> the payload also carries <code>base64</code>.</li>
+<li><code>kind: "not_found"</code> — file does not exist.</li>
+<li><code>kind: "permission_denied"</code> — read not permitted by filesystem ACLs.</li>
+<li><code>kind: "too_large"</code> — file exceeds <code>max_read_bytes</code>.</li>
+<li><code>kind: "not_regular_file"</code> — path is a directory, fifo, socket, etc.</li>
+<li><code>kind: "path_denied"</code> — blocked by <code>[tools.fs]</code> allow/deny rules.</li>
+</ul>
+<p>CRLF files are rendered with <code>\r</code> stripped so the line-number column
+aligns correctly; the file on disk is not modified.</p>
+<h3 id="write"><a class="header" href="#write"><code>Write</code></a></h3>
+<p>Atomically write a file. Parent directories must already exist. Refuses
+to follow symlinks.</p>
+<pre><code class="language-json">{
+  "file_path": "/absolute/path/to/file.rs",
+  "content": "fn main() {}\n"
+}
+</code></pre>
+<p>Returns <code>{ file_path, bytes_written, checkpoint_id }</code>. <code>checkpoint_id</code>
+is <code>null</code> unless <code>[tools.fs].checkpoint_before_mutation</code> is enabled.</p>
+<h3 id="edit"><a class="header" href="#edit"><code>Edit</code></a></h3>
+<p>Exact-match string replacement. Refuses to edit if <code>old_string</code> is not
+unique in the file unless <code>replace_all=true</code> — the uniqueness requirement
+is the main correctness win over shell <code>sed</code>.</p>
+<pre><code class="language-json">{
+  "file_path": "/absolute/path/to/file.rs",
+  "old_string": "fn foo()",
+  "new_string": "fn bar()",
+  "replace_all": false
+}
+</code></pre>
+<p>Returns <code>{ file_path, replacements, replace_all, recovered_via_crlf, checkpoint_id }</code>.
+<code>recovered_via_crlf</code> is <code>true</code> when the tool fell back to CRLF matching
+for an LF-only <code>old_string</code> against a CRLF file.</p>
+<h3 id="multiedit"><a class="header" href="#multiedit"><code>MultiEdit</code></a></h3>
+<p>Apply multiple sequential edits to a single file atomically. Each edit
+sees the output of the previous. Either all succeed or the file is left
+untouched.</p>
+<pre><code class="language-json">{
+  "file_path": "/absolute/path/to/file.rs",
+  "edits": [
+    { "old_string": "alpha", "new_string": "ALPHA" },
+    { "old_string": "beta",  "new_string": "BETA" }
+  ]
+}
+</code></pre>
+<h3 id="glob"><a class="header" href="#glob"><code>Glob</code></a></h3>
+<p>Find files matching a glob pattern, sorted by modification time (newest
+first). Respects <code>.gitignore</code> by default.</p>
+<pre><code class="language-json">{
+  "pattern": "**/*.rs",
+  "path": "/absolute/path/to/project"
+}
+</code></pre>
+<p><code>path</code> is required unless <code>[tools.fs].workspace_root</code> is configured. A
+relative <code>path</code> is rejected.</p>
+<h3 id="grep"><a class="header" href="#grep"><code>Grep</code></a></h3>
+<p>Regex content search. Walks with the same ignore rules as <code>Glob</code>.</p>
+<pre><code class="language-json">{
+  "pattern": "fn\\s+main",
+  "path": "/absolute/path/to/project",
+  "output_mode": "content",
+  "glob": "**/*.rs",
+  "-n": true,
+  "-C": 2
+}
+</code></pre>
+<p>Parameters: <code>pattern</code> (regex, required), <code>path</code>, <code>glob</code>, <code>type</code>
+(<code>rust</code> / <code>py</code> / <code>ts</code> / etc.), <code>output_mode</code> (<code>files_with_matches</code> /
+<code>content</code> / <code>count</code>), <code>-i</code> (case-insensitive), <code>-n</code> (line numbers),
+<code>-A</code> / <code>-B</code> / <code>-C</code> (context lines), <code>multiline</code>, <code>head_limit</code>, <code>offset</code>.</p>
+<h2 id="configuration-19"><a class="header" href="#configuration-19">Configuration</a></h2>
+<p>All fs tools are configured under a single <code>[tools.fs]</code> section. Every
+field is optional and conservative by default — the tools work out of
+the box with no configuration.</p>
+<pre><code class="language-toml">[tools.fs]
+# Default search root for Glob/Grep when `path` is omitted. Absolute.
+# workspace_root = "/home/user/projects/my-app"
+
+# Absolute path globs the fs tools may touch. Empty = no allowlist.
+# Evaluated after canonicalization so symlinks can't escape.
+allow_paths = []
+
+# Deny globs. Deny wins over allow.
+deny_paths = []
+
+# Per-session Read history + loop detection. Prerequisite for
+# must_read_before_write.
+track_reads = false
+
+# Refuse Write/Edit/MultiEdit on files the session hasn't Read.
+# Requires track_reads = true.
+must_read_before_write = false
+
+# When true, Write/Edit/MultiEdit pause for explicit operator approval
+# before mutating a file.
+require_approval = true
+
+# Read size cap. Files larger than this return a typed "too_large" payload.
+max_read_bytes = 10485760  # 10 MB
+
+# Binary file handling:
+#   "reject" — typed marker without content (default)
+#   "base64" — include base64-encoded bytes in the payload
+binary_policy = "reject"
+
+# Whether Glob/Grep respect .gitignore / .ignore / .git/info/exclude.
+respect_gitignore = true
+
+# When true, Write/Edit/MultiEdit snapshot the target file via the
+# existing CheckpointManager before mutating, so the pre-edit state can
+# be restored via the `checkpoint_restore` tool. Off by default because
+# checkpoints grow with agent activity.
+checkpoint_before_mutation = false
+</code></pre>
+<p><code>require_approval</code> reuses the existing approval queue and WebSocket
+prompting path. If nobody approves the request, the mutation times out
+instead of landing silently.</p>
+<h2 id="policy-integration"><a class="header" href="#policy-integration">Policy Integration</a></h2>
+<p>The <code>[tools.policy]</code> allow/deny list gates access by tool name, not by
+file path. You can make an agent read-only without touching fs-level
+policy:</p>
+<pre><code class="language-toml">[tools.policy]
+deny = ["Write", "Edit", "MultiEdit"]
+</code></pre>
+<p>The agent retains <code>Read</code>, <code>Glob</code>, and <code>Grep</code> — no need to deny the
+shell tool wholesale and lose every other capability.</p>
+<p>File-path allow/deny lives in <code>[tools.fs]</code>. Layer both for fine-grained
+control. Example: a code-reviewer agent that can read the project tree
+but can’t touch anything outside it:</p>
+<pre><code class="language-toml">[tools.policy]
+allow = ["exec", "browser", "memory", "Read", "Glob", "Grep"]
+
+[tools.fs]
+workspace_root = "/home/user/project"
+allow_paths = ["/home/user/project/**"]
+deny_paths  = ["/home/user/project/.env*", "/home/user/project/secrets/**"]
+respect_gitignore = true
+require_approval = true
+</code></pre>
+<h2 id="structured-audit"><a class="header" href="#structured-audit">Structured Audit</a></h2>
+<p>Every tool invocation is a structured event through moltis’s existing
+tracing layer and the <code>moltis_tool_executions_total</code> /
+<code>moltis_tool_execution_errors_total</code> metrics. Writes appear in traces as
+structured key/value pairs — <code>tool=Write file_path=... bytes=... outcome=ok</code>
+— dramatically easier to review than an opaque shell command string, and
+the second big win (alongside model-quality improvements) that motivated
+#657.</p>
+<h2 id="related"><a class="header" href="#related">Related</a></h2>
+<ul>
+<li><a href="checkpoints.html">Checkpoints</a> — pairs with <code>checkpoint_before_mutation</code>
+for opt-in pre-edit snapshots.</li>
+<li><a href="hooks.html">Hooks</a> — <code>BeforeToolCall</code> and <code>ToolResultPersist</code> receive
+structured payloads for each fs tool call, so policy hooks can inspect
+typed parameters instead of parsing shell strings.</li>
+<li><a href="sandbox.html">Sandbox</a> — fs tools route through the sandbox when the
+session is sandboxed. If no real sandbox backend is available, Moltis
+warns at startup and the tools operate on the gateway host.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="scheduling-cron-jobs"><a class="header" href="#scheduling-cron-jobs">Scheduling (Cron Jobs)</a></h1>
 <p>Moltis includes a built-in cron system that lets the agent schedule and manage
 recurring tasks. Jobs can fire agent turns, send system events, or trigger
@@ -8601,7 +8788,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 }
 </code></pre>
 <p>Clicking a notification will open or focus the app and navigate to the relevant chat.</p>
-<h2 id="configuration-19"><a class="header" href="#configuration-19">Configuration</a></h2>
+<h2 id="configuration-20"><a class="header" href="#configuration-20">Configuration</a></h2>
 <h3 id="feature-flag-3"><a class="header" href="#feature-flag-3">Feature Flag</a></h3>
 <p>Push notifications are controlled by the <code>push-notifications</code> feature flag, which is enabled by default. To disable:</p>
 <pre><code class="language-toml"># In your Cargo.toml or when building
@@ -12118,7 +12305,7 @@ pub mod my_feature {
 
 counter!(my_feature::OPERATIONS_TOTAL).increment(1);
 <span class="boring">}</span></code></pre></pre>
-<h2 id="configuration-20"><a class="header" href="#configuration-20">Configuration</a></h2>
+<h2 id="configuration-21"><a class="header" href="#configuration-21">Configuration</a></h2>
 <p>Metrics configuration in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[metrics]
 enabled = true              # Enable metrics collection (default: true)
@@ -12217,7 +12404,7 @@ tools grouped by origin.</p>
 With many MCP servers this can burn 15,000+ tokens per turn. <strong>Lazy mode</strong>
 replaces all tool schemas with a single <code>tool_search</code> meta-tool that the model
 uses to discover and activate tools on demand.</p>
-<h3 id="configuration-21"><a class="header" href="#configuration-21">Configuration</a></h3>
+<h3 id="configuration-22"><a class="header" href="#configuration-22">Configuration</a></h3>
 <pre><code class="language-toml">[tools]
 registry_mode = "lazy"   # default: "full"
 </code></pre>
