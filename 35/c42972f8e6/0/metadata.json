@@ -1,0 +1,79 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "35c42972f8e6",
+  "session_id": "a32f3caf-c67d-4014-90f0-822248e174e9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T18:50:10.199813Z",
+  "branch": "quiver-fact",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/config/src/validate.rs",
+    "crates/config/src/template.rs",
+    "crates/web/src/templates.rs",
+    "crates/web/src/terminal.rs",
+    "crates/web/src/assets/js/page-settings.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f33964b0c9ef",
+  "token_usage": {
+    "input_tokens": 100,
+    "cache_creation_tokens": 91312,
+    "cache_read_tokens": 6218318,
+    "output_tokens": 19695,
+    "api_call_count": 94
+  },
+  "summary": {
+    "intent": "Implement a server-side terminal disable feature for the Moltis web UI (GitHub issue #681), with both a config flag and an env var hard override to prevent re-enabling via the web UI config editor.",
+    "outcome": "Fully implemented and committed: added `terminal_enabled` to `ServerConfig` with `MOLTIS_TERMINAL_DISABLED` env var override, guarded all 3 terminal API routes with 403 responses, injected `terminal_enabled` into gon data, and updated the frontend to show a disabled notice instead of connecting.",
+    "learnings": {
+      "repo": [
+        "WebConfig lives under `[tools.web]`, not a top-level `[web]` section — server-level settings belong in `ServerConfig` under `[server]`.",
+        "The project uses a `build_schema_map` function in `validate.rs` that must be updated when new config fields are added.",
+        "Gon data is built in `crates/web/src/templates.rs` and injected into the frontend; feature flags like `voice_enabled` follow this pattern.",
+        "The project's lint config forbids unsafe code entirely (`#![deny(unsafe_code)]`), making `std::env::set_var`/`remove_var` unusable in tests.",
+        "Pre-existing CUDA build/test failures exist on macOS — clippy and tests must exclude CUDA-dependent crates to get clean results.",
+        "The project uses a 'beads' task tracking system with CLI commands for creating and claiming issues before implementation."
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "ServerConfig is the correct struct for server-level feature flags; added `terminal_enabled: bool` with default true and a `is_terminal_enabled()` helper that checks env var `MOLTIS_TERMINAL_DISABLED` as a hard override."
+        },
+        {
+          "path": "crates/web/src/terminal.rs",
+          "finding": "Three terminal routes need guarding: GET /api/terminal/windows, POST /api/terminal/windows, and the WebSocket upgrade handler. Some handlers lacked `State(state)` and needed it added."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-settings.js",
+          "finding": "Terminal page is rendered as a `PageSection` via pageSections routing; intercept before render when section is 'terminal' and gon.terminal_enabled is false to show a disabled notice."
+        }
+      ],
+      "workflow": [
+        "Clippy lint `collapsible_if` caught a nested if that should use `\u0026\u0026` — formatter doesn't catch this, needs a clippy pass.",
+        "Rust 2024 edition (or recent nightly) treats `std::env::set_var`/`remove_var` as unsafe; env var behavior in tests must be verified indirectly or skipped.",
+        "Running `cargo fmt` before `cargo clippy` avoids spurious formatting warnings in clippy output."
+      ]
+    },
+    "friction": [
+      "Confusion about where the config field belonged — initial assumption was `[web]` or a top-level section, but it's actually `[server]` via `ServerConfig`; required several grep/read cycles to confirm.",
+      "Build ran in background and required polling `TaskOutput` to get results — no direct feedback on compilation success.",
+      "CUDA crates cause pre-existing build failures on macOS, requiring manual exclusion flags for every clippy/test invocation.",
+      "Unsafe code lint blocked the env var override test — had to remove it and leave that code path without a direct unit test."
+    ],
+    "open_items": [
+      "No docs page exists for the web UI terminal feature — the config template comment is the only discoverability mechanism; a hardening/security docs page could reference `MOLTIS_TERMINAL_DISABLED`.",
+      "The env var override path (`MOLTIS_TERMINAL_DISABLED=1`) has no unit test due to the unsafe code lint restriction; integration or e2e test coverage would be valuable.",
+      "The web UI config editor can still toggle `terminal_enabled` in the TOML and restart the server — the env var is the only true hard boundary, but this is by design and noted in the issue discussion."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T18:49:45.959087Z",
+    "agent_lines": 116,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 116,
+    "agent_percentage": 100
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "35c42972f8e6",
+  "strategy": "manual-commit",
+  "branch": "quiver-fact",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/web/src/assets/js/page-settings.js",
+    "crates/web/src/templates.rs",
+    "crates/web/src/terminal.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/35/c42972f8e6/0/metadata.json",
+      "transcript": "/35/c42972f8e6/0/full.jsonl",
+      "context": "/35/c42972f8e6/0/context.md",
+      "content_hash": "/35/c42972f8e6/0/content_hash.txt",
+      "prompt": "/35/c42972f8e6/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 100,
+    "cache_creation_tokens": 91312,
+    "cache_read_tokens": 6218318,
+    "output_tokens": 19695,
+    "api_call_count": 94
+  }
+}
