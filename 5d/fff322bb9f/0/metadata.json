@@ -1,0 +1,72 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5dfff322bb9f",
+  "session_id": "6e382dcc-9ee9-4b46-8373-f43f1efa9157",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T19:45:37.000698Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "website/index.de.html",
+    "website/index.en.html",
+    "website/index.es.html",
+    "website/index.fr.html",
+    "website/index.it.html",
+    "website/index.ja.html",
+    "website/index.ko.html",
+    "website/index.pt.html",
+    "website/index.ru.html",
+    "website/index.zh.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "257cbfd671a5",
+  "token_usage": {
+    "input_tokens": 30,
+    "cache_creation_tokens": 43667,
+    "cache_read_tokens": 767207,
+    "output_tokens": 6224,
+    "api_call_count": 22
+  },
+  "summary": {
+    "intent": "Add a new community testimonial from GitHub discussion #680 to the Moltis website, then make the testimonials section horizontally scrollable to accommodate future additions without increasing page height.",
+    "outcome": "Added Cstewart-HC's quote as a second community card with GitHub attribution, converted the testimonials section to a horizontal scroll container with snap behavior, and regenerated all 9 translated HTML files.",
+    "learnings": {
+      "repo": [
+        "The website uses a build script (website/scripts/build-i18n.mjs) to generate translated HTML files from index.en.html — changes to the English template must be followed by a rebuild to propagate to all locales.",
+        "Community quotes/testimonials are NOT included in the i18n translation strings — they remain in English across all locales, simplifying quote additions.",
+        "The existing scrollbar utility class is named `hide-scrollbar`, not `scrollbar-hide` — easy to get wrong when adding scroll containers."
+      ],
+      "code": [
+        {
+          "path": "website/index.en.html",
+          "finding": "Community quotes section uses orange cards with quote icons; cards needed `flex-shrink-0` and fixed widths (w-72 sm:w-80) to work correctly in a horizontal scroll container."
+        },
+        {
+          "path": "website/index.en.html",
+          "finding": "Horizontal scroll container uses `overflow-x-auto hide-scrollbar snap-x snap-mandatory` with `snap-start` on each card for mobile snap behavior."
+        }
+      ],
+      "workflow": [
+        "When adding quotes from GitHub discussions, fetch both the discussion content and author metadata separately to get attribution details.",
+        "After editing index.en.html, always run the i18n build script to regenerate all translated files — 10 files total (en + 9 locales)."
+      ]
+    },
+    "friction": [
+      "Initial attempt used `scrollbar-hide` class which doesn't exist in the codebase — had to grep to discover the correct class name is `hide-scrollbar`.",
+      "The i18n translation system required a separate rebuild step after every HTML edit, adding overhead to what might seem like simple content changes."
+    ],
+    "open_items": [
+      "The horizontal scroll container has no visual affordance (arrows, dots, fade edge) to indicate more cards exist — users may not discover the scroll on desktop.",
+      "Adding more quotes in the future requires manually duplicating card divs in index.en.html and re-running the i18n build — no CMS or data-driven approach exists yet."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T19:45:21.683259Z",
+    "agent_lines": 270,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 270,
+    "agent_percentage": 100
+  }
+}
