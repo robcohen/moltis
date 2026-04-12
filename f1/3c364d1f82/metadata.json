@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f13c364d1f82",
+  "strategy": "manual-commit",
+  "branch": "quiver-fact",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/httpd/src/auth_routes.rs",
+    "crates/httpd/src/server.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f1/3c364d1f82/0/metadata.json",
+      "transcript": "/f1/3c364d1f82/0/full.jsonl",
+      "context": "/f1/3c364d1f82/0/context.md",
+      "content_hash": "/f1/3c364d1f82/0/content_hash.txt",
+      "prompt": "/f1/3c364d1f82/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 327,
+    "cache_creation_tokens": 219342,
+    "cache_read_tokens": 40686656,
+    "output_tokens": 73760,
+    "api_call_count": 307
+  }
+}

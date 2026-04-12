@@ -1,0 +1,112 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f13c364d1f82",
+  "session_id": "a32f3caf-c67d-4014-90f0-822248e174e9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T19:47:44.361769Z",
+  "branch": "quiver-fact",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/httpd/src/auth_routes.rs",
+    "crates/httpd/src/server.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "065af5efa233",
+  "token_usage": {
+    "input_tokens": 327,
+    "cache_creation_tokens": 219342,
+    "cache_read_tokens": 40686656,
+    "output_tokens": 73760,
+    "api_call_count": 307
+  },
+  "summary": {
+    "intent": "Implement a terminal disable feature for the moltis web UI (Issue #681) and then comprehensively harden the authentication/remote access security of the application against brute-force and other attacks.",
+    "outcome": "Terminal disable feature was implemented and merged via PR #682. A LoginGuard with IP banning and account lockout was added. All 9 security issues (setup code brute-force, API key scope enforcement, HSTS, CSP, session limits, API key salted hashing, password minimum, setup code expiry, auth audit log) were implemented, tested, and committed.",
+    "learnings": {
+      "repo": [
+        "Config lives under MoltisConfig with a ServerConfig section — the right place for server-level feature flags like terminal_enabled, not under [tools.web].",
+        "Environment variables (e.g. MOLTIS_TERMINAL_DISABLED) are used as deployment-level hard overrides that win over TOML config, following the pattern of MOLTIS_VERSION.",
+        "Gon pattern is used to inject server-side config into the frontend — fields like voice_enabled, graphql_enabled serve as the model for terminal_enabled.",
+        "API key scopes are stored in the database but were NOT enforced at the middleware level — only key existence was checked in auth_middleware.rs.",
+        "The auth_gate middleware inserts AuthIdentity into request extensions; it can be read via axum::Extension\u003cAuthIdentity\u003e in handlers.",
+        "RequireAdmin extractor only works with AuthState (which has FromRef impls), not AppState — scope enforcement on config routes required a different approach via the handler directly.",
+        "unsafe code is entirely denied by lint rules in this repo — std::env::set_var cannot be used in tests.",
+        "CUDA-dependent crates cause pre-existing build failures on macOS; clippy/tests must be run with --exclude flags for those crates.",
+        "The setup code was a 6-digit numeric code with no expiry and no rate limit — a significant brute-force risk on public deployments.",
+        "Sessions had no per-user limit, enabling resource exhaustion and slow revocation.",
+        "API keys used plain SHA-256 (no salt), inconsistent with Argon2 used for passwords."
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "ServerConfig is the correct struct for terminal_enabled; is_terminal_enabled() checks MOLTIS_TERMINAL_DISABLED env var first then falls back to config value."
+        },
+        {
+          "path": "crates/web/src/terminal.rs",
+          "finding": "Three terminal routes need guarding: GET /api/terminal/windows, POST /api/terminal/windows, and GET /api/terminal/ws (WebSocket upgrade). The windows handlers lacked State(state) and needed it added."
+        },
+        {
+          "path": "crates/httpd/src/request_throttle.rs",
+          "finding": "resolve_client_ip was private; needed to be made pub to share with login_guard.rs."
+        },
+        {
+          "path": "crates/httpd/src/login_guard.rs",
+          "finding": "New module implementing IP banning (10 failures → escalating bans: 5m, 10m, 20m... up to 24h cap) and account lockout (3 distinct IPs fail same account within 15 min → 15 min lockout). IpRecord needs a last_failure_at field for stale entry cleanup, otherwise entries with consecutive_failures \u003e 0 but no ban leak memory forever."
+        },
+        {
+          "path": "crates/httpd/src/auth_middleware.rs",
+          "finding": "AuthIdentity needed a scopes field added; all construction sites needed updating. Session auth gets empty scopes vec, API key auth populates from DB."
+        },
+        {
+          "path": "crates/httpd/src/tools_routes.rs",
+          "finding": "require_config_access needed an optional identity + require_admin bool to enforce operator.admin scope on write endpoints (config_save, restart). Used axum::Extension\u003cAuthIdentity\u003e extractor to get identity in handlers."
+        },
+        {
+          "path": "crates/auth/src/credential_store.rs",
+          "finding": "API key hashing upgraded to HMAC-SHA256 with random salt; backward-compatible with legacy unsalted keys via fallback lookup. Max session limit enforced during session creation. Audit log methods added for auth events."
+        },
+        {
+          "path": "crates/gateway/src/state.rs",
+          "finding": "GatewayInner needed setup_code_created_at: Instant field to support 30-minute setup code expiry."
+        }
+      ],
+      "workflow": [
+        "Beads issue tracking system is used — claim issue before starting, close when done, used for both individual features and epics.",
+        "Background compilation checks (Bash run_in_background) are used during implementation to catch errors asynchronously.",
+        "Migration files follow timestamp naming: crates/gateway/migrations/YYYYMMDDHHMMSS_description.sql.",
+        "Test passwords used in integration tests must be updated when password minimum length changes — HTTP handler tests use literal JSON bodies.",
+        "taplo fmt is used for TOML formatting in addition to rustfmt.",
+        "Clippy collapsible-if warnings are common when adding nested guards — collapse them before final commit.",
+        "worktrees are used for feature branches: /Users/penso/.superset/worktrees/moltis/\u003cbranch-name\u003e/"
+      ]
+    },
+    "friction": [
+      "CUDA crates cause pre-existing build failures on macOS, requiring --exclude flags on every cargo clippy/test invocation.",
+      "unsafe code ban prevents direct env var manipulation in tests — the env var override path for is_terminal_enabled could not be unit tested.",
+      "RequireAdmin extractor couldn't be used on AppState routes (no FromRef impls), forcing a more verbose per-handler approach with axum::Extension\u003cAuthIdentity\u003e.",
+      "Multiple rounds of clippy collapsible-if fixes needed across login_guard.rs, auth_routes.rs, and tools_routes.rs.",
+      "The cleanup test for LoginGuard initially failed because entries with consecutive_failures \u003e 0 but no ban were retained indefinitely — required adding last_failure_at field to fix the memory leak and the test.",
+      "Five integration tests failed after raising the password minimum from 8 to 12 characters — test fixture passwords needed updating.",
+      "The audit log methods were initially placed outside the impl block due to brace nesting, requiring a fix."
+    ],
+    "open_items": [
+      "Scope enforcement only covers config_save and restart — other admin-sensitive endpoints (API key management, user management) may still lack scope checks.",
+      "Legacy API keys using plain SHA-256 (no salt) remain valid via fallback — no migration path to force re-issuance of old keys.",
+      "No audit log retention/rotation policy — the auth_audit_log table will grow unbounded.",
+      "The setup code brute-force fix uses the same LoginGuard as login, but setup code itself is still 6 numeric digits (900K combinations) — upgrading to alphanumeric would improve entropy.",
+      "CSP and HSTS headers were added but not audited for correctness/completeness (e.g. CSP directives, HSTS max-age value, includeSubDomains).",
+      "No frontend feedback when a user is locked out vs. wrong password — both return 429 but the UX could distinguish them.",
+      "Account lockout from distributed IPs (3 distinct IPs) has no admin override/unlock mechanism — a locked account can only self-recover after 15 minutes.",
+      "The audit log is not exposed via any API endpoint — no way for admins to review auth events from the UI."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T19:46:52.834272Z",
+    "agent_lines": 70,
+    "human_added": 773,
+    "human_modified": 9,
+    "human_removed": 0,
+    "total_committed": 852,
+    "agent_percentage": 8.215962441314554
+  }
+}
