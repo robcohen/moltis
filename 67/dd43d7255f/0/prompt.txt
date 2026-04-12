@@ -1,0 +1,909 @@
+Implement the following plan:
+
+# Plan: Add Nostr DM Channel Support
+
+**Issue:** [moltis-org/moltis#668](https://github.com/moltis-org/moltis/issues/668)
+
+## Context
+
+Moltis supports six messaging channels (Telegram, Discord, Slack, MS Teams, WhatsApp, Matrix) but none are decentralized or censorship-resistant. Users who rely on Nostr have no native path to connect. The openclaw project (TypeScript) already ships a production Nostr channel (~8K LOC) with NIP-01/NIP-04 support, relay health tracking, circuit breakers, OTP/allowlist access control, and profile management. This plan ports the concept to Rust using `nostr-sdk` v0.44 (tokio-native, NIP-04 + NIP-44 built-in).
+
+## Scope — What "comparable with other channels" means
+
+To reach parity with the minimum bar from the channel integration checklist:
+
+| Capability | Status | Notes |
+|---|---|---|
+| Inbound DMs | Must-have | NIP-04 encrypted DMs (kind:4), NIP-44 when sender supports it |
+| Outbound text replies | Must-have | Encrypted reply to sender pubkey |
+| Streaming responses | Must-have | Edit-in-place not possible on Nostr; stream internally, send final |
+| DM policy + allowlist | Must-have | `open`, `allowlist`, `pairing`, `disabled` — by pubkey |
+| OTP approval flow | Must-have | Unknown senders get a pairing code DM |
+| Typed config + redacted export | Must-have | `NostrAccountConfig` struct |
+| Web UI add/edit flows | Must-have | Settings page + advanced JSON editor |
+| Config template + docs | Must-have | Same PR |
+| Relay health + reconnect | Must-have | `nostr-sdk` Client handles reconnect; add circuit-breaker metrics |
+| NIP-01 profile (kind:0) | Nice-to-have | Publish bot profile metadata on start |
+| NIP-65 relay list | Nice-to-have | Future — advertise preferred relays |
+| Media attachments | Nice-to-have | Future — NIP-94 file metadata |
+| Reactions (NIP-25) | Nice-to-have | Future |
+
+## Architecture
+
+### Crate: `crates/nostr/`
+
+```
+crates/nostr/
+├── Cargo.toml
+└── src/
+    ├── lib.rs            # Re-exports NostrPlugin
+    ├── plugin.rs         # ChannelPlugin trait impl, account lifecycle
+    ├── config.rs         # NostrAccountConfig, RedactedConfig, defaults
+    ├── bus.rs            # Relay subscription loop, inbound event pipeline
+    ├── outbound.rs       # ChannelOutbound impl (encrypt + publish DM)
+    ├── access.rs         # Allowlist + OTP gating (reuse moltis_channels::gating)
+    ├── keys.rs           # Key parsing (nsec/hex), validation, pubkey derivation
+    ├── seen.rs           # LRU dedup tracker for event IDs (prevent replay)
+    ├── error.rs          # NostrError with is_retryable() classification
+    └── profile.rs        # NIP-01 profile publish (kind:0)
+```
+
+### Key dependency
+
+```toml
+# workspace Cargo.toml
+nostr-sdk = "0.44"
+
+# crates/nostr/Cargo.toml
+[dependencies]
+nostr-sdk = { workspace = true }
+async-trait = { workspace = true }
+moltis-channels = { workspace = true }
+moltis-common = { workspace = true }
+moltis-config = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []
+metrics = ["dep:moltis-metrics"]
+tracing = []
+```
+
+### Feature flag: `nostr` in `crates/gateway/Cargo.toml` and `crates/cli/Cargo.toml`
+
+Gated like Matrix/WhatsApp — enabled by default in CLI.
+
+## Implementation Steps
+
+### Step 1: Scaffold crate + ChannelType variant
+
+**Files to modify:**
+- `Cargo.toml` (root) — add `moltis-nostr` to workspace members + dependencies
+- `crates/nostr/Cargo.toml` — new
+- `crates/channels/src/plugin.rs` — add `Nostr` variant to `ChannelType` enum
+  - `as_str() → "nostr"`
+  - `display_name() → "Nostr"`
+  - `secret_fields() → &["secret_key"]`
+  - `classify_chat()` → always `Some("dm")` (Nostr DMs are always 1:1)
+  - `descriptor()` with capabilities:
+    ```rust
+    ChannelCapabilities {
+        inbound_mode: InboundMode::GatewayLoop, // persistent relay subscription
+        supports_outbound: true,
+        supports_streaming: false, // no edit-in-place on Nostr
+        supports_interactive: false,
+        supports_threads: false,
+        supports_voice_ingest: false,
+        supports_pairing: false,
+        supports_otp: true,
+        supports_reactions: false,
+        supports_location: false,
+    }
+    ```
+  - Update `FromStr`, `ALL`, serde aliases
+
+### Step 2: Config (`config.rs`, `keys.rs`)
+
+```rust
+pub struct NostrAccountConfig {
+    pub secret_key: Secret<String>,     // nsec1... or 64-char hex
+    pub relays: Vec<String>,            // wss:// URLs, defaults to damus+nos.lol
+    pub dm_policy: DmPolicy,            // open | allowlist | pairing | disabled
+    pub allowed_pubkeys: Vec<String>,   // npub1... or hex
+    pub enabled: bool,
+    pub profile: Option<NostrProfile>,  // NIP-01 metadata to publish
+}
+
+pub struct NostrProfile {
+    pub name: Option<String>,
+    pub display_name: Option<String>,
+    pub about: Option<String>,
+    pub picture: Option<String>,        // HTTPS URL
+    pub nip05: Option<String>,
+}
+```
+
+Key validation in `keys.rs`:
+- Accept `nsec1...` (bech32) or 64-char hex
+- Derive public key from secret key
+- Normalize pubkeys in allowlist (npub1 → hex)
+
+**Files to modify:**
+- `crates/config/src/schema.rs` — add `nostr` to `ChannelsConfig`
+- `crates/config/src/validate.rs` — add to `build_schema_map()` channels field
+- `crates/config/src/template.rs` — add commented `[channels.nostr]` example
+
+### Step 3: Event bus / subscription loop (`bus.rs`)
+
+Core inbound pipeline (mirrors openclaw's `nostr-bus.ts`):
+
+```
+1. nostr-sdk Client subscribes: Filter { kinds: [4], p: [bot_pubkey], since }
+2. Event received →
+3. Dedup check (LRU seen tracker by event ID)
+4. Skip self-messages (event.pubkey == bot_pubkey)
+5. Skip stale events (created_at < since)
+6. Verify event signature (nostr-sdk does this, but belt-and-suspenders)
+7. Authorize sender (allowlist / OTP check) — BEFORE decrypt
+8. Decrypt content (NIP-04 or NIP-44 based on event structure)
+9. Size validation on plaintext
+10. Dispatch to gateway via ChannelEventSink::dispatch_to_chat()
+```
+
+The bus runs as a `tokio::spawn` task per account. Cancellation via `CancellationToken`.
+
+### Step 4: Outbound (`outbound.rs`)
+
+Implement `ChannelOutbound`:
+- `send_text(account_id, to_pubkey, text, reply_to)`:
+  - Look up sender's secret key
+  - Encrypt with NIP-04 (broad compat) or NIP-44
+  - Build kind:4 event with p-tag
+  - Publish via `client.send_event()`
+- Error classification: relay failures → retryable; key/encrypt errors → not retryable
+
+### Step 5: Access control (`access.rs`)
+
+Reuse `moltis_channels::gating::{DmPolicy, check_dm_access}` patterns:
+- `allowlist` — only allowed pubkeys
+- `pairing` — unknown senders get an OTP code via DM, approved in web UI
+- `open` — anyone can DM
+- `disabled` — ignore all inbound
+
+Implement `ChannelOtpProvider` for the OTP flow.
+
+### Step 6: Plugin lifecycle (`plugin.rs`)
+
+```rust
+impl ChannelPlugin for NostrPlugin {
+    async fn start_account(id, config) → start Client, connect relays, spawn bus loop
+    async fn stop_account(id)           → cancel bus loop, disconnect
+    async fn has_account(id) → bool
+    async fn account_ids() → Vec<String>
+    fn channel_type() → ChannelType::Nostr
+    fn outbound() → NostrOutbound
+    fn status() → NostrStatus (probe relays)
+    fn as_otp_provider() → Some(self)
+}
+```
+
+### Step 7: Seen tracker (`seen.rs`)
+
+LRU cache of event IDs to prevent replay on relay reconnect:
+- Capacity: 100K entries
+- TTL: 1 hour
+- Persisted to `data_dir()/nostr_seen.json` with debounced writes
+
+### Step 8: Gateway registration
+
+**Files to modify:**
+- `crates/gateway/Cargo.toml` — add `moltis-nostr` optional dep + `nostr` feature
+- `crates/gateway/src/server.rs` — register NostrPlugin under `#[cfg(feature = "nostr")]`
+- `crates/cli/Cargo.toml` — add `nostr` to default features
+
+### Step 9: Web UI
+
+**Files to modify:**
+- `crates/web/src/assets/js/page-channels.js` — add Nostr add/edit flow
+  - Fields: secret key (password input), relays (comma-separated), DM policy dropdown, allowed pubkeys textarea
+  - Show derived npub as read-only after key entry
+- `crates/web/src/assets/js/locales/en/channels.js` — Nostr labels
+- `crates/web/src/assets/js/channel-utils.js` — validation for nsec/hex format
+
+### Step 10: Config template + docs
+
+- `crates/config/src/template.rs` — add `[channels.nostr]` section
+- `docs/src/channels/nostr.md` — new page
+- `docs/src/channels.md` — add Nostr to channel list
+- `docs/src/SUMMARY.md` — add entry
+
+### Step 11: Tests
+
+- **Unit tests** in `crates/nostr/src/`:
+  - `keys.rs` — nsec/hex parsing, pubkey derivation, validation edge cases
+  - `config.rs` — defaults, redacted output, merge semantics
+  - `access.rs` — allowlist matching, DM policy enforcement
+  - `seen.rs` — LRU eviction, TTL expiry, dedup correctness
+  - `bus.rs` — event pipeline filtering (stale, self, wrong-kind)
+- **Contract tests** — run `moltis_channels::contract` test suite against NostrPlugin
+- **E2E tests** — Playwright specs for web UI add/edit flow (`crates/web/ui/e2e/specs/channels-nostr.spec.js`)
+
+## NIP-04 vs NIP-44 Decision
+
+Start with **NIP-04** (kind:4) for broad compatibility — it's what most Nostr clients use today for DMs. Add NIP-44 decryption support for inbound (detect by content format) so the bot can receive NIP-44 encrypted messages. Outbound defaults to NIP-04 for now with a config option to prefer NIP-44.
+
+NIP-17 (gift-wrapped DMs) is a future enhancement — it requires more complex event handling and is less widely supported.
+
+## Verification
+
+1. `cargo check -p moltis-nostr` — compiles
+2. `cargo test -p moltis-nostr` — unit tests pass
+3. `just lint` — clippy clean
+4. `just format-check` — fmt clean
+5. `just test` — full test suite passes
+6. Playwright: `npx playwright test e2e/specs/channels-nostr.spec.js`
+7. Manual QA: configure a test nsec, connect to relays, send DM from another Nostr client, verify response
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130.jsonl
+
+---
+
+proceed with the follow ups
+
+---
+
+Anything missing?
+
+---
+
+Proceed with those, and should I create test IDs for nostr for real tests like we do with some llm providers?
+
+---
+
+I added the env key but different names:
+
+export NOSTR_TEST_BOT_KEY="REDACTED"
+export NOSTR_TEST_BOT_PUB="REDACTED"
+export NOSTR_TEST_SENDER_KEY="REDACTED"
+export NOSTR_TEST_SENDER_PUB="REDACTED"
+
+---
+
+give me the `gh` commands to add them as secret for the CI jobs.
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments
+
+---
+
+Add nostr as a channel in website/
+
+---
+
+proceed
+
+---
+
+Fix and resolve all PR comments./
+
+---
+
+Are you sure about the nostr icon? https://github.com/nostr-protocol has https://avatars.githubusercontent.com/u/103332273?s=200&v=4
+
+---
+
+229 -        &plaintext[..MAX_MESSAGE_BYTES]
+      229 +        let mut end = MAX_MESSAGE_BYTES;
+      230 +        while !plaintext.is_char_boundary(end) {
+      231 +            end -= 1;
+      232 +        }
+      233 +        &plaintext[..end]
+
+This seems unecessary, you already have utf8 safe truncation methods somewhere in the code.
+
+---
+
+commit and push all changes
+
+---
+
+Fix and resolve all PR comments.
+
+---
+
+merge main in this branch commit and push
+
+---
+
+add commit and push all changes
+
+---
+
+<task-notification>
+<task-id>bfx73jbnd</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/bfx73jbnd.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push lockfile sync" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/bfx73jbnd.output
+
+---
+
+cargo +nightly-2025-11-30 fmt --all -- --check
+crates/web/src/assets/js/page-channels.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+    1937 1937 │                         config.secret_key = editCredential.value || cfg.secret_key || "";
+    1938 1938 │                         var relaysVal = form.querySelector("[data-field=relays]")?.value || "";
+    1939      │ - → → → config.relays·=·relaysVal.split(",").map((r)·=>·r.trim()).filter(Boolean);
+         1939 │ + → → → config.relays·=·relaysVal
+         1940 │ + → → → → .split(",")
+         1941 │ + → → → → .map((r)·=>·r.trim())
+         1942 │ + → → → → .filter(Boolean);
+    1940 1943 │                 } else if (isMatrix) {
+    1941 1944 │                         config.homeserver = form.querySelector("[data-field=homeserver]")?.value || cfg.homeserver || "";
+
+
+Checked 134 files in 248ms. No fixes applied.
+Found 1 error.
+🌈 zizmor v1.22.0
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+Checking .deb filename pattern...
+  ok: .deb filename: no revision suffix (matches cargo-deb output)
+Checking .rpm filename pattern...
+  ok: .rpm filename: has -1 revision (matches cargo-generate-rpm output)
+Checking .pkg.tar.zst (Arch) filename pattern...
+  ok: .pkg.tar.zst filename: has -1 revision (matches release workflow)
+Checking AppImage filename pattern...
+  ok: AppImage filename: matches release workflow pattern
+Checking binary tarball filename pattern...
+  ok: binary tarball: matches release workflow pattern
+Checking release_tag() logic...
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+  ok: release.yml: AppImage naming matches install.sh
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+[local/biome] failed in 1s
+i18n parity OK: 3 locales, 18 namespaces.
+installation docs avoid versionless GitHub asset URLs
+[local/install-names] passed in 2s
+[local/i18n] passed in 2s
+[local/install-docs] passed in 2s
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/provider-integration.yml
+[local/fmt] passed in 7s
+[local/fmt] total 7s
+[local/biome] total 2s
+[local/i18n] total 3s
+[local/install-names] total 3s
+[local/install-docs] total 3s
+One or more parallel local checks failed.
+~/.s/w/m/helix-epoch helix-epoch ❯  INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (15 ignored, 48 suppressed)
+[local/zizmor] passed in 8s
+~/.s/w/m/helix-epoch helix-epoch ❯
+
+---
+
+<task-notification>
+<task-id>b2u2drjp0</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/b2u2drjp0.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push from repo root" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/b2u2drjp0.output
+
+---
+
+Fix and resolve all new PR comments.
+
+---
+
+error: this `if let` can be collapsed into the outer `match`
+   --> crates/nostr/tests/nostr_integration.rs:182:25
+    |
+182 | /                         if let RelayMessage::Event { event, .. } = message {
+183 | |                             if event.kind == Kind::EncryptedDirectMessage
+184 | |                                 && event.pubkey == sender_keys.public_key()
+...   |
+196 | |                         }
+    | |_________________________^
+    |
+help: the outer pattern can be modified to include the inner pattern
+   --> crates/nostr/tests/nostr_integration.rs:181:54
+    |
+181 |                     RelayPoolNotification::Message { message, .. } => {
+    |                                                      ^^^^^^^ replace this binding
+182 |                         if let RelayMessage::Event { event, .. } = message {
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ with this pattern, prefixed by `message: `
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_match
+    = note: `-D clippy::collapsible-match` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+
+error: this `if` statement can be collapsed
+   --> crates/nostr/tests/nostr_integration.rs:182:25
+    |
+182 | /                         if let RelayMessage::Event { event, .. } = message {
+183 | |                             if event.kind == Kind::EncryptedDirectMessage
+184 | |                                 && event.pubkey == sender_keys.public_key()
+...   |
+196 | |                         }
+    | |_________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+182 ~                         if let RelayMessage::Event { event, .. } = message
+183 ~                             && event.kind == Kind::EncryptedDirectMessage
+184 |                                 && event.pubkey == sender_keys.public_key()
+...
+194 |                                 break;
+195 ~                             }
+    |
+
+error: could not compile `moltis-nostr` (test "nostr_integration") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+      Timing report saved to /Users/penso/.superset/worktrees/moltis/helix-epoch/target/cargo-timings/cargo-timing-20260412T133357.667775Z.html
+[local/lint] failed in 142s
+~/.s/w/m/helix-epoch helix-epoch ❯
+~/.s/w/m/helix-epoch helix-epoch ❯
+
+---
+
+Fix PR comments
+
+---
+
+<task-notification>
+<task-id>bvv73ie12</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/bvv73ie12.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push OTP fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-helix-epoch/a23bb858-94ee-4775-8ee1-245b9eafa130/tasks/bvv73ie12.output
+
+---
+
+resolve all fixed comments
+
+---
+
+Base directory for this skill: /Users/penso/.claude/skills/greploop
+
+# Greploop
+
+Iteratively fix a PR/MR/CL until Greptile gives a perfect review: 5/5 confidence, zero unresolved comments.
+
+## Inputs
+
+- **PR/MR/CL number** (optional): If not provided, detect the PR/MR for the current branch, or the default pending changelist for p4.
+
+## Instructions
+
+### 0. Detect platform
+
+First check for Perforce, then fall back to git remote detection:
+
+```bash
+# Check for Perforce environment
+if p4 info >/dev/null 2>&1; then
+  VCS="perforce"
+else
+  REMOTE_URL=$(git remote get-url origin)
+  if echo "$REMOTE_URL" | grep -qi "gitlab"; then
+    VCS="gitlab"
+  else
+    VCS="github"
+  fi
+fi
+```
+
+For self-hosted GitLab instances whose hostname doesn't contain "gitlab", the user can override by passing `--vcs gitlab` as an input. For Perforce, pass `--vcs perforce`.
+
+### 1. Identify the PR/MR/CL
+
+**GitHub:**
+```bash
+gh pr view --json number,headRefName -q '{number: .number, branch: .headRefName}'
+```
+
+**GitLab:**
+```bash
+glab mr view --output json | jq '{iid: .iid, branch: .source_branch}'
+```
+
+Switch to the PR/MR branch if not already on it.
+
+**Perforce:**
+```bash
+# List pending changelists for current user/client
+p4 changes -s pending -u $P4USER -c $P4CLIENT
+
+# Describe a specific CL
+p4 describe -s <CL_NUMBER>
+```
+
+Ensure the correct workspace (`p4 client`) is set before proceeding.
+
+Key field differences:
+- GitHub: `number`, `headRefName`, `headRefOid`
+- GitLab: `iid`, `source_branch`, `sha`
+- Perforce: changelist number, `P4CLIENT`, shelved files
+
+### 2. Loop
+
+Repeat the following cycle. **Max 5 iterations** to avoid runaway loops.
+
+#### A. Trigger Greptile review
+
+Push/shelve the latest changes (if any):
+
+**GitHub/GitLab:**
+```bash
+git push
+```
+
+**Perforce:**
+```bash
+# Re-shelve to update the shelved files for review
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+**GitHub** — check if Greptile is already running before posting a new trigger comment:
+
+```bash
+GREPTILE_STATE=$(gh pr checks <PR_NUMBER> --json name,state | jq -r '.[] | select(.name | test("greptile"; "i")) | .state')
+```
+
+If Greptile is **not** already running (`PENDING` or `IN_PROGRESS`), request a fresh review:
+
+```bash
+if [ "$GREPTILE_STATE" != "PENDING" ] && [ "$GREPTILE_STATE" != "IN_PROGRESS" ]; then
+  gh pr comment <PR_NUMBER> --body "@greptile review"
+fi
+```
+
+Then poll for the Greptile check run to complete:
+
+```bash
+HEAD_SHA=$(gh pr view <PR_NUMBER> --json headRefOid -q .headRefOid)
+
+while true; do
+  GREPTILE_CHECK=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA/check-runs" \
+    --jq '.check_runs[] | select(.name | test("greptile"; "i"))' 2>/dev/null)
+  
+  if [ -z "$GREPTILE_CHECK" ]; then
+    echo "Waiting for Greptile check to appear..."
+    sleep 5
+    continue
+  fi
+  
+  STATUS=$(echo "$GREPTILE_CHECK" | jq -r '.status // "completed"')
+  CONCLUSION=$(echo "$GREPTILE_CHECK" | jq -r '.conclusion // "pending"')
+  
+  if [ "$STATUS" = "completed" ]; then
+    if [ "$CONCLUSION" = "success" ]; then
+      echo "Greptile check passed!"
+    else
+      echo "Greptile check completed with: $CONCLUSION"
+    fi
+    break
+  fi
+  
+  echo "Waiting for Greptile... (status: $STATUS)"
+  sleep 10
+done
+```
+
+**GitLab** — check if Greptile is already running before posting a trigger comment:
+
+```bash
+PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+GREPTILE_RUNNING=$(echo "$PIPELINES" | jq '[.[] | select(.status == "running" or .status == "pending")] | length')
+```
+
+If no pipeline is running, post a trigger comment:
+
+```bash
+if [ "$GREPTILE_RUNNING" = "0" ]; then
+  glab mr note <MR_IID> --message "@greptile review"
+fi
+```
+
+**Perforce** — Perforce does not have native check runs. If Greptile is integrated via a webhook triggered on `p4 shelve`, wait for it to process. Check your Greptile installation's webhook endpoint or dashboard for the review status. Poll by re-fetching the Greptile review comment on the CL until a score appears.
+
+Then poll for the Greptile pipeline job to complete (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+HEAD_SHA=$(glab mr view <MR_IID> --output json | jq -r '.sha')
+
+while true; do
+  PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+  # Find the most recent pipeline for this SHA
+  PIPELINE_ID=$(echo "$PIPELINES" | jq -r --arg sha "$HEAD_SHA" \
+    '[.[] | select(.sha == $sha)] | sort_by(.id) | last | .id // empty')
+
+  if [ -z "$PIPELINE_ID" ]; then
+    echo "Waiting for Greptile pipeline to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOBS=$(glab api "projects/:fullpath/pipelines/$PIPELINE_ID/jobs")
+  GREPTILE_JOB=$(echo "$JOBS" | jq '.[] | select(.name | test("greptile"; "i"))')
+
+  if [ -z "$GREPTILE_JOB" ]; then
+    echo "Waiting for Greptile job to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOB_STATUS=$(echo "$GREPTILE_JOB" | jq -r '.status')
+
+  if [ "$JOB_STATUS" = "success" ] || [ "$JOB_STATUS" = "failed" ] || [ "$JOB_STATUS" = "canceled" ]; then
+    echo "Greptile job completed with: $JOB_STATUS"
+    break
+  fi
+
+  echo "Waiting for Greptile... (status: $JOB_STATUS)"
+  sleep 10
+done
+```
+
+#### B. Fetch Greptile review results
+
+Greptile may surface its score in two places — check **both** (three for Perforce):
+
+**GitHub:**
+
+**1. PR description (body):**
+```bash
+gh pr view <PR_NUMBER> --json body -q '.body'
+```
+
+**2. PR reviews:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews
+```
+
+Look for the most recent entry from `greptile-apps[bot]` or `greptile-apps-staging[bot]`.
+
+**GitLab:**
+
+**1. MR description (body):**
+```bash
+glab mr view <MR_IID> --output json | jq -r '.description'
+```
+
+**2. MR notes (comments):**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/notes"
+```
+
+Filter for notes from the Greptile bot user (check the `author.username` field — the exact username may vary per installation; verify on first run).
+
+**Perforce:**
+
+**1. CL description:**
+```bash
+p4 describe -s <CL_NUMBER>
+```
+Check the description field for a Greptile-appended score block.
+
+**2. CL comments / review notes:**
+```bash
+p4 review -c <CL_NUMBER>
+```
+Look for comments from the Greptile bot user. The exact mechanism depends on your Greptile installation (it may post via a review tool like Swarm or directly via `p4 review`).
+
+For all platforms, parse the text for:
+- **Confidence score**: a pattern like `3/5` or `5/5` (or `Confidence: 3/5`).
+- **Comment count**: Number of inline review comments noted in the summary.
+
+Use whichever source has the **most recent** score.
+
+Also fetch all unresolved inline comments:
+
+**GitHub:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments
+```
+
+**GitLab:**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions"
+```
+
+Filter to `DiffNote` type discussions (`notes[0].type == "DiffNote"`) from Greptile that are on the latest commit and not yet resolved (`"resolved": false`).
+
+**Perforce:**
+```bash
+# Fetch inline diff comments from Greptile bot on the shelved CL
+p4 review -c <CL_NUMBER>
+```
+
+Filter to comments from the Greptile bot user that have not been marked as resolved/addressed.
+
+#### C. Check exit conditions
+
+Stop the loop if **any** of these are true:
+
+- Confidence score is **5/5** AND there are **zero unresolved comments**
+- Max iterations reached (report current state)
+
+#### D. Fix actionable comments
+
+For each unresolved Greptile comment:
+
+1. Read the file and understand the comment in context.
+2. Determine if it's actionable (code change needed) or informational.
+3. If actionable, make the fix.
+4. If informational or a false positive, note it but still resolve the thread.
+
+#### E. Resolve threads
+
+**GitHub** — fetch unresolved review threads and resolve all that have been addressed (see [GraphQL reference](references/graphql-queries.md)):
+
+```bash
+gh api graphql -f query='
+query($cursor: String) {
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR_NUMBER) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes { body path author { login } }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Resolve addressed threads:
+
+```bash
+gh api graphql -f query='
+mutation {
+  t1: resolveReviewThread(input: {threadId: "ID1"}) { thread { isResolved } }
+  t2: resolveReviewThread(input: {threadId: "ID2"}) { thread { isResolved } }
+}'
+```
+
+**GitLab** — fetch unresolved discussions and resolve each one (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions?per_page=100"
+```
+
+Filter for `"resolved": false` discussions. Then resolve each by its `id`:
+
+```bash
+glab api --method PUT \
+  "projects/:fullpath/merge_requests/<MR_IID>/discussions/<DISCUSSION_ID>" \
+  --field resolved=true
+```
+
+Repeat for each unresolved discussion ID. (GitLab has no batch resolution — loop through each one.)
+
+#### F. Commit and push / re-shelve
+
+**GitHub/GitLab:**
+```bash
+git add -A
+git commit -m "address greptile review feedback (greploop iteration N)"
+git push
+```
+
+**Perforce:**
+```bash
+# Stage changes back into the CL and re-shelve for the next review round
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+Then go back to step **A**.
+
+### 3. Report
+
+After exiting the loop, summarize:
+
+| Field              | Value      |
+| ------------------ | ---------- |
+| Platform           | GitHub / GitLab / Perforce |
+| Iterations         | N          |
+| Final confidence   | X/5        |
+| Comments resolved  | N          |
+| Remaining comments | N (if any) |
+
+If the loop exited due to max iterations, list any remaining unresolved comments and suggest next steps.
+
+## Output format
+
+```
+Greploop complete.
+  Platform:      GitHub
+  Iterations:    2
+  Confidence:    5/5
+  Resolved:      7 comments
+  Remaining:     0
+```
+
+If not fully resolved:
+
+```
+Greploop stopped after 5 iterations.
+  Platform:      GitLab
+  Confidence:    4/5
+  Resolved:      12 comments
+  Remaining:     2
+
+Remaining issues:
+  - src/auth.ts:45 — "Consider rate limiting this endpoint"
+  - src/db.ts:112 — "Missing index on user_id column"
+```
+
+**Perforce example:**
+
+```
+Greploop complete.
+  Platform:      Perforce
+  Changelist:    12345
+  Iterations:    3
+  Confidence:    5/5
+  Resolved:      9 comments
+  Remaining:     0
+```
+
+---
+
+merge main to this branch and solve conflicts
