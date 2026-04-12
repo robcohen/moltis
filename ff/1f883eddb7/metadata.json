@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ff1f883eddb7",
+  "strategy": "manual-commit",
+  "branch": "inexpensive-primrose",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/fs/multi_edit.rs",
+    "crates/tools/src/fs/shared.rs",
+    "crates/tools/src/fs/write.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ff/1f883eddb7/0/metadata.json",
+      "transcript": "/ff/1f883eddb7/0/full.jsonl",
+      "context": "/ff/1f883eddb7/0/context.md",
+      "content_hash": "/ff/1f883eddb7/0/content_hash.txt",
+      "prompt": "/ff/1f883eddb7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 989,
+    "cache_creation_tokens": 2158508,
+    "cache_read_tokens": 400988374,
+    "output_tokens": 471691,
+    "api_call_count": 845
+  }
+}
