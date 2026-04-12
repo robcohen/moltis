@@ -1,0 +1,91 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b8b1841d9901",
+  "session_id": "a19414f3-6176-45a5-a923-13d1b9e61758",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T13:01:58.352725Z",
+  "branch": "curious-bill",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate.rs",
+    "crates/tools/src/policy.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9526414d0184",
+  "token_usage": {
+    "input_tokens": 460,
+    "cache_creation_tokens": 192510,
+    "cache_read_tokens": 21382530,
+    "output_tokens": 50006,
+    "api_call_count": 165
+  },
+  "summary": {
+    "intent": "Implement a functional layered tool policy system for the moltis project, fulfilling a GitHub discussion request (#641) for per-channel and per-sender tool gating in mixed-trust environments.",
+    "outcome": "Fully implemented all 6 policy layers (global, per-provider, per-agent-preset, per-channel-group, per-sender, sandbox), wired them into the runtime, propagated sender_id through all channel handlers, added config template examples, a full docs page, and sandbox policy support across 12+ files in 8 crates with 709 tests passing.",
+    "learnings": {
+      "repo": [
+        "resolve_effective_policy existed in crates/tools/src/policy.rs but was dead code — only called by its own unit tests, never by the runtime which used a separate effective_tool_policy() function",
+        "AgentPreset already had tools: PresetToolPolicy, so layer 3 (per-agent-preset) required no schema addition",
+        "PromptHostRuntimeContext already carried channel_type, channel_account_id, channel_chat_id, and channel_chat_type — making layer 4 (group policy by chat type) feasible without new plumbing",
+        "All 6 channel handlers (Telegram, Discord, Slack, MS Teams, WhatsApp, Matrix) had peer_id available locally but were not including it in ChannelMessageMeta",
+        "moltis-config was already a dependency of moltis-tools, so no Cargo.toml changes were needed for the policy refactor",
+        "The llama-cpp/CUDA crates fail to build on macOS due to missing toolkit — pre-existing issue unrelated to changes; clippy must be scoped to exclude those crates",
+        "channel_binding_from_runtime_context used sender_id: None hardcoded; the fix was to add channel_sender_id to PromptHostRuntimeContext and populate it from params in apply_request_runtime_context"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/policy.rs",
+          "finding": "resolve_effective_policy was only called by its own unit tests; the runtime used effective_tool_policy() at crates/chat/src/lib.rs:1683 instead"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 1683,
+          "finding": "effective_tool_policy() read only global config (config.tools.policy.allow/deny + optional profile), ignoring all per-provider/agent/channel/sender layers"
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5204,
+          "finding": "apply_runtime_tool_filters has 4 call sites: list_tools (schema listing), raw_prompt (non-streaming send), full_context (streaming send), and run_with_tools"
+        },
+        {
+          "path": "crates/agents/src/prompt.rs",
+          "finding": "PromptHostRuntimeContext is the right place to add channel_sender_id so it flows naturally to all downstream consumers including build_tool_context and hook payloads"
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "ChannelsConfig stored channel accounts as HashMap\u003cString, serde_json::Value\u003e with no typed policy substructure; added ChannelToolPolicyOverride and GroupToolPolicy types plus a tool_policy_for_account() helper"
+        }
+      ],
+      "workflow": [
+        "Background agents were used effectively for parallel independent work (docs page generation + sandbox policy implementation) while main thread handled the hook sender_id fix",
+        "Clippy must be run with explicit crate scoping on macOS to avoid pre-existing CUDA build failures: cargo clippy -p crate1 -p crate2",
+        "cargo fmt --all followed by cargo fmt --all --check is the pattern used for formatting verification",
+        "beads issues were created first with dependency chains established before implementation began, then closed as tasks completed"
+      ]
+    },
+    "friction": [
+      "CUDA/llama-cpp crates fail to build on macOS, blocking cargo clippy --workspace and requiring manual crate scoping",
+      "apply_runtime_tool_filters had 4 call sites scattered across different functions with different available variables, requiring careful per-site context analysis before updating",
+      "channel_binding_from_runtime_context had no access to params, requiring adding a new field to PromptHostRuntimeContext rather than a simpler parameter threading approach",
+      "The sandbox agent modified schema/template/validate/policy files in parallel which required review before committing to avoid conflicts with main thread changes"
+    ],
+    "open_items": [
+      "Dedicated docs/src/tool-policy.md page was created but a link from the main configuration reference page may still be needed",
+      "sender_id in channel_binding_from_runtime_context for hook payloads depends on #640 (channel metadata in hook payloads) for full end-to-end coverage",
+      "SandboxConfig.tools_policy was added but sandbox layer (layer 6) enforcement logic may need further integration testing in sandboxed deployments",
+      "The config template examples are commented-out — consider whether a live integration test should validate the new schema fields parse correctly end-to-end",
+      "Respond to GitHub discussion #641 with a summary of the implementation and the new config syntax"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T13:01:17.574125Z",
+    "agent_lines": 62,
+    "human_added": 261,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 323,
+    "agent_percentage": 19.195046439628484
+  }
+}
