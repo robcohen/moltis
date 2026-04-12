@@ -1,0 +1,5 @@
+Add the clear button like complained about in https://github.com/moltis-org/moltis/issues/671
+
+---
+
+commit push create a PR

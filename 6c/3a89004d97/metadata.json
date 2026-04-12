@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6c3a89004d97",
+  "strategy": "manual-commit",
+  "branch": "inquisitive-broker",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/js/page-chat.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/6c/3a89004d97/0/metadata.json",
+      "transcript": "/6c/3a89004d97/0/full.jsonl",
+      "context": "/6c/3a89004d97/0/context.md",
+      "content_hash": "/6c/3a89004d97/0/content_hash.txt",
+      "prompt": "/6c/3a89004d97/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 39669,
+    "cache_read_tokens": 411133,
+    "output_tokens": 4009,
+    "api_call_count": 13
+  }
+}
