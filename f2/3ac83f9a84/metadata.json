@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f23ac83f9a84",
+  "strategy": "manual-commit",
+  "branch": "inquisitive-broker",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/sessions.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f2/3ac83f9a84/0/metadata.json",
+      "transcript": "/f2/3ac83f9a84/0/full.jsonl",
+      "context": "/f2/3ac83f9a84/0/context.md",
+      "content_hash": "/f2/3ac83f9a84/0/content_hash.txt",
+      "prompt": "/f2/3ac83f9a84/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 26,
+    "cache_creation_tokens": 16361,
+    "cache_read_tokens": 1058988,
+    "output_tokens": 3948,
+    "api_call_count": 22
+  }
+}
