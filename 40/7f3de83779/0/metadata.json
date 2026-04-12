@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "407f3de83779",
+  "session_id": "4d651d3f-5663-4724-b072-9498ceca61b1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T08:36:12.162162Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/settings-nav.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ca3b19ff1141",
+  "token_usage": {
+    "input_tokens": 41,
+    "cache_creation_tokens": 61877,
+    "cache_read_tokens": 1558719,
+    "output_tokens": 8928,
+    "api_call_count": 33
+  },
+  "summary": {
+    "intent": "Fix a flaky E2E test in CI that intermittently failed to find 'Matrix (moltis-testbot)' text in the channels settings page.",
+    "outcome": "Identified a race condition where Preact signal updates weren't flushed to the DOM before page.evaluate() returned. Fixed by adding a requestAnimationFrame wait after prefetchChannels(), matching the pattern already used in the shared test helper. Test passed 5/5 runs after the fix.",
+    "learnings": {
+      "repo": [
+        "Preact signal updates (channels.value) are batched and rendered asynchronously — DOM is not updated synchronously after signal assignment.",
+        "The shared test helper at settings-nav.spec.js:85 already uses 'await new Promise((resolve) =\u003e requestAnimationFrame(() =\u003e resolve()))' as the canonical pattern for flushing Preact renders in tests.",
+        "channels is a module-level signal (not component state), so it persists across re-renders and component lifecycle.",
+        "The mock WebSocket setup uses state.pending[req.id] to resolve RPCs synchronously — sendRpc stores resolvers in S.pending before calling ws.send().",
+        "setConnected(true) inside page.evaluate() triggers a useEffect in ChannelsPage that calls loadChannels(), creating a second RPC in addition to the explicit prefetchChannels() call."
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/e2e/specs/settings-nav.spec.js",
+          "line": 85,
+          "end_line": 85,
+          "finding": "Canonical rAF flush pattern: 'await new Promise((resolve) =\u003e requestAnimationFrame(() =\u003e resolve()))' — used in shared helper to wait for Preact render commit."
+        },
+        {
+          "path": "crates/web/ui/e2e/specs/settings-nav.spec.js",
+          "line": 1068,
+          "end_line": 1068,
+          "finding": "Bug location: missing rAF wait after prefetchChannels() in the pending matrix sender test. Fixed by adding the same rAF pattern from the helper."
+        },
+        {
+          "path": "crates/web/src/assets/js/helpers.js",
+          "line": 192,
+          "end_line": 192,
+          "finding": "sendRpc checks ws.readyState !== WebSocket.OPEN before sending; mock must set readyState to WebSocket.OPEN (or 1) to pass this guard."
+        }
+      ],
+      "workflow": [
+        "Previous stabilization attempts were already made on this test (visible in git log) — repeat flakiness suggests the rAF pattern was missed on the second prefetchChannels() call site.",
+        "Running a flaky test 5 times in a loop is a practical way to confirm stability after a race condition fix.",
+        "Playwright's toBeVisible() 10s retry timeout is insufficient to recover from a race where Preact never gets a chance to flush due to early evaluate() return on slower CI runners."
+      ]
+    },
+    "friction": [
+      "CI logs were mostly download/build output, requiring grep to find actual test failure messages.",
+      "The root cause required deep analysis of Preact's async rendering model, signal batching, and the interaction between useEffect dependencies and signal subscriptions.",
+      "Multiple red herrings investigated: module deduplication, mock WS readyState, second loadChannels() RPC from the useEffect triggered by setConnected."
+    ],
+    "open_items": [
+      "Other tests using setConnected(true) without prefetchChannels() (around lines 678 and 762) were checked but not deeply audited — they may have subtler timing issues.",
+      "The useEffect in ChannelsPage fires loadChannels() when connected changes, creating a second RPC alongside explicit prefetchChannels() calls — this double-fetch is architectural noise worth reviewing."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T08:35:53.283497Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}
