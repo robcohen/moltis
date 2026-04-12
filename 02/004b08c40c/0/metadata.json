@@ -1,0 +1,107 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "02004b08c40c",
+  "session_id": "a19414f3-6176-45a5-a923-13d1b9e61758",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T12:48:31.703314Z",
+  "branch": "curious-bill",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/schema.rs",
+    "crates/channels/src/plugin.rs",
+    "crates/telegram/src/handlers.rs",
+    "crates/slack/src/socket.rs",
+    "crates/msteams/src/plugin.rs",
+    "crates/discord/src/handler.rs",
+    "crates/matrix/src/handler.rs",
+    "crates/whatsapp/src/handlers.rs",
+    "crates/tools/src/policy.rs",
+    "crates/chat/src/lib.rs",
+    "crates/config/src/validate.rs",
+    "crates/config/src/lib.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "51fd2329d45e",
+  "token_usage": {
+    "input_tokens": 399,
+    "cache_creation_tokens": 147711,
+    "cache_read_tokens": 11401111,
+    "output_tokens": 35721,
+    "api_call_count": 108
+  },
+  "summary": {
+    "intent": "Wire the dead `resolve_effective_policy` scaffolding into the live runtime path and extend the config schema so per-channel, per-agent, and per-sender tool gating actually works for mixed-trust deployments.",
+    "outcome": "Fully implemented layered tool policy: typed schema additions (provider/channel/group/sender policy fields), `sender_id` propagated through all 6 channel handlers, `resolve_effective_policy` rewritten to use typed config and wired into `apply_runtime_tool_filters`, validation updated, 709 tests passing, zero clippy warnings, committed.",
+    "learnings": {
+      "repo": [
+        "`resolve_effective_policy` in `crates/tools/src/policy.rs` was dead code — called only by its own unit tests; the live runtime used a separate `effective_tool_policy()` that read only global config.",
+        "`AgentPreset` already had a `tools: PresetToolPolicy` field, so layer 3 (per-agent policy) required no new schema type, only wiring.",
+        "Channel configs used `HashMap\u003cString, serde_json::Value\u003e` with no typed substructure — `groups`, `tools.policy`, and `bySender` blocks were schema-drifted JSON pointer paths that could never resolve.",
+        "`PromptHostRuntimeContext` already carried `channel_type`, `channel_account_id`, `channel_chat_id`, and `channel_chat_type` — sufficient context to build `PolicyContext` at call sites without new plumbing.",
+        "`peer_id` (the sending user's platform ID) was available in every channel handler but was not included in `ChannelMessageMeta`, requiring a `sender_id` field addition to that struct.",
+        "The CUDA/llama-cpp crates fail to build on macOS (no CUDA toolkit) — this is a pre-existing environment issue unrelated to any code changes; scoped `cargo clippy` to changed crates to work around it.",
+        "There were 4 `apply_runtime_tool_filters` call sites in `crates/chat/src/lib.rs`: `list_tools` schema path (~5204), non-streaming send (~5415), streaming `full_context` (~5534), and `run_with_tools` (~6663), each with slightly different available variables."
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/policy.rs",
+          "finding": "Entire file rewritten to use typed `MoltisConfig` instead of raw JSON pointer traversal; `moltis-config` was already a declared dependency so no Cargo.toml change needed."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 1683,
+          "finding": "Live runtime used `effective_tool_policy()` (global-only) here; replaced with `resolve_effective_policy` accepting a `PolicyContext` built from runtime context and params."
+        },
+        {
+          "path": "crates/chat/src/lib.rs",
+          "line": 5204,
+          "finding": "`apply_runtime_tool_filters` call in `list_tools` schema path — needs PolicyContext but has no channel/sender context, so a minimal context with only global+provider layers is built."
+        },
+        {
+          "path": "crates/config/src/schema.rs",
+          "finding": "Added `policy: Option\u003cToolPolicyConfig\u003e` to `ProviderEntry`; added new types `ChannelToolPolicyOverride`, `GroupToolPolicy` with `allow`/`deny`/`by_sender` fields; added `tools: Option\u003cChannelToolPolicyOverride\u003e` to channel account map entries."
+        },
+        {
+          "path": "crates/channels/src/plugin.rs",
+          "finding": "Added `sender_id: Option\u003cString\u003e` to `ChannelMessageMeta` struct — required updating all 6 channel handler construction sites."
+        },
+        {
+          "path": "crates/config/src/validate.rs",
+          "finding": "Updated `build_schema_map()` to recognize `policy` under provider entries and `tools` under channel account configs; without this, valid config keys would fail schema validation."
+        },
+        {
+          "path": "crates/config/src/lib.rs",
+          "finding": "New public types `ChannelToolPolicyOverride` and `GroupToolPolicy` added to crate re-exports so downstream crates can use them without direct schema module imports."
+        }
+      ],
+      "workflow": [
+        "Running `cargo clippy -p \u003ccrate\u003e` scoped to changed crates is an effective workaround when environment-specific build failures (CUDA, CMake) block workspace-wide lint runs.",
+        "Using a beads issue per logical sub-task (schema, sender_id threading, runtime wiring) with a dependency chain provides clean tracking for multi-crate changes landed in a single session.",
+        "Reading all affected files in parallel before making edits significantly reduces round-trips when a change fans out across many files (6 channel handlers + core config + runtime).",
+        "Grepping for all struct construction sites (`ChannelMessageMeta {`) before adding a field catches all update locations that would otherwise cause compile errors."
+      ]
+    },
+    "friction": [
+      "CUDA/llama-cpp crates fail to build on macOS, blocking workspace-wide `cargo clippy` and `just lint` — required scoping lint to individual crates.",
+      "Four `apply_runtime_tool_filters` call sites in `chat/src/lib.rs` each had different variable availability (`params` present or absent, different `agent_id` binding names), requiring separate reads of surrounding context for each.",
+      "Line numbers shift after each edit to a large file (`lib.rs`), requiring re-grepping call sites between edits to avoid applying hunks at stale offsets.",
+      "The unused `profile_tools` variable warning only surfaced after compilation, not during the edit phase — a small but avoidable cleanup step."
+    ],
+    "open_items": [
+      "The `by_sender` deny/allow list in `GroupToolPolicy` enables per-sender gating but there is no UI or docs for channel admins to configure it — needs documentation and possibly a config example.",
+      "Hook payloads (#640) were noted as needing `channel_metadata` for the alternative shell-hook approach; that issue may still be open and could benefit from the now-available `sender_id` in `ChannelMessageMeta`.",
+      "The `list_tools` schema path builds a minimal `PolicyContext` with no channel/sender context — this means tool listings shown to users won't reflect per-channel restrictions, a UX gap to revisit.",
+      "No integration test covers the full layered merge (global → provider → agent → channel → group → sender → sandbox) end-to-end; only unit tests on the policy module itself were confirmed passing.",
+      "A response to GitHub discussion #641 was proposed but not drafted or posted — the author's use case is now implemented but they haven't been notified."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T12:47:45.690376Z",
+    "agent_lines": 395,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 395,
+    "agent_percentage": 100
+  }
+}

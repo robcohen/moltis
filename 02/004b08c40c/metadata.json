@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "02004b08c40c",
+  "strategy": "manual-commit",
+  "branch": "curious-bill",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/channels/src/plugin.rs",
+    "crates/chat/src/lib.rs",
+    "crates/config/src/lib.rs",
+    "crates/config/src/schema.rs",
+    "crates/config/src/validate.rs",
+    "crates/discord/src/handler.rs",
+    "crates/matrix/src/handler.rs",
+    "crates/msteams/src/plugin.rs",
+    "crates/slack/src/socket.rs",
+    "crates/telegram/src/handlers.rs",
+    "crates/tools/src/policy.rs",
+    "crates/whatsapp/src/handlers.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/02/004b08c40c/0/metadata.json",
+      "transcript": "/02/004b08c40c/0/full.jsonl",
+      "context": "/02/004b08c40c/0/context.md",
+      "content_hash": "/02/004b08c40c/0/content_hash.txt",
+      "prompt": "/02/004b08c40c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 399,
+    "cache_creation_tokens": 147711,
+    "cache_read_tokens": 11401111,
+    "output_tokens": 35721,
+    "api_call_count": 108
+  }
+}
