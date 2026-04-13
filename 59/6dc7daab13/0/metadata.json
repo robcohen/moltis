@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "596dc7daab13",
+  "session_id": "8d98f530-8dc5-4563-bb17-2400be7da590",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-13T11:34:58.110583Z",
+  "branch": "aerial-bellflower",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/httpd/src/auth_routes/vault.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "277e964b157b",
+  "checkpoint_transcript_start": 493,
+  "transcript_lines_at_start": 493,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-13T11:34:57.085354Z",
+    "agent_lines": 10,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 10,
+    "agent_percentage": 100
+  }
+}
