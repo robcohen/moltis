@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5eb5e38f13db",
+  "strategy": "manual-commit",
+  "branch": "clever-oboe",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "Cargo.lock"
+  ],
+  "sessions": [
+    {
+      "metadata": "/5e/b5e38f13db/0/metadata.json",
+      "transcript": "/5e/b5e38f13db/0/full.jsonl",
+      "context": "/5e/b5e38f13db/0/context.md",
+      "content_hash": "/5e/b5e38f13db/0/content_hash.txt",
+      "prompt": "/5e/b5e38f13db/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 213,
+    "cache_creation_tokens": 346478,
+    "cache_read_tokens": 29211871,
+    "output_tokens": 50897,
+    "api_call_count": 195
+  }
+}
