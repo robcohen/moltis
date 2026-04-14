@@ -1,0 +1,92 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "829d670fa941",
+  "session_id": "0e1d39af-a1cb-48a8-af0d-24ab9737608f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T14:24:50.22245Z",
+  "branch": "clever-oboe",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/whatsapp/src/plugin.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0033e4038ffc",
+  "token_usage": {
+    "input_tokens": 252,
+    "cache_creation_tokens": 377428,
+    "cache_read_tokens": 36470394,
+    "output_tokens": 60512,
+    "api_call_count": 228
+  },
+  "summary": {
+    "intent": "Upgrade the whatsapp-rust ecosystem from 0.2 to 0.5 to fix inbound WhatsApp messages being parsed as empty (GitHub #534), then add WhatsApp to the default offered channels list, resolve PR review comments, and fix a QR code display bug during onboarding.",
+    "outcome": "All 6 whatsapp crates bumped to 0.5, stores updated with 11 new trait methods, WhatsApp added to default channels, QR code polling fallback added, duplicate account start guard added, and PR #709 created with all review threads resolved.",
+    "learnings": {
+      "repo": [
+        "wacore and wacore-binary 0.5 default features include 'simd' which requires unstable core::simd::Select — must set default-features = false on both to avoid nightly incompatibility",
+        "whatsapp-rust 0.5 requires a new 'tokio-runtime' feature flag and .with_runtime(TokioRuntime) in the bot builder (new 4th type parameter)",
+        "There are two separate default channel lists: config/schema/runtime.rs (authoritative) and gateway/state.rs (hardcoded fallback before config loads), plus JS fallbacks in onboarding-view.js and page-channels.js",
+        "WhatsApp QR codes are delivered exclusively via WebSocket events with drop_if_slow: true — no REST polling fallback existed, causing QR to silently disappear if event fired before frontend subscription was ready",
+        "Stored channels from moltis.db are auto-started on gateway boot; re-adding an already-running account via onboarding caused a sled lock error (EAGAIN) rather than being handled gracefully",
+        "ProtocolStore in 0.5 adds 8 new methods: get_tc_token, put_tc_token, delete_tc_token, get_all_tc_token_jids, delete_expired_tc_tokens, store_sent_message, take_sent_message, delete_expired_sent_messages",
+        "SKDM methods changed signature from String to Jid type in 0.5"
+      ],
+      "code": [
+        {
+          "path": "crates/whatsapp/src/plugin.rs",
+          "finding": "health_snapshot() exposes latest_qr via ChannelHealthSnapshot.extra so QR code is pollable via channels.status RPC — added as fallback for missed WebSocket events"
+        },
+        {
+          "path": "crates/whatsapp/src/plugin.rs",
+          "finding": "start_account() now checks account_ids() before starting — if already running, returns Ok(()) to handle onboarding re-add gracefully"
+        },
+        {
+          "path": "crates/config/src/schema/runtime.rs",
+          "finding": "default_channels_offered() is the authoritative default list for channel picker"
+        },
+        {
+          "path": "crates/gateway/src/server/init_channels.rs",
+          "finding": "Stored channels from moltis.db are restored and started here on gateway boot — separate from config-file channels"
+        },
+        {
+          "path": "crates/web/src/assets/js/onboarding-view.js",
+          "finding": "Added 2s polling fallback using channels.status RPC to fetch QR code when WebSocket event is missed; polling stops once QR obtained or modal closed"
+        },
+        {
+          "path": "crates/whatsapp/src/memory_store.rs",
+          "finding": "get_latest_sync_key_id() requires explicit tracking via Arc\u003cMutex\u003cOption\u003cVec\u003cu8\u003e\u003e\u003e\u003e field — DashMap iteration order is non-deterministic so cannot rely on it for 'latest'"
+        }
+      ],
+      "workflow": [
+        "After version bumps, disable default-features on crates with feature flags that require unstable Rust before doing cargo check",
+        "cargo check -p \u003cspecific-crate\u003e is faster than workspace-wide check when iterating on trait implementation errors",
+        "just test with --all-features pulls in CUDA deps that fail on macOS; use nextest without all-features for the workspace test run",
+        "PR review comments should be replied to via gh api and threads resolved via graphql mutation resolveReviewThread",
+        "Use time::OffsetDateTime::now_utc().unix_timestamp() instead of manual SystemTime epoch math for timestamp generation"
+      ]
+    },
+    "friction": [
+      "wacore/wacore-binary 0.5 default 'simd' feature breaks compilation on the pinned nightly — required two separate default-features = false edits discovered iteratively",
+      "Cargo.lock merge conflict after merging main — resolved by taking main's lockfile and re-running cargo fetch",
+      "Push was blocked by rebase divergence requiring stash/pull/pop dance",
+      "Background task notifications for already-completed tasks created confusion about push status",
+      "No REST endpoint existed for QR codes — required adding health snapshot exposure + JS polling as a workaround for a WebSocket reliability issue",
+      "Sled lock error surface message was opaque — root cause (duplicate start from DB restore + onboarding re-add) required tracing through init_channels.rs and channel.rs"
+    ],
+    "open_items": [
+      "Users with existing WhatsApp pairings (0.2 sled data) may need to re-pair (re-scan QR) if wacore struct serialization changed — should be documented in PR and release notes",
+      "Manual QA verification still needed: pair a WhatsApp device, send a text DM, verify it routes to LLM and produces a reply",
+      "The double path .moltis/whatsapp/whatsapp/\u003caccount_id\u003e looks redundant — worth cleaning up in a future refactor",
+      "WhatsApp as default offered channel may need feature-flag gating if WhatsApp support isn't available in all deployment configurations"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T14:24:11.295178Z",
+    "agent_lines": 0,
+    "human_added": 95,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 95,
+    "agent_percentage": 0
+  }
+}

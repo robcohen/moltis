@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "829d670fa941",
+  "strategy": "manual-commit",
+  "branch": "clever-oboe",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/whatsapp/src/plugin.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/82/9d670fa941/0/metadata.json",
+      "transcript": "/82/9d670fa941/0/full.jsonl",
+      "context": "/82/9d670fa941/0/context.md",
+      "content_hash": "/82/9d670fa941/0/content_hash.txt",
+      "prompt": "/82/9d670fa941/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 252,
+    "cache_creation_tokens": 377428,
+    "cache_read_tokens": 36470394,
+    "output_tokens": 60512,
+    "api_call_count": 228
+  }
+}
