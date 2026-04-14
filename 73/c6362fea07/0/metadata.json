@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "73c6362fea07",
+  "session_id": "07656ec3-0c97-4751-91d1-c1743bb63884",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T10:16:58.068204Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/template.rs",
+    "crates/web/src/assets/js/onboarding-view.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b263f2968ac1",
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 30368,
+    "cache_read_tokens": 652525,
+    "output_tokens": 4807,
+    "api_call_count": 18
+  },
+  "summary": {
+    "intent": "A user reported that LM Studio and llama.cpp local model options were missing from the onboarding LLM selection UI in moltis.",
+    "outcome": "Added `lmstudio` to the default `offered` list in the config template and promoted both `local-llm` and `lmstudio` to the `RECOMMENDED_PROVIDERS` set in the onboarding JS, making both local inference options visible in the main onboarding section. Changes were committed and pushed.",
+    "learnings": {
+      "repo": [
+        "Known providers are defined in `known_providers.rs` but visibility during onboarding is controlled by two separate gates: the `offered` array in `crates/config/src/template.rs` and the `RECOMMENDED_PROVIDERS` set in the JS onboarding view.",
+        "Providers in `offered` but not in `RECOMMENDED_PROVIDERS` are buried under an 'All providers' collapsible dropdown rather than shown in the main recommended section.",
+        "lmstudio was a fully configured known provider (endpoint, auth type) that was simply never wired into the onboarding flow."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/onboarding-view.js",
+          "line": 736,
+          "end_line": 736,
+          "finding": "RECOMMENDED_PROVIDERS set controls which providers appear in the main onboarding section vs. the collapsed 'All providers' dropdown. Did not include local-llm or lmstudio before this fix."
+        },
+        {
+          "path": "crates/config/src/template.rs",
+          "line": 111,
+          "end_line": 111,
+          "finding": "Default `offered` array controls which providers are visible during onboarding at all. lmstudio was missing; local-llm was present but not recommended."
+        }
+      ],
+      "workflow": [
+        "Issues are tracked in an internal 'beads' system, not GitHub — GH issues are optional.",
+        "Biome is used for JS linting/formatting; clean check required before committing JS changes.",
+        "Schema tests for the `offered` list only validate parsing with a single entry, not the full default list contents — so adding providers to the default list doesn't require test updates."
+      ]
+    },
+    "friction": [
+      "Two separate configuration points (Rust template + JS RECOMMENDED_PROVIDERS) must both be updated to fully surface a provider during onboarding — this split is non-obvious and caused the gap."
+    ],
+    "open_items": [
+      "The commented-out 'All available providers' reference list in template.rs also needed lmstudio added — easy to miss when adding new providers.",
+      "No automated test validates that the default `offered` list matches the JS RECOMMENDED_PROVIDERS set, leaving room for future drift."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T10:16:44.639492Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}

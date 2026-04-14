@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "73c6362fea07",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/config/src/template.rs",
+    "crates/web/src/assets/js/onboarding-view.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/73/c6362fea07/0/metadata.json",
+      "transcript": "/73/c6362fea07/0/full.jsonl",
+      "context": "/73/c6362fea07/0/context.md",
+      "content_hash": "/73/c6362fea07/0/content_hash.txt",
+      "prompt": "/73/c6362fea07/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 30368,
+    "cache_read_tokens": 652525,
+    "output_tokens": 4807,
+    "api_call_count": 18
+  }
+}
