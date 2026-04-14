@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "261bd146b2d8",
+  "strategy": "manual-commit",
+  "branch": "shaded-fireman",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/graphql/src/subscriptions/mod.rs",
+    "crates/graphql/tests/integration.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/26/1bd146b2d8/0/metadata.json",
+      "transcript": "/26/1bd146b2d8/0/full.jsonl",
+      "context": "/26/1bd146b2d8/0/context.md",
+      "content_hash": "/26/1bd146b2d8/0/content_hash.txt",
+      "prompt": "/26/1bd146b2d8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 14546,
+    "cache_read_tokens": 1591579,
+    "output_tokens": 4697,
+    "api_call_count": 16
+  }
+}
