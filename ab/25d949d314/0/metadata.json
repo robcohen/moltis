@@ -1,0 +1,83 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ab25d949d314",
+  "session_id": "0e1d39af-a1cb-48a8-af0d-24ab9737608f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T13:36:08.373722Z",
+  "branch": "clever-oboe",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/whatsapp/src/memory_store.rs",
+    "crates/whatsapp/src/sled_store.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "be89f903b6e3",
+  "token_usage": {
+    "input_tokens": 135,
+    "cache_creation_tokens": 306222,
+    "cache_read_tokens": 15980076,
+    "output_tokens": 34749,
+    "api_call_count": 125
+  },
+  "summary": {
+    "intent": "Upgrade the whatsapp-rust ecosystem from 0.2 to 0.5 to fix inbound WhatsApp messages being parsed as empty due to outdated protobuf definitions, then add WhatsApp as a default offered channel across the codebase.",
+    "outcome": "All 6 whatsapp crates bumped to 0.5, new trait methods implemented in both sled and memory stores, WhatsApp added to default channels in 4 locations, PR #709 created and PR review comments addressed — all 4053 workspace tests passing.",
+    "learnings": {
+      "repo": [
+        "There are two separate default channel lists: one in crates/config/src/schema/runtime.rs (authoritative config default) and a hardcoded fallback in crates/gateway/src/state.rs used before config loads.",
+        "JS fallback channel defaults exist in both onboarding-view.js and page-channels.js and must be kept in sync with the Rust defaults.",
+        "wacore 0.5 and wacore-binary 0.5 both have default features that include 'simd', which requires unstable core::simd::Select not available on the pinned nightly — must set default-features = false on both.",
+        "whatsapp-rust must keep default-features = false to avoid sqlite-storage / libsqlite3-sys conflict (documented in a comment at Cargo.toml line 221).",
+        "The full workspace test suite uses --all-features which pulls in CUDA/llama-cpp-sys-2 on macOS and fails; tests must be run without --all-features or by excluding those crates.",
+        "Config and gateway crate tests contain hardcoded expected channel lists (channels_config_defaults_offered, channels_config_empty_toml) that must be updated when defaults change."
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/schema/runtime.rs",
+          "finding": "default_channels_offered() is the single authoritative source for the config-layer default channel list."
+        },
+        {
+          "path": "crates/gateway/src/state.rs",
+          "finding": "Hardcoded fallback channels_offered list used before config loads; must mirror the config default."
+        },
+        {
+          "path": "crates/whatsapp/src/sled_store.rs",
+          "finding": "ProtocolStore::get_skdm_recipients and add_skdm_recipients changed from String to Jid in wacore 0.5; test data using .into() must switch to .parse().unwrap()."
+        },
+        {
+          "path": "crates/whatsapp/src/memory_store.rs",
+          "finding": "DashMap iteration order is non-deterministic — get_latest_sync_key_id must track the latest key explicitly via a separate field rather than iterating the map."
+        },
+        {
+          "path": "crates/whatsapp/src/connection.rs",
+          "line": 65,
+          "end_line": 65,
+          "finding": "whatsapp-rust 0.5 bot builder requires .with_runtime(TokioRuntime) call — new 4th type parameter for the async runtime."
+        }
+      ],
+      "workflow": [
+        "cargo check -p \u003ccrate\u003e is the right first tool after a major dependency version bump — reveals all breaking API changes before attempting full compilation.",
+        "When Cargo.lock has a merge conflict, the fastest resolution is to take main's lockfile and re-run cargo fetch to layer in the new dependencies.",
+        "PR review comments included: replace manual epoch math (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()) with the time crate, and flag non-deterministic map iteration."
+      ]
+    },
+    "friction": [
+      "wacore 0.5 and wacore-binary 0.5 default features include 'simd' which requires unstable nightly API (core::simd::Select), requiring default-features = false on both — not documented in the upgrade guide.",
+      "Full workspace --all-features test run fails on macOS due to llama-cpp-sys-2/CUDA dependency, requiring manual exclusion of those crates.",
+      "Multiple locations (config schema, gateway state, two JS files, config tests) must all be kept in sync for default channel changes — no single source of truth enforced."
+    ],
+    "open_items": [
+      "Users with existing WhatsApp pairings may need to re-scan QR codes if wacore struct serialization changed between 0.2 and 0.5 — noted in PR but not yet documented in user-facing docs.",
+      "Manual QA verification pending: pair a WhatsApp device and confirm text DMs route to LLM instead of returning 'unhandled message type' error."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T13:35:39.067599Z",
+    "agent_lines": 17,
+    "human_added": 11,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 28,
+    "agent_percentage": 60.71428571428571
+  }
+}
