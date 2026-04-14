@@ -1,0 +1,245 @@
+A user going through moltis onboarding says:
+
+Getting through onboarding. 
+Small notes, let me know if you want it listed on a GH. 
+No LM Studio/llama.cpp server offered on llm chosing step.
+
+---
+
+local llama.cpp models with hugging face downloads should definitely be included by default on the onboarding LLM. It's a great moltis feature (local llm).
+
+---
+
+commit and push
+
+---
+
+Another one, I had this review comment:
+
+@krsyoung
+krsyoung
+(Christopher Young)
+yesterday
+@penso totat nit, the password placeholder is still showing as "At least 8 characters":
+
+moltis/crates/web/src/assets/js/locales/en/settings.js
+Line 102 in ea9fc8d
+ passwordPlaceholder: "At least 8 characters", 
+Image
+There were a few others when searching the code too ... not sure if they should also get with the times and move to 12?
+
+https://github.com/search?q=repo%3Amoltis-org%2Fmoltis%208%20characters&type=code
+
+can you please fix this
+
+---
+
+INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (28 suppressed)
+[local/zizmor] passed in 1s
+Diff in /Users/penso/tmp/molt/moltis/crates/tools/src/sandbox/tests/core.rs:31:
+         .iter()
+         .position(|a| a == "--hostname")
+         .expect("--hostname flag missing");
+-    assert_eq!(args[hostname_pos + 1], "sandbox", "--hostname value should be 'sandbox'");
++    assert_eq!(
++        args[hostname_pos + 1],
++        "sandbox",
++        "--hostname value should be 'sandbox'"
++    );
+     assert!(args.contains(&"/sys/firmware:ro,nosuid".to_string()));
+     assert!(args.contains(&"/sys/class/dmi:ro,nosuid".to_string()));
+     assert!(args.contains(&"/sys/devices/virtual/dmi:ro,nosuid".to_string()));
+Diff in /Users/penso/tmp/molt/moltis/crates/tools/src/sandbox/tests/core.rs:54:
+         .iter()
+         .position(|a| a == "--hostname")
+         .expect("--hostname flag missing");
+-    assert_eq!(args[hostname_pos + 1], "sandbox", "--hostname value should be 'sandbox'");
++    assert_eq!(
++        args[hostname_pos + 1],
++        "sandbox",
++        "--hostname value should be 'sandbox'"
++    );
+     assert!(args.contains(&"/sys/firmware:ro,nosuid".to_string()));
+     assert!(args.contains(&"/sys/class/dmi:ro,nosuid".to_string()));
+     assert!(args.contains(&"/sys/devices/virtual/dmi:ro,nosuid".to_string()));
+error: Recipe `format-check` failed on line 14 with exit code 1
+[local/fmt] failed in 2s
+[local/fmt] total 2s
+[local/biome] total 1s
+[local/i18n] total 1s
+[local/install-names] total 1s
+[local/install-docs] total 0s
+All Rust files within 1500-line limit (0 allowlisted).
+[local/file-size] passed in 6s
+[local/file-size] total 6s
+One or more parallel local checks failed.
+~/t/m/moltis main ❯
+
+---
+
+ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+🌈 zizmor v1.22.0
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+i18n parity OK: 3 locales, 18 namespaces.
+  ok: release.yml: AppImage naming matches install.sh
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+[local/i18n] passed in 0s
+[local/install-names] passed in 0s
+crates/web/src/assets/js/onboarding-view.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+     734  734 │   var OPENAI_COMPATIBLE = ["openai", "mistral", "openrouter", "cerebras", "minimax", "moonshot", "venice", "ollama"];
+     735  735 │   var BYOM_PROVIDERS = ["venice"];
+     736      │ - var·RECOMMENDED_PROVIDERS·=·new·Set(["anthropic",·"openai",·"gemini",·"deepseek",·"minimax",·"zai",·"ollama",·"local-llm",·"lmstudio"]);
+          736 │ + var·RECOMMENDED_PROVIDERS·=·new·Set([
+          737 │ + → "anthropic",
+          738 │ + → "openai",
+          739 │ + → "gemini",
+          740 │ + → "deepseek",
+          741 │ + → "minimax",
+          742 │ + → "zai",
+          743 │ + → "ollama",
+          744 │ + → "local-llm",
+          745 │ + → "lmstudio",
+          746 │ + ]);
+     737  747 │
+     738  748 │   function ModelSelectCard({ model, selected, probe, onToggle }) {
+
+
+crates/web/src/assets/js/page-chat.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+    1479 1479 │   }
+    1480 1480 │
+    1481      │ -
+    1482 1481 │   function bindChatMoreModal(debugModal, fullContextModal, closeDebugModal, closeFullContextModal) {
+    1483 1482 │         var chatMoreModal = S.$("chatMoreModal");
+
+
+Checked 134 files in 91ms. No fixes applied.
+Found 2 errors.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+[local/biome] failed in 0s
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/provider-integration.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (28 suppressed)
+[local/zizmor] passed in 1s
+[local/fmt] passed in 2s
+[local/fmt] total 2s
+[local/biome] total 0s
+[local/i18n] total 0s
+[local/install-names] total 0s
+[local/install-docs] total 0s
+All Rust files within 1500-line limit (0 allowlisted).
+[local/file-size] passed in 2s
+[local/file-size] total 2s
+One or more parallel local checks failed.
+~/t/m/moltis main ❯
+
+---
+
+Checking release_tag() logic...
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+i18n parity OK: 3 locales, 18 namespaces.
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+crates/web/src/assets/js/onboarding-view.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[local/i18n] passed in 0s
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+  ok: release.yml: AppImage naming matches install.sh
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+[local/install-names] passed in 0s
+  ✖ File content differs from formatting output
+
+     734  734 │   var OPENAI_COMPATIBLE = ["openai", "mistral", "openrouter", "cerebras", "minimax", "moonshot", "venice", "ollama"];
+     735  735 │   var BYOM_PROVIDERS = ["venice"];
+     736      │ - var·RECOMMENDED_PROVIDERS·=·new·Set(["anthropic",·"openai",·"gemini",·"deepseek",·"minimax",·"zai",·"ollama",·"local-llm",·"lmstudio"]);
+          736 │ + var·RECOMMENDED_PROVIDERS·=·new·Set([
+          737 │ + → "anthropic",
+          738 │ + → "openai",
+          739 │ + → "gemini",
+          740 │ + → "deepseek",
+          741 │ + → "minimax",
+          742 │ + → "zai",
+          743 │ + → "ollama",
+          744 │ + → "local-llm",
+          745 │ + → "lmstudio",
+          746 │ + ]);
+     737  747 │
+     738  748 │   function ModelSelectCard({ model, selected, probe, onToggle }) {
+
+
+crates/web/src/assets/js/page-chat.js format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ File content differs from formatting output
+
+    1479 1479 │   }
+    1480 1480 │
+    1481      │ -
+    1482 1481 │   function bindChatMoreModal(debugModal, fullContextModal, closeDebugModal, closeFullContextModal) {
+    1483 1482 │         var chatMoreModal = S.$("chatMoreModal");
+
+
+Checked 134 files in 81ms. No fixes applied.
+Found 2 errors.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
+
+
+[local/biome] failed in 0s
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/provider-integration.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (28 suppressed)
+[local/zizmor] passed in 0s
+[local/fmt] passed in 1s
+[local/fmt] total 1s
+[local/biome] total 0s
+[local/i18n] total 0s
+[local/install-names] total 0s
+[local/install-docs] total 0s
+All Rust files within 1500-line limit (0 allowlisted).
+[local/file-size] passed in 2s
+[local/file-size] total 2s
+One or more parallel local checks failed.
+~/t/m/moltis main ❯
+
+---
+
+push a new release
+
+---
+
+CI failed but maybe I fixed it since: https://github.com/moltis-org/moltis/actions/runs/24394226935

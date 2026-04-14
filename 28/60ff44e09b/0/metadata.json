@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2860ff44e09b",
+  "session_id": "07656ec3-0c97-4751-91d1-c1743bb63884",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T11:11:08.048696Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CHANGELOG.md",
+    "website/changelog/index.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d9bbf06a7ce3",
+  "checkpoint_transcript_start": 538,
+  "transcript_lines_at_start": 538,
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 10464,
+    "cache_read_tokens": 790842,
+    "output_tokens": 1178,
+    "api_call_count": 11
+  },
+  "summary": {
+    "intent": "Cut and push a new release tag (20260414.01) for the moltis project and verify CI passes.",
+    "outcome": "CI failed on the initial tag due to an outdated E2E test password; the old tag was deleted, the fix was confirmed already committed, and a new tag was created and pushed from the corrected HEAD.",
+    "learnings": {
+      "repo": [
+        "Password validation enforces a 12-character minimum — test credentials must meet this requirement.",
+        "Release process involves tagging, CI artifact build, checksum generation, GitHub release creation, and a separate manual GPG-signing step requiring a YubiKey tap.",
+        "CHANGELOG.md and website/changelog/index.html are both updated as part of the release prep commit."
+      ],
+      "code": [
+        {
+          "path": "auth.spec.js",
+          "line": 400,
+          "end_line": 400,
+          "finding": "E2E test was using 'testpass123' (11 chars) which failed the 12-char minimum password validation; fixed to 'testpass1234'."
+        }
+      ],
+      "workflow": [
+        "When a tag is pushed before all fixes are committed, the tag must be deleted locally and remotely then re-created from the corrected HEAD rather than amending.",
+        "CI failure on a release tag does not necessarily mean new work is needed — the fix may already exist in a subsequent commit."
+      ]
+    },
+    "friction": [
+      "Release tag was pushed before a known test fix was included in the tagged commit, requiring a full tag deletion and re-tag cycle.",
+      "CI E2E failure created ambiguity about whether the fix had already been applied, requiring manual log inspection and commit history review to confirm."
+    ],
+    "open_items": [
+      "GPG-signing of release artifacts (requires YubiKey tap) — run `./scripts/gpg-sign-release.sh 20260414.01` once CI completes on the new tag."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T11:10:55.016648Z",
+    "agent_lines": 40,
+    "human_added": 278,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 318,
+    "agent_percentage": 12.578616352201259
+  }
+}
