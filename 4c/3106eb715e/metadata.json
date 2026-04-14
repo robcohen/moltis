@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4c3106eb715e",
+  "strategy": "manual-commit",
+  "branch": "abalone-poet",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/agents/src/model.rs",
+    "crates/agents/src/runner/non_streaming.rs",
+    "crates/agents/src/runner/streaming.rs",
+    "crates/agents/src/runner/tests/basic.rs",
+    "crates/agents/src/runner/tests/helpers.rs",
+    "crates/agents/src/runner/tests_legacy/runner.rs",
+    "crates/agents/src/runner/tests_legacy/streaming.rs",
+    "crates/agents/src/silent_turn.rs",
+    "crates/chat/src/compaction_run/test_support.rs",
+    "crates/chat/src/run_with_tools.rs",
+    "crates/chat/src/service/chat_impl.rs",
+    "crates/chat/src/service/chat_impl/send.rs",
+    "crates/chat/src/streaming.rs",
+    "crates/providers/src/anthropic.rs",
+    "crates/providers/src/async_openai_provider.rs",
+    "crates/providers/src/genai_provider.rs",
+    "crates/providers/src/local_gguf/chat_templates.rs",
+    "crates/providers/src/local_llm/models/chat_templates.rs",
+    "crates/providers/src/openai_codex.rs",
+    "crates/providers/src/openai_compat/mod.rs",
+    "crates/swift-bridge/src/chat.rs",
+    "crates/swift-bridge/src/ffi_sessions.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4c/3106eb715e/0/metadata.json",
+      "transcript": "/4c/3106eb715e/0/full.jsonl",
+      "context": "/4c/3106eb715e/0/context.md",
+      "content_hash": "/4c/3106eb715e/0/content_hash.txt",
+      "prompt": "/4c/3106eb715e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 143,
+    "cache_creation_tokens": 116916,
+    "cache_read_tokens": 13213580,
+    "output_tokens": 35243,
+    "api_call_count": 139
+  }
+}

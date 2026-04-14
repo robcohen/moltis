@@ -1,0 +1,152 @@
+Implement the following plan:
+
+# Plan: Pass sender name to LLM for all channel types
+
+## Context
+
+GitHub issue #713: When Moltis receives messages from Telegram (or Discord, WhatsApp, etc.),
+the LLM cannot identify who sent the message. All channel handlers already extract `sender_name`
+and `username` into `ChannelMessageMeta`, and this metadata is persisted in the session JSON.
+However, `ChatMessage::User` has no `name` field, so the identity is silently dropped when
+converting persisted messages to typed `ChatMessage`s for the LLM.
+
+## Approach
+
+Add an optional `name` field to `ChatMessage::User` and thread it through both conversion paths:
+1. **History path**: `values_to_chat_messages()` extracts `sender_name`/`username` from persisted
+   channel metadata.
+2. **Current message path**: `run_streaming()`/`run_with_tools()` receive the sender name from
+   `params["channel"]` and set it on the new user message.
+
+The OpenAI Chat Completions API natively supports `"name"` on user messages.
+Anthropic doesn't have a `name` field, so we prepend `[sender_name]: ` to the content text.
+
+## Files to modify
+
+### 1. `crates/agents/src/model.rs` — Core type + serialization
+
+**a) Add `name` field to `ChatMessage::User` (line 51):**
+```rust
+User {
+    content: UserContent,
+    name: Option<String>,
+},
+```
+
+**b) Update convenience constructors `user()` and `user_multimodal()` (lines 94-105):**
+Keep existing constructors with `name: None` for backward compatibility.
+Add new constructors:
+```rust
+pub fn user_named(content: impl Into<String>, name: impl Into<String>) -> Self { ... }
+pub fn user_multimodal_named(parts: Vec<ContentPart>, name: impl Into<String>) -> Self { ... }
+```
+
+**c) Update `to_openai_value()` (line 141-163):**
+Include `"name"` in the JSON when `name.is_some()`:
+```rust
+ChatMessage::User { content, name } => {
+    let mut msg = match content { ... };
+    if let Some(n) = name { msg["name"] = serde_json::Value::String(n.clone()); }
+    msg
+}
+```
+
+**d) Update `values_to_chat_messages()` (line 235):**
+Extract sender name from the persisted `channel` field:
+```rust
+"user" => {
+    let sender_name = val.get("channel")
+        .and_then(|ch| ch["sender_name"].as_str()
+            .or_else(|| ch["username"].as_str()))
+        .map(|s| s.to_string());
+    // ... existing content handling ...
+    // Set name on created ChatMessage
+}
+```
+
+### 2. `crates/providers/src/anthropic.rs` — Anthropic format (lines 396-419)
+
+Prepend `[name]: ` to user content text when name is present:
+```rust
+ChatMessage::User { content, name } => {
+    let prefix = name.as_ref().map(|n| format!("[{n}]: ")).unwrap_or_default();
+    match content {
+        UserContent::Text(text) => {
+            let content_str = format!("{prefix}{text}");
+            out.push(json!({"role": "user", "content": content_str}));
+        },
+        // Similar for multimodal — prepend to first text block
+    }
+}
+```
+
+### 3. Provider pattern matches — add `name` (or `name: _`) to destructuring
+
+These files pattern-match on `ChatMessage::User { content }` and need the new field:
+
+| File | Line | Action |
+|------|------|--------|
+| `crates/providers/src/openai_compat/mod.rs` | 322 | Add `name: _` (Responses API doesn't use `name`) |
+| `crates/providers/src/openai_codex.rs` | 197 | Add `name: _` |
+| `crates/providers/src/genai_provider.rs` | 64 | Add `name: _` |
+| `crates/providers/src/async_openai_provider.rs` | 85 | Add `name`, pass to builder if supported |
+| `crates/providers/src/local_gguf/chat_templates.rs` | 42 | Add `name: _` |
+| `crates/providers/src/local_llm/models/chat_templates.rs` | 42 | Add `name: _` |
+
+### 4. `crates/chat/src/streaming.rs` — Current message name (line 163)
+
+Pass sender name to the current `ChatMessage::User` construction:
+```rust
+messages.push(ChatMessage::User {
+    content: user_content.clone(),
+    name: sender_name.clone(),
+});
+```
+
+This requires threading `sender_name: Option<String>` through `run_streaming()` and
+`run_with_tools()` function signatures.
+
+### 5. `crates/chat/src/service/chat_impl/send.rs` — Extract sender name from params
+
+At the call site (around line 749), extract sender name from channel metadata:
+```rust
+let sender_name = params.get("channel")
+    .and_then(|ch| ch["sender_name"].as_str()
+        .or_else(|| ch["username"].as_str()))
+    .map(|s| s.to_string());
+```
+Pass it down to `run_streaming()`/`run_with_tools()`.
+
+### 6. Agent runner paths — `crates/agents/src/runner/{streaming,non_streaming}.rs`
+
+Update `ChatMessage::User { content }` constructions (lines 94, 106) to include `name: None`.
+These are agent-loop entries where user content comes from the agent framework, not channels.
+
+### 7. Other match sites
+
+- `crates/agents/src/silent_turn.rs` — pattern matches (add `name: _`)
+- `crates/chat/src/compaction_run/test_support.rs` — test pattern matches
+- `crates/swift-bridge/src/chat.rs` and `ffi_sessions.rs` — constructions (add `name: None`)
+- All test files in `crates/agents/src/model.rs`, `crates/providers/src/anthropic.rs`, runner tests
+
+## Out of scope
+
+- **Web chat sender identity**: Web chat doesn't use `ChannelMessageMeta`. Supporting username
+  display for web sessions would require auth context, which is a separate concern.
+- **`genai` crate name support**: The `genai` crate abstraction may not support `name`.
+  We'll ignore it for now (`name: _`).
+
+## Verification
+
+1. `cargo check` — confirms all pattern matches compile
+2. `cargo test` — existing tests pass (constructors with `name: None` are backward-compatible)
+3. `just lint` — clippy clean
+4. Manual test: Send a Telegram group message, verify the LLM response references the sender
+5. Check persisted session JSON to confirm `channel.sender_name` is present
+6. Add unit tests in `model.rs`:
+   - `values_to_chat_messages` extracts name from channel metadata
+   - `to_openai_value` includes `name` field when present, omits when `None`
+   - New `user_named()` constructor
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-abalone-poet/ae466a61-2b3f-4a7e-b8eb-67d726da7cef.jsonl
