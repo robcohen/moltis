@@ -1,0 +1,129 @@
+Implement the following plan:
+
+# Fix: WhatsApp inbound messages parsed as empty (GitHub #534)
+
+## Context
+
+WhatsApp updated their protobuf message schema. `waproto 0.2.0` no longer covers
+the current wire format, so after successful Signal decryption the protobuf
+deserialization yields a `wa::Message` with **all fields `None`**. The handler
+falls through to `ChannelMessageKind::Other` and replies with an error instead of
+routing to the LLM.
+
+**Root cause:** outdated protobuf definitions in `waproto 0.2`.
+**Fix:** upgrade the entire `whatsapp-rust` ecosystem from **0.2 → 0.5**.
+
+## Scope — 6 crates to bump
+
+| Crate | Current | Target |
+|-------|---------|--------|
+| `whatsapp-rust` | 0.2 | 0.5 |
+| `whatsapp-rust-tokio-transport` | 0.2 | 0.5 |
+| `whatsapp-rust-ureq-http-client` | 0.2 | 0.5 |
+| `wacore` | 0.2 | 0.5 |
+| `wacore-binary` | 0.2 | 0.5 |
+| `waproto` | 0.2 | 0.5 |
+
+## Implementation Steps
+
+### Step 1 — Bump versions (`Cargo.toml` root, lines 221-228)
+
+```toml
+wacore                         = "0.5"
+wacore-binary                  = "0.5"
+waproto                        = "0.5"
+whatsapp-rust                  = { default-features = false, features = ["tokio-native", "tokio-runtime", "tokio-transport", "ureq-client"], version = "0.5" }
+whatsapp-rust-tokio-transport  = "0.5"
+whatsapp-rust-ureq-http-client = "0.5"
+```
+
+- Keep `default-features = false` to avoid `sqlite-storage` / libsqlite3-sys conflict (comment on line 221).
+- Add `"tokio-runtime"` feature — new in 0.5, required for `TokioRuntime`.
+- Run `cargo fetch` to update lockfile.
+
+### Step 2 — Bot builder: add runtime (`connection.rs` ~line 65)
+
+Insert `.with_runtime(whatsapp_rust::TokioRuntime)` before `.on_event(...)`. The 0.5
+builder requires a fourth type parameter for the async runtime.
+
+### Step 3 — Store trait changes (`sled_store.rs`, `memory_store.rs`)
+
+Known required changes (verify remaining via `cargo check`):
+
+**New required methods:**
+- `SignalStore::get_max_prekey_id(&self) -> Result<u32>` — iterate prekey store, return max ID
+- `AppSyncStore::get_latest_sync_key_id(&self) -> Result<Option<Vec<u8>>>` — return most recent sync key ID
+- `ProtocolStore` — 8 new methods for TC tokens and sent-message cache:
+  - `get_tc_token`, `put_tc_token`, `delete_tc_token`, `get_all_tc_token_jids`, `delete_expired_tc_tokens`
+  - `store_sent_message`, `take_sent_message`, `delete_expired_sent_messages`
+
+**Signature changes:**
+- `ProtocolStore::get_skdm_recipients` return type: `Vec<String>` → `Vec<Jid>`
+- `ProtocolStore::add_skdm_recipients` param: `&[String]` → `&[Jid]`
+- Some `put_*` methods change from `&[u8]` → `Vec<u8>` (ownership transfer)
+
+Both `sled_store.rs` (sled-backed) and `memory_store.rs` (DashMap-backed) need
+parallel updates. Add new sled trees / DashMap fields for TC tokens and sent messages.
+
+### Step 4 — Compiler-driven fixes
+
+Run `cargo check -p moltis-whatsapp` and fix remaining errors:
+
+- **`handlers.rs`**: Verify `waproto::whatsapp::Message` field names still match.
+  The protobuf schema update is the whole point — field names like `conversation`,
+  `extended_text_message`, `image_message` should still exist but may have additions.
+  The `describe_message_fields` macro may need new fields added.
+- **`outbound.rs`**: `upload()` may now take `Vec<u8>` instead of `&[u8]` — current
+  code already passes owned `Vec<u8>`, so likely no change needed.
+- **`state.rs`**: Verify `client.send_message()`, `client.get_pn()`, `client.get_lid()`
+  signatures are unchanged.
+
+### Step 5 — Update tests
+
+- Add tests for all new store trait methods in both `sled_store.rs` and `memory_store.rs`
+- Verify `DeviceInfo` construction in tests (if `device_id` changed from `i32` → `u32`)
+- Existing handler tests use `..Default::default()` for `MessageSource`, so new fields are fine
+
+### Step 6 — Quality gates
+
+```bash
+cargo +nightly-2025-11-30 fmt --all -- --check
+just lint
+just test
+```
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `Cargo.toml` (root) | Version bumps + `tokio-runtime` feature |
+| `crates/whatsapp/src/connection.rs` | Add `.with_runtime(TokioRuntime)` |
+| `crates/whatsapp/src/sled_store.rs` | New trait methods, signature changes, new sled trees |
+| `crates/whatsapp/src/memory_store.rs` | Same trait changes with DashMap |
+| `crates/whatsapp/src/handlers.rs` | Possible proto field name updates, new `describe_message_fields` entries |
+| `crates/whatsapp/src/outbound.rs` | Possible `upload()` param change (likely none) |
+| `crates/whatsapp/src/state.rs` | Verify client API compatibility (likely none) |
+
+## Risks
+
+1. **Sled data migration**: Existing paired sessions store data serialized under 0.2 struct layouts. If `wacore` struct fields changed, users will need to **re-pair** (re-scan QR code). Document in PR.
+2. **Proto field renames in waproto 0.5**: Unlikely for core fields but possible for newer message types. Compiler will catch these.
+3. **libsqlite3-sys conflict**: Must keep `default-features = false` on `whatsapp-rust`. Already guarded by comment.
+
+## Verification
+
+1. `cargo check -p moltis-whatsapp` compiles clean
+2. `just test` — all existing + new store trait tests pass
+3. `just lint` — no clippy warnings
+4. Manual QA: pair a WhatsApp device, send a text DM → message should route to LLM and produce a reply (not "unhandled message type")
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-clever-oboe/e675b122-21db-4833-9c76-6891e02a9193.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+merge main to this branch and solve conflicts
