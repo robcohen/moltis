@@ -1,0 +1,86 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d217a837cb32",
+  "session_id": "0f173521-e5e6-4bca-9e2e-7e4e219a81c7",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T10:53:59.872627Z",
+  "branch": "shaded-fireman",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "apps/ios/GraphQL/Schema/schema.graphqls",
+    "crates/graphql/src/mutations/mod.rs",
+    "crates/graphql/src/queries/mod.rs",
+    "crates/graphql/src/subscriptions/mod.rs",
+    "crates/graphql/tests/integration.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "726e7497fc1f",
+  "token_usage": {
+    "input_tokens": 65,
+    "cache_creation_tokens": 95147,
+    "cache_read_tokens": 3895324,
+    "output_tokens": 12984,
+    "api_call_count": 57
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #542 where GraphQL `sessionKey` parameter was being ignored for chat.send/history operations, causing all GraphQL clients to default to the 'main' session.",
+    "outcome": "Made `sessionKey` a required `String` parameter across all GraphQL chat mutations, queries, and subscriptions; regenerated the iOS GraphQL schema; added 3 integration tests; committed and pushed a PR.",
+    "learnings": {
+      "repo": [
+        "Session resolution uses a priority chain: explicit sessionKey \u003e _conn_id-based active session map \u003e 'main' fallback. GraphQL resolvers lack _conn_id injection, so omitting sessionKey always fell to 'main'.",
+        "RPC/WebSocket (web UI) injects `_conn_id` via core.rs:540, enabling implicit session resolution. GraphQL callers are programmatic and must always supply sessionKey explicitly.",
+        "iOS app uses WebSocket RPC for all chat operations — not GraphQL mutations — so it was unaffected at runtime but its bundled schema file was stale.",
+        "There is a dedicated `moltis-schema-export` crate that regenerates `apps/ios/GraphQL/Schema/schema.graphqls` from Rust resolver definitions. Schema must be regenerated after GraphQL type changes.",
+        "All broadcast calls in the chat service already consistently include `sessionKey` in the event payload — subscription filtering was sound once the send-side session resolution was corrected."
+      ],
+      "code": [
+        {
+          "path": "crates/gateway/src/methods/services/core.rs",
+          "line": 540,
+          "end_line": 540,
+          "finding": "_conn_id is injected into RPC params here, enabling the connection-based session fallback that GraphQL resolvers lack."
+        },
+        {
+          "path": "crates/graphql/src/mutations/mod.rs",
+          "finding": "Changed session_key from Option\u003cString\u003e to String on send, abort, cancel_queued, clear, compact mutations."
+        },
+        {
+          "path": "crates/graphql/src/queries/mod.rs",
+          "finding": "Changed session_key from Option\u003cString\u003e to String on history, context, raw_prompt, full_context queries."
+        },
+        {
+          "path": "crates/graphql/src/subscriptions/mod.rs",
+          "finding": "Changed session_key from Option\u003cString\u003e to String on chatEvent subscription; also had a clippy lint (nested if that should be collapsed with \u0026\u0026)."
+        },
+        {
+          "path": "crates/graphql/tests/integration.rs",
+          "finding": "Existing tests already passed sessionKey so they continued to work after the type change. 3 new tests were added verifying that omitting sessionKey returns a GraphQL error."
+        }
+      ],
+      "workflow": [
+        "Used a beads issue tracker (CLI tool) to create, claim, and close the issue alongside the GitHub issue — internal issue tracking is separate from GitHub.",
+        "Schema changes in Rust GraphQL resolvers require running `moltis-schema-export` to keep the iOS bundled schema in sync.",
+        "Clippy must be run after edits — it caught a nested-if style issue in subscriptions/mod.rs that fmt did not catch."
+      ]
+    },
+    "friction": [
+      "Multiple redundant reads of mutations/mod.rs (read twice in two chunks) suggesting the file was larger than initially anticipated.",
+      "Multiple Grep iterations were needed to locate all broadcast call sites — the pattern `broadcast(` required progressive refinement.",
+      "Clippy lint found after formatting was already run clean, requiring an additional edit-verify cycle."
+    ],
+    "open_items": [
+      "This is a breaking GraphQL schema change — any third-party or custom GraphQL clients must be updated to always pass sessionKey. No migration path or deprecation period was implemented.",
+      "The subscription event filtering logic (when event payload has no sessionKey it passes through unfiltered) was noted as a potential issue but not addressed as part of this fix.",
+      "No end-to-end test was added covering the full path: GraphQL send → event broadcast → subscription filter matching on the same sessionKey."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T10:53:36.099799Z",
+    "agent_lines": 71,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 71,
+    "agent_percentage": 100
+  }
+}

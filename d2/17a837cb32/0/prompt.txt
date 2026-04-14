@@ -1,0 +1,13 @@
+Check https://github.com/moltis-org/moltis/issues/542 and plan a fix
+
+---
+
+Go for option A
+
+---
+
+You should check the iOS companion app and fix it there too, if needed.
+
+---
+
+commit push create a PR
