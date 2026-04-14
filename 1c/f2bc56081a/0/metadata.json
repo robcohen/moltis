@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1cf2bc56081a",
+  "session_id": "0e1d39af-a1cb-48a8-af0d-24ab9737608f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T14:09:40.145998Z",
+  "branch": "clever-oboe",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/page-channels.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9bb5d8e71162",
+  "token_usage": {
+    "input_tokens": 199,
+    "cache_creation_tokens": 343453,
+    "cache_read_tokens": 27165585,
+    "output_tokens": 49732,
+    "api_call_count": 185
+  },
+  "summary": {
+    "intent": "Fix WhatsApp inbound messages being parsed as empty (GitHub #534) by upgrading the whatsapp-rust ecosystem from 0.2 to 0.5, then add WhatsApp to the default offered channels list, and fix a QR code display race condition during onboarding.",
+    "outcome": "All three goals completed: 6 whatsapp crates bumped to 0.5 with full trait compliance (11 new methods per store), WhatsApp added to default channels across 4 locations, and a QR code polling fallback added to both onboarding and page-channels JS. PR #709 created, merged with main, review comments resolved.",
+    "learnings": {
+      "repo": [
+        "wacore and wacore-binary 0.5 default features include 'simd' which requires unstable core::simd::Select — must disable default-features on both in Cargo.toml",
+        "whatsapp-rust 0.5 requires a new 'tokio-runtime' feature flag and a .with_runtime(TokioRuntime) call in the bot builder (new 4th type parameter)",
+        "ProtocolStore gained 8 new methods in 0.5: TC token CRUD (get_tc_token, put_tc_token, delete_tc_token, get_all_tc_token_jids, delete_expired_tc_tokens) and sent-message cache (store_sent_message, take_sent_message, delete_expired_sent_messages)",
+        "SKDM methods changed signatures from String to Jid: get_skdm_recipients returns Vec\u003cJid\u003e, add_skdm_recipients takes \u0026[Jid]",
+        "channels_offered defaults exist in 4 places: crates/config/src/schema/runtime.rs (authoritative), crates/gateway/src/state.rs (fallback before config loads), onboarding-view.js, and page-channels.js",
+        "QR code for WhatsApp pairing is stored in plugin state via latest_qr() but was never exposed via REST or probe — only delivered via WebSocket event, causing race condition",
+        "just test runs with --all-features which pulls in CUDA/llama-cpp-sys-2 and fails on macOS; must run cargo test --workspace without --all-features to avoid CUDA-dependent crate failures",
+        "The 'beads' workflow is used for issue tracking — issues are created and closed via CLI commands around commits"
+      ],
+      "code": [
+        {
+          "path": "crates/whatsapp/src/memory_store.rs",
+          "finding": "Added latest_sync_key_id: Arc\u003cMutex\u003cOption\u003cVec\u003cu8\u003e\u003e\u003e\u003e field to MemoryStore to track insertion order deterministically — DashMap iteration order is non-deterministic so get_latest_sync_key_id cannot rely on iterating the sync_keys map"
+        },
+        {
+          "path": "crates/whatsapp/src/sled_store.rs",
+          "finding": "Added two new sled trees: tc_tokens and sent_messages for the new ProtocolStore trait methods"
+        },
+        {
+          "path": "crates/whatsapp/src/memory_store.rs",
+          "finding": "Added two new DashMap fields: tc_tokens and sent_messages for the new ProtocolStore trait methods"
+        },
+        {
+          "path": "crates/whatsapp/src/connection.rs",
+          "line": 65,
+          "end_line": 65,
+          "finding": ".with_runtime(whatsapp_rust::TokioRuntime) must be inserted in the builder chain before .on_event() in 0.5"
+        },
+        {
+          "path": "crates/whatsapp/src/plugin.rs",
+          "finding": "WhatsApp QR code is stored in plugin state via latest_qr() — added it to ChannelHealthSnapshot.extra so it can be polled via channels.status RPC"
+        },
+        {
+          "path": "crates/config/src/schema/tests.rs",
+          "finding": "Two tests (channels_config_defaults_offered, channels_config_empty_toml) hardcode the expected default channel list and needed updating when whatsapp was added"
+        }
+      ],
+      "workflow": [
+        "After version bumps, use cargo check before cargo test to quickly surface all compilation errors before spending time on test runs",
+        "When resolving Cargo.lock merge conflicts, simplest approach is to take main's version then re-run cargo fetch to layer in new dependencies",
+        "PR review comments should be replied to via gh api with the pullRequestReviewComment reply endpoint and then threads resolved via gh api PATCH with resolved:true",
+        "Use time::OffsetDateTime::now_utc().unix_timestamp() instead of manual SystemTime epoch math for cleaner timestamp handling"
+      ]
+    },
+    "friction": [
+      "wacore/wacore-binary 0.5 simd feature requires unstable nightly API (core::simd::Select) that the pinned nightly didn't support — required discovering and disabling default-features on both crates",
+      "cargo test --all-features fails on macOS due to llama-cpp-sys-2 CUDA dependency — just test recipe is broken for local macOS development",
+      "No REST endpoint existed for fetching the current WhatsApp QR code — purely WebSocket-driven, causing a race condition where QR events fired before the frontend finished subscribing",
+      "gh CLI doesn't have a direct 'resolve thread' command — required using raw gh api PATCH calls to resolve review threads"
+    ],
+    "open_items": [
+      "Manual QA needed: pair a WhatsApp device, send a text DM, verify it routes to LLM and produces a reply (not 'unhandled message type')",
+      "Users with existing WhatsApp pairings may need to re-pair (re-scan QR) if wacore struct serialization changed between 0.2 and 0.5 — should be documented in PR or release notes",
+      "just test recipe is broken on macOS with --all-features due to CUDA dependency — needs a platform-aware recipe or exclusion list",
+      "The QR polling fallback (channels.status polling every 2s) is a workaround for the WebSocket race condition — a cleaner fix would be to ensure the WebSocket subscription is established before triggering pairing, or to buffer the QR event server-side"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T14:09:03.819705Z",
+    "agent_lines": 0,
+    "human_added": 54,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 54,
+    "agent_percentage": 0
+  }
+}

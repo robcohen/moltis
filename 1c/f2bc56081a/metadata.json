@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1cf2bc56081a",
+  "strategy": "manual-commit",
+  "branch": "clever-oboe",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/page-channels.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/1c/f2bc56081a/0/metadata.json",
+      "transcript": "/1c/f2bc56081a/0/full.jsonl",
+      "context": "/1c/f2bc56081a/0/context.md",
+      "content_hash": "/1c/f2bc56081a/0/content_hash.txt",
+      "prompt": "/1c/f2bc56081a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 199,
+    "cache_creation_tokens": 343453,
+    "cache_read_tokens": 27165585,
+    "output_tokens": 49732,
+    "api_call_count": 185
+  }
+}
