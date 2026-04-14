@@ -1,0 +1,69 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4aafec362458",
+  "session_id": "b6c27313-2152-47b3-9bfa-2f319fbd7bc2",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T09:32:27.223677Z",
+  "branch": "lydian-repair",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "plans/2026-04-14-plan-aur-publishing.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d23d9b30093a",
+  "token_usage": {
+    "input_tokens": 25,
+    "cache_creation_tokens": 47961,
+    "cache_read_tokens": 529767,
+    "output_tokens": 5568,
+    "api_call_count": 15
+  },
+  "summary": {
+    "intent": "Evaluate a community-contributed Arch Linux PKGBUILD from a GitHub discussion and decide whether to change the project's Arch packaging approach, then document a plan to publish moltis to AUR.",
+    "outcome": "A structured AUR publishing plan was written to plans/2026-04-14-plan-aur-publishing.md and committed to the lydian-repair branch, which was then merged to main.",
+    "learnings": {
+      "repo": [
+        "CI builds .pkg.tar.zst packages for x86_64 and aarch64 on every release tag via a build-arch job in .github/workflows/release.yml (lines 454-561)",
+        "Arch packages are installed via install.sh --method=arch pulling from GitHub Releases, not AUR",
+        "pkg/arch/PKGBUILD exists as a local template but lacks optdepends, proper pkgver(), and WASM/Tailwind build steps",
+        "Web and WASM assets are laid out at /usr/share/moltis/web/ and /usr/share/moltis/wasm/, consistent with DEB/RPM packaging"
+      ],
+      "code": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 454,
+          "end_line": 561,
+          "finding": "Full Arch Linux package build job: builds .pkg.tar.zst for x86_64 and aarch64 on release tags"
+        },
+        {
+          "path": "pkg/arch/PKGBUILD",
+          "finding": "Existing PKGBUILD template is minimal; missing optdepends (docker/podman, nodejs, chromium, tmux), pkgver(), and WASM/Tailwind build steps that the community contributor's version includes"
+        }
+      ],
+      "workflow": [
+        "AUR registration requires running a pacman command as CAPTCHA, which blocks registration without an Arch Linux environment",
+        "moltis-bin AUR variant (installs pre-built binaries from GitHub Releases) is lower maintenance than moltis-git and can be automated via KSXGitHub/github-actions-deploy-aur",
+        "Plans are stored in plans/ directory with date-prefixed filenames"
+      ]
+    },
+    "friction": [
+      "AUR account registration requires an Arch Linux box for the pacman CAPTCHA — user does not currently have one, blocking AUR publishing"
+    ],
+    "open_items": [
+      "Publish moltis-bin to AUR once an Arch Linux environment is available (docker run -it archlinux is sufficient)",
+      "Automate AUR updates in CI using KSXGitHub/github-actions-deploy-aur after the build-arch job",
+      "Update pkg/arch/PKGBUILD with optdepends, proper pkgver(), and WASM/Tailwind build steps from the community contributor's PKGBUILD",
+      "Optionally publish moltis-git to AUR if there is user demand for source builds",
+      "Thank the contributor at discussion #679 and point them to existing pre-built packages"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T09:32:14.127353Z",
+    "agent_lines": 175,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 175,
+    "agent_percentage": 100
+  }
+}

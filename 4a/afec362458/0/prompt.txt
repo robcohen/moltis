@@ -1,0 +1,13 @@
+Is this useful https://github.com/moltis-org/moltis/discussions/679 and should I change the way the arch linux packages are provided for moltis?
+
+---
+
+What would it take to publish to AUR, and can I use their file and put it in moltis repo for others to use if needed?
+
+---
+
+write a plan in plans/ and I'll do it later, I don't have arch box for now
+
+---
+
+merge the branch to main so I keep the plan
