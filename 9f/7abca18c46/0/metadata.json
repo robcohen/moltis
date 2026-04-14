@@ -1,0 +1,95 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9f7abca18c46",
+  "session_id": "061fcd95-6b3b-45f8-8505-84aa5600673e",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T22:32:43.119671Z",
+  "branch": "glowing-snowplow",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "crates/config/src/schema/providers.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate/schema_map.rs",
+    "crates/providers/src/github_copilot/mod.rs",
+    "crates/providers/src/kimi_code.rs",
+    "crates/providers/src/openai/mod.rs",
+    "crates/providers/src/openai/provider/completion.rs",
+    "crates/providers/src/openai/provider/mod.rs",
+    "crates/providers/src/openai/provider/request.rs",
+    "crates/providers/src/openai/provider/streaming.rs",
+    "crates/providers/src/openai_compat/mod.rs",
+    "crates/providers/src/registry/registration.rs",
+    "crates/providers/tests/e2e_scenarios/tool_arg_serialization.json",
+    "crates/providers/tests/tool_arg_serialization_integration.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e09a84e0ccc8",
+  "token_usage": {
+    "input_tokens": 10167,
+    "cache_creation_tokens": 160746,
+    "cache_read_tokens": 16369595,
+    "output_tokens": 37716,
+    "api_call_count": 139
+  },
+  "summary": {
+    "intent": "Fix HTTP 400 INVALID_ARGUMENT errors when using Google/Gemini models via OpenRouter by preventing strict-mode JSON schema patching (which produces array-form types Google rejects) from being applied to non-OpenAI backends.",
+    "outcome": "Parameterized `to_openai_tools()` with a `strict: bool` flag, added a `strict_tools: Option\u003cbool\u003e` config field to `ProviderEntry` for user override, implemented auto-detection logic that defaults non-strict for OpenRouter and Gemini, and replaced manually written integration tests with the existing `tool_arg_serialization.json` scenario framework.",
+    "learnings": {
+      "repo": [
+        "The `to_openai_tools()` function in `openai_compat/mod.rs` is used by multiple providers (OpenAI, Kimi Code, GitHub Copilot) — any signature change requires updating all call sites including `kimi_code.rs` (3 sites) and `github_copilot/mod.rs` (3 sites).",
+        "There is a `schema_drift_guard` test that catches missing schema map entries, but only for fields that appear in `MoltisConfig::default()` serialization — `Option\u003cT\u003e` fields with `skip_serializing_if = 'Option::is_none'` are invisible to it and must be added to `build_schema_map()` proactively.",
+        "There are three distinct registration sites for OpenAI-compat providers in `registry/registration.rs`: built-in compat providers loop, discovered compat providers loop, and custom providers — all three must be updated when adding new builder fields.",
+        "The project uses a declarative e2e scenario framework (`e2e_scenarios/tool_arg_serialization.json`) with per-provider expectations (`must_pass`/`allow_known_mismatch`) — new provider-specific behaviors should be added there rather than as manual integration test functions.",
+        "Workspace clippy lints deny `expect_used` and `unwrap_used` even in `#[cfg(test)]` modules — tests must use `let-else` + `panic!` pattern instead of `.expect()` or `.unwrap()`.",
+        "The `patch_schema_for_strict_mode()` function transforms optional properties into nullable union types (`[\"boolean\", \"null\"]`) and forces all properties into `required` — this is OpenAI-specific and breaks Google's API which doesn't support array-form types."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/openai_compat/mod.rs",
+          "finding": "`to_openai_tools(tools, strict: bool)` — when `strict=false`, skips `patch_schema_for_strict_mode()` and sets `strict: false` in the tool payload, preventing array-form types like `[\"boolean\", \"null\"]` that Google rejects."
+        },
+        {
+          "path": "crates/providers/src/openai/provider/request.rs",
+          "finding": "`needs_strict_tools()` method on `OpenAiProvider` — checks `self.strict_tools` config override first, then falls back to heuristics: `base_url.contains(\"openrouter.ai\")` or `provider_name == \"gemini\"` → returns `false`."
+        },
+        {
+          "path": "crates/providers/src/registry/registration.rs",
+          "finding": "Three registration sites each need `if let Some(v) = entry.strict_tools { provider.with_strict_tools(v) }` wiring — pattern follows how `cache_retention` is applied at each site."
+        },
+        {
+          "path": "crates/providers/tests/e2e_scenarios/tool_arg_serialization.json",
+          "finding": "Scenario `issue-716-nested-optional-booleans` tests a cron-like schema (nested objects, optional booleans, union types) with `openrouter-google` provider. Also added `openrouter-google` to the existing `issue-693` scenario for regression coverage."
+        },
+        {
+          "path": "crates/config/src/schema/providers.rs",
+          "finding": "`strict_tools: Option\u003cbool\u003e` on `ProviderEntry` — tri-state: `None` = auto-detect, `Some(true)` = force strict, `Some(false)` = force non-strict. Requires updating both `Default` and `Debug` impls."
+        }
+      ],
+      "workflow": [
+        "When a `replace_all` edit targets `to_openai_tools(tools)` but some call sites use `to_openai_tools(\u0026tools)` (with reference), a second targeted edit is needed to catch the missed variant.",
+        "Run `cargo check -p \u003ccrate\u003e` before full `cargo test` to catch compilation errors quickly during incremental changes.",
+        "The scenario-based e2e framework (`tool_arg_serialization.json`) is preferred over manual integration test functions — it separates test data from test logic and makes per-provider expectations explicit and diffable."
+      ]
+    },
+    "friction": [
+      "`replace_all` edit for `to_openai_tools(tools)` missed the `to_openai_tools(\u0026tools)` variant in `kimi_code.rs` line 312, requiring a follow-up targeted edit.",
+      "Unit test `to_openai_tools_non_strict_skips_patching` initially failed because `sanitize_schema_for_openai_compat` transforms schemas in ways the test didn't anticipate — had to debug by running the test with output and adjusting assertions.",
+      "Workspace clippy lints (`expect_used`, `unwrap_used`) apply to test code, requiring rewriting `.expect()` calls to `let-else` + `panic!` patterns throughout the new test suite.",
+      "The `schema_drift_guard` test silently misses `Option\u003cT\u003e` fields that default to `None` — easy to forget to add them to `build_schema_map()` with no automated safety net."
+    ],
+    "open_items": [
+      "The auto-detection heuristic in `needs_strict_tools()` uses string matching on `base_url` and `provider_name` — could be fragile if OpenRouter changes domains or if new non-strict-compatible providers are added; consider a more explicit allowlist approach.",
+      "The `openrouter-google` e2e scenarios require `OPENROUTER_API_KEY` to run and are `#[ignore]`d by default — these won't run in CI without secrets configuration.",
+      "No documentation was added explaining the `strict_tools` config field behavior to end users (e.g., in user-facing docs or README)."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T22:32:12.271167Z",
+    "agent_lines": 305,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 305,
+    "agent_percentage": 100
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9f7abca18c46",
+  "strategy": "manual-commit",
+  "branch": "glowing-snowplow",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "crates/config/src/schema/providers.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate/schema_map.rs",
+    "crates/providers/src/github_copilot/mod.rs",
+    "crates/providers/src/kimi_code.rs",
+    "crates/providers/src/openai/mod.rs",
+    "crates/providers/src/openai/provider/completion.rs",
+    "crates/providers/src/openai/provider/mod.rs",
+    "crates/providers/src/openai/provider/request.rs",
+    "crates/providers/src/openai/provider/streaming.rs",
+    "crates/providers/src/openai_compat/mod.rs",
+    "crates/providers/src/registry/registration.rs",
+    "crates/providers/tests/e2e_scenarios/tool_arg_serialization.json",
+    "crates/providers/tests/tool_arg_serialization_integration.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9f/7abca18c46/0/metadata.json",
+      "transcript": "/9f/7abca18c46/0/full.jsonl",
+      "context": "/9f/7abca18c46/0/context.md",
+      "content_hash": "/9f/7abca18c46/0/content_hash.txt",
+      "prompt": "/9f/7abca18c46/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10167,
+    "cache_creation_tokens": 160746,
+    "cache_read_tokens": 16369595,
+    "output_tokens": 37716,
+    "api_call_count": 139
+  }
+}

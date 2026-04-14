@@ -1,0 +1,135 @@
+Implement the following plan:
+
+# Fix: Google/Gemini via OpenRouter rejects tool schemas (GitHub #716)
+
+## Context
+
+When a user selects a Google/Gemini model through OpenRouter (e.g.
+`google/gemma-4-31b-it:free`), the agent loop crashes with HTTP 400
+`INVALID_ARGUMENT` because Google's API rejects our strict-mode-patched
+tool schemas.
+
+**Root cause**: `to_openai_tools()` unconditionally applies
+`patch_schema_for_strict_mode()` + `strict: true`. The strict patch:
+
+1. Forces ALL properties into the `required` array
+2. Makes originally-optional properties nullable via `"type": ["boolean", "null"]`
+3. Adds `additionalProperties: false` to every object
+
+Google's native API (reached via OpenRouter) does not support array-form
+types like `["boolean", "null"]`. It considers properties with those types
+as "not defined", then rejects the `required` array for referencing them.
+The cron tool schema triggers this because it has many optional boolean/enum
+properties inside its nested `job` object.
+
+**Why strict mode can be safely skipped for OpenRouter**: Strict mode is
+an OpenAI-specific feature that prevents the model from hallucinating extra
+JSON keys. OpenRouter proxies to many backends (Google, Anthropic, Meta,
+etc.) and handles format translation itself. Passing `strict: true` through
+OpenRouter to non-OpenAI backends causes validation errors without
+providing any benefit — each upstream provider has its own schema
+validation.
+
+## Approach: parameterize strict mode in `to_openai_tools`
+
+Add a `strict: bool` parameter to `to_openai_tools()`. When `false`, skip
+`patch_schema_for_strict_mode()` and set `strict: false` in the tool
+payload. Add a `needs_strict_tools()` method to `OpenAiProvider` that
+returns `false` for OpenRouter (and Gemini direct, which uses the same
+codepath and has the same limitation).
+
+### Files to modify
+
+1. **`crates/providers/src/openai_compat/mod.rs`**
+   - `to_openai_tools(tools, strict: bool)` — skip `patch_schema_for_strict_mode` and set `strict` field accordingly
+   - Update test calls at the bottom of the file
+
+2. **`crates/providers/src/openai/provider/request.rs`**
+   - Add `pub(super) fn needs_strict_tools(&self) -> bool` — returns `false` when `base_url` contains `"openrouter.ai"` or `provider_name` is `"gemini"`
+
+3. **`crates/providers/src/openai/provider/completion.rs`** (line 228)
+   - `to_openai_tools(tools)` → `to_openai_tools(tools, self.needs_strict_tools())`
+
+4. **`crates/providers/src/openai/provider/streaming.rs`** (line 176)
+   - Same change for `stream_with_tools_sse`
+
+5. **`crates/providers/src/kimi_code.rs`** (lines 217, 312, 532)
+   - Pass `true` — Kimi Code is its own provider and supports strict
+
+6. **`crates/providers/src/github_copilot/mod.rs`** (lines 548, 891, 1225)
+   - Pass `true` — GitHub Copilot targets OpenAI models that support strict
+
+### New unit tests (in `crates/providers/src/openai_compat/mod.rs`)
+
+7. **`to_openai_tools_strict_mode_applied_by_default`** — verifies that
+   `to_openai_tools(tools, true)` still produces `strict: true`,
+   `additionalProperties: false`, and all-properties-in-required. This is
+   a regression guard for the OpenAI/Copilot/Kimi paths.
+
+8. **`to_openai_tools_non_strict_skips_patching`** — verifies that
+   `to_openai_tools(tools, false)` produces `strict: false`, preserves
+   the original `required` array, and does NOT add `additionalProperties`
+   or nullable types. Uses a schema with optional properties to prove they
+   stay in their original form.
+
+9. **`to_openai_tools_non_strict_complex_cron_like_schema`** — uses a
+   schema modeled after the cron tool's `job` property (nested objects,
+   union `type` arrays, optional booleans) and verifies it round-trips
+   through `to_openai_tools(_, false)` without producing array-form types
+   that Google rejects.
+
+### New e2e tests (in `crates/providers/tests/openrouter_integration.rs`)
+
+10. **`tool_call_google_model_non_streaming()`** — uses
+    `google/gemma-4-31b-it:free` with a complex nested tool schema
+    (mimicking the cron tool: nested objects, optional booleans, union
+    types). Validates that the request doesn't 400.
+
+11. **`tool_call_google_model_streaming()`** — same test, streaming path.
+
+12. **Existing OpenRouter tests unchanged** — `tool_call_round_trip_*`
+    and `multi_turn_tool_use` continue testing the `openai/gpt-4o-mini`
+    model, confirming the standard OpenAI path still works.
+
+## Verification
+
+```bash
+# Unit tests — strict/non-strict behavior
+cargo test -p moltis-providers -- openai_compat
+
+# Integration: OpenRouter + OpenAI model (existing, regression)
+OPENROUTER_API_KEY=... cargo test --test openrouter_integration -- --ignored tool_call_round_trip
+
+# Integration: OpenRouter + Google model (new, fix validation)
+OPENROUTER_API_KEY=... cargo test --test openrouter_integration -- --ignored tool_call_google
+
+# Full lint + test
+just lint && just test
+```
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-glowing-snowplow/30faff43-1a52-40c0-983b-1db3c372a9c2.jsonl
+
+---
+
+maybe the compat openai config should include that boolean so you can enable/disable that mode not just for openrouter but others if needed.
+
+---
+
+I think another PR added a schema tool to map on expectation, instead of doing it manually, can you check?
+
+---
+
+i m not talking about the config one, i m talking about one we use already and a crate for llm expected json schema
+
+---
+
+it is e2e_scenarios/tool_arg_serialization.json yes
+
+---
+
+ok so you can add scenario for this bug too, so we know it keeps working
+
+---
+
+commit push create a PR
