@@ -1,0 +1,82 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3ff3aaf1c445",
+  "session_id": "07656ec3-0c97-4751-91d1-c1743bb63884",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-14T10:20:40.614673Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/js/locales/en/settings.js",
+    "crates/web/src/assets/js/locales/en/onboarding.js",
+    "crates/web/src/assets/js/locales/fr/settings.js",
+    "crates/web/src/assets/js/locales/fr/onboarding.js",
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/page-settings.js",
+    "crates/swift-bridge/src/ffi_auth.rs",
+    "apps/macos/Sources/AppSettings.swift",
+    "docs/src/authentication.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bb722927fd75",
+  "checkpoint_transcript_start": 196,
+  "transcript_lines_at_start": 196,
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 42363,
+    "cache_read_tokens": 640438,
+    "output_tokens": 6616,
+    "api_call_count": 14
+  },
+  "summary": {
+    "intent": "Fix all UI strings and validation logic that still referenced the old 8-character minimum password requirement, updating them to reflect the current 12-character minimum enforced by the backend.",
+    "outcome": "Updated 16 occurrences across 9 files (EN/FR locale files, JS view files, Swift bridge, macOS app, and docs) to reference 12 characters. All changes were linted, committed, and the grep confirmed no remaining '8 characters' references.",
+    "learnings": {
+      "repo": [
+        "Password minimum length is enforced as 12 in auth_routes.rs (backend) but was inconsistently reflected across frontend locales, JS views, Swift bridge, macOS app, and documentation.",
+        "Locale strings are split by language (en/fr) and by section (settings.js, onboarding.js) under crates/web/src/assets/js/locales/.",
+        "Hardcoded password length strings exist in both locale files AND directly in onboarding-view.js and page-settings.js — two separate layers to update.",
+        "Swift bridge validation (ffi_auth.rs) duplicates the password length check independently from the Rust backend (auth_routes.rs).",
+        "Biome is used for JS linting/formatting in this repo."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/locales/en/settings.js",
+          "line": 102,
+          "end_line": 102,
+          "finding": "passwordPlaceholder string had hardcoded '8 characters' — the original review comment pointed to this line (ea9fc8d)."
+        },
+        {
+          "path": "crates/swift-bridge/src/ffi_auth.rs",
+          "finding": "Swift bridge independently validates password length with a hardcoded value, separate from backend auth_routes.rs — both needed updating."
+        },
+        {
+          "path": "apps/macos/Sources/AppSettings.swift",
+          "finding": "macOS app also had a hardcoded password length reference requiring update."
+        }
+      ],
+      "workflow": [
+        "Initial edit attempts failed because files weren't read first — the Edit tool requires a prior Read in the conversation.",
+        "Grep verification after edits ('8 characters' returning no results) is an effective final check for this class of find-and-replace task.",
+        "Running biome lint/format after bulk JS edits before committing is the established practice here."
+      ]
+    },
+    "friction": [
+      "First round of Edit tool calls failed because the files had not been read first, requiring a second pass of reads before edits could proceed — added significant redundant steps.",
+      "Swift bridge generates missing types that cause pre-existing diagnostics, making it hard to distinguish new issues from pre-existing noise."
+    ],
+    "open_items": [
+      "The password minimum length (12) is hardcoded in multiple places (backend, Swift bridge, macOS app, locale strings, JS views, docs) with no single source of truth — a shared constant would prevent this class of drift.",
+      "French locale files were updated but no native speaker review was mentioned — translation accuracy for the new '12 characters' phrasing should be verified."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-14T10:20:20.578719Z",
+    "agent_lines": 22,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 22,
+    "agent_percentage": 100
+  }
+}

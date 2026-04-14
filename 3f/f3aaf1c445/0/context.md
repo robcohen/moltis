@@ -1,0 +1,38 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+A user going through moltis onboarding says:
+
+Getting through onboarding. 
+Small notes, let me know if you want it listed on a GH. 
+No LM Studio/llama.cpp server offered on llm chosing step.
+
+### Prompt 2
+
+local llama.cpp models with hugging face downloads should definitely be included by default on the onboarding LLM. It's a great moltis feature (local llm).
+
+### Prompt 3
+
+commit and push
+
+### Prompt 4
+
+Another one, I had this review comment:
+
+@krsyoung
+krsyoung
+(Christopher Young)
+yesterday
+@penso totat nit, the password placeholder is still showing as "At least 8 characters":
+
+moltis/crates/web/src/assets/js/locales/en/settings.js
+Line 102 in ea9fc8d
+ passwordPlaceholder: "At least 8 characters", 
+Image
+There were a few others when searching the code too ... not sure if they should also get with the times and move to 12?
+
+https://github.com/search?q=repo%3Amoltis-org%2Fmoltis%208%20charact...
+
