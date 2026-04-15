@@ -1,0 +1,135 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a60cc55edce5",
+  "session_id": "5c36c54b-5937-466b-b2c5-83fe1bf5d763",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T20:13:25.467399Z",
+  "branch": "functional-caution",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/agents/src/runner/helpers.rs",
+    "crates/agents/src/runner/mod.rs",
+    "crates/chat/src/compaction_run/mod.rs",
+    "crates/chat/src/compaction_run/runner.rs",
+    "crates/chat/src/service/chat_impl.rs",
+    "crates/chat/src/service/chat_impl/send.rs",
+    "crates/chat/src/service/mod.rs",
+    "crates/chat/src/service/types.rs",
+    "crates/gateway/src/channel_events/commands/dispatch.rs",
+    "crates/gateway/src/channel_events/commands/mod.rs",
+    "crates/gateway/src/methods/dispatch.rs",
+    "crates/gateway/src/methods/mod.rs",
+    "crates/graphql/src/mutations/mod.rs",
+    "crates/graphql/src/mutations/resolvers.rs",
+    "crates/graphql/src/queries/mod.rs",
+    "crates/graphql/src/queries/resolvers.rs",
+    "crates/graphql/src/subscriptions/handlers.rs",
+    "crates/graphql/src/subscriptions/mod.rs",
+    "crates/graphql/src/types/definitions.rs",
+    "crates/graphql/src/types/mod.rs",
+    "crates/httpd/src/server/mod.rs",
+    "crates/httpd/src/server/types.rs",
+    "crates/mcp-agent-bridge/src/adapter.rs",
+    "crates/mcp-agent-bridge/src/lib.rs",
+    "crates/protocol/src/lib.rs",
+    "crates/protocol/src/types.rs",
+    "crates/provider-setup/src/service/implementation/mod.rs",
+    "crates/provider-setup/src/service/implementation/service.rs",
+    "crates/provider-setup/src/service/tests.rs",
+    "crates/providers/src/async_openai_provider.rs",
+    "crates/providers/src/client.rs",
+    "crates/providers/src/github_copilot/mod.rs",
+    "crates/providers/src/github_copilot/provider.rs",
+    "crates/providers/src/lib.rs",
+    "crates/providers/src/local_gguf/mod.rs",
+    "crates/providers/src/local_gguf/provider.rs",
+    "crates/providers/src/local_llm/mod.rs",
+    "crates/providers/src/local_llm/provider.rs",
+    "crates/providers/src/openai/catalog.rs",
+    "crates/providers/src/openai/mod.rs",
+    "crates/providers/src/openai/provider/core.rs",
+    "crates/providers/src/openai/provider/mod.rs",
+    "crates/providers/src/openai_compat/mod.rs",
+    "crates/providers/src/openai_compat/provider.rs",
+    "crates/providers/src/registry/core.rs",
+    "crates/providers/src/registry/mod.rs",
+    "crates/providers/tests/openai_compat_type_arrays.rs",
+    "crates/secret-store/src/lib.rs",
+    "crates/secret-store/src/store.rs",
+    "crates/tailscale/src/lib.rs",
+    "crates/tailscale/src/manager.rs",
+    "crates/tls/src/certs.rs",
+    "crates/tls/src/lib.rs",
+    "crates/tls/src/server.rs",
+    "crates/tools/src/client.rs",
+    "crates/tools/src/fs/context.rs",
+    "crates/tools/src/fs/contract_tests.rs",
+    "crates/tools/src/fs/mod.rs",
+    "crates/tools/src/fs/read/mod.rs",
+    "crates/tools/src/fs/read/tool.rs",
+    "crates/tools/src/lib.rs",
+    "crates/web/src/assets/js/onboarding-view.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "491b2355e1da",
+  "token_usage": {
+    "input_tokens": 2124,
+    "cache_creation_tokens": 231378,
+    "cache_read_tokens": 3283409,
+    "output_tokens": 26701,
+    "api_call_count": 42
+  },
+  "summary": {
+    "intent": "Audit the workspace for CLAUDE.md violations (code in lib.rs and mod.rs files) and move all implementation code to named files, leaving lib.rs/mod.rs as wiring-only.",
+    "outcome": "All 27 violations resolved: 7 lib.rs and 20 mod.rs files refactored into 28 new named files (~15,300 lines moved). Full workspace compiles clean, 4,090 tests pass, clippy and format checks pass. Changes committed, pushed, and a PR created.",
+    "learnings": {
+      "repo": [
+        "CLAUDE.md enforces a convention: no implementation code in lib.rs or mod.rs — these files must be wiring-only (pub mod / pub use declarations).",
+        "The workspace uses `just lint` for clippy and `just format-check` for rustfmt as quality gates.",
+        "Tests must be run without CUDA features on macOS (`--exclude` or feature flags needed to avoid CUDA build failures).",
+        "The crates/wasm-tools/*/src/lib.rs files were treated as borderline/debatable — intentionally single-target WASM tools that may be self-contained by design.",
+        "Provider crates follow a consistent pattern: one provider per named file (provider.rs, core.rs, catalog.rs) with mod.rs left as re-exports only."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/registry/mod.rs",
+          "finding": "Had a stale `pub use registration::*` after refactor — registration.rs had no public items, making the re-export unused. Required manual cleanup after agent completed the move."
+        },
+        {
+          "path": "crates/tls/src/lib.rs",
+          "finding": "Large enough (900 lines) to warrant splitting into two named files: certs.rs (CA/cert generation) and server.rs (HTTPS server setup)."
+        },
+        {
+          "path": "crates/web/src/assets/js/onboarding-view.js",
+          "finding": "A biome JS formatting change was present in the working tree from a prior session — unrelated to the Rust refactor but included in the commit."
+        }
+      ],
+      "workflow": [
+        "Parallel agent dispatch (6 provider agents simultaneously, then 5 graphql/chat/gateway agents) significantly accelerated the bulk file-move work.",
+        "Verifying compilation after each batch (providers, then full workspace) caught issues early and confirmed each wave of moves was clean before proceeding.",
+        "Running `cargo test` after all moves confirmed no behavioral regressions — structural refactors like this can silently break re-export chains."
+      ]
+    },
+    "friction": [
+      "Hit Claude usage rate limits multiple times mid-session, requiring 'proceed' prompts after resets (at least 3 interruptions).",
+      "Authentication error (401) surfaced once, requiring another 'proceed' to recover.",
+      "CUDA build failure on macOS (`cargo test` default invocation) required knowing to exclude CUDA features — not obvious from a cold start.",
+      "tls/src/lib.rs was large enough that it required multiple paginated reads before the agent could process it."
+    ],
+    "open_items": [
+      "27 confirmed violations were fixed, but 4 borderline files were deferred: crates/wasm-tools/*/src/lib.rs (3 files, 368–738 lines each) and crates/voice/src/stt/mod.rs — these may warrant revisiting.",
+      "crates/web/src/lib.rs (243 lines, build_api_routes with 170 .route() calls) and crates/graphql/src/subscriptions/mod.rs were in the original violation list — confirm they were actually addressed.",
+      "The remaining mod.rs violations listed as 'borderline' (crates/telegram/src/outbound/mod.rs, 100 lines) were not explicitly resolved.",
+      "No wasm-tools crates were touched — if CLAUDE.md applies to those crates, they still violate the convention."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T20:13:01.162333Z",
+    "agent_lines": 15284,
+    "human_added": 35,
+    "human_modified": 107,
+    "human_removed": 0,
+    "total_committed": 15426,
+    "agent_percentage": 99.07947620899779
+  }
+}
