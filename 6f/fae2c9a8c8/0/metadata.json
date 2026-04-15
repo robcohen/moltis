@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ffae2c9a8c8",
+  "session_id": "0e1d39af-a1cb-48a8-af0d-24ab9737608f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T09:58:11.359124Z",
+  "branch": "clever-oboe",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/whatsapp/src/handlers.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e911d3fe28ac",
+  "token_usage": {
+    "input_tokens": 650,
+    "cache_creation_tokens": 2363131,
+    "cache_read_tokens": 172281927,
+    "output_tokens": 146005,
+    "api_call_count": 576
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T09:58:01.434338Z",
+    "agent_lines": 0,
+    "human_added": 7,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 7,
+    "agent_percentage": 0
+  }
+}
