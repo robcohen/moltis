@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "de1e4d828854",
+  "strategy": "manual-commit",
+  "branch": "zesty-variety",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/mcp.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/de/1e4d828854/0/metadata.json",
+      "transcript": "/de/1e4d828854/0/full.jsonl",
+      "context": "/de/1e4d828854/0/context.md",
+      "content_hash": "/de/1e4d828854/0/content_hash.txt",
+      "prompt": "/de/1e4d828854/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 3324,
+    "cache_read_tokens": 1551202,
+    "output_tokens": 1707,
+    "api_call_count": 10
+  }
+}
