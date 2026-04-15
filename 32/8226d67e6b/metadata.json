@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "328226d67e6b",
+  "strategy": "manual-commit",
+  "branch": "power-euphonium",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "apps/ios/Sources/Networking/ChatEventTypes.swift",
+    "crates/chat/src/service/chat_impl/send.rs",
+    "crates/web/src/assets/js/websocket.js",
+    "crates/web/ui/e2e/specs/chat-api-message.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/32/8226d67e6b/0/metadata.json",
+      "transcript": "/32/8226d67e6b/0/full.jsonl",
+      "context": "/32/8226d67e6b/0/context.md",
+      "content_hash": "/32/8226d67e6b/0/content_hash.txt",
+      "prompt": "/32/8226d67e6b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 30,
+    "cache_creation_tokens": 22655,
+    "cache_read_tokens": 3308173,
+    "output_tokens": 9089,
+    "api_call_count": 28
+  }
+}
