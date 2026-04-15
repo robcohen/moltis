@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2696f140ed68",
+  "session_id": "617dd319-a70f-4d81-b194-1d1727c119be",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T20:55:35.891618Z",
+  "branch": "zesty-variety",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/mcp/src/sse_transport.rs",
+    "crates/web/ui/e2e/mock-mcp-server.js",
+    "crates/web/ui/e2e/specs/mcp.spec.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b2beba2d07aa",
+  "token_usage": {
+    "input_tokens": 43,
+    "cache_creation_tokens": 135589,
+    "cache_read_tokens": 3591775,
+    "output_tokens": 19049,
+    "api_call_count": 37
+  },
+  "summary": {
+    "intent": "Add an E2E test reproducing GitHub issue #732 (MCP servers incorrectly showing 'dead' status) and plan a fix for the root cause in the SSE transport health check.",
+    "outcome": "Created a mock MCP HTTP server, added 5 Rust unit tests demonstrating the buggy is_alive() behavior, added a Playwright E2E test using the mock server, and produced a detailed fix plan. All 93 Rust tests pass and linting is clean. Committed, pushed, and opened a PR.",
+    "learnings": {
+      "repo": [
+        "MCP health status is determined in manager.rs by calling c.is_alive() on Ready-state clients, mapping true→'running' and false→'dead'.",
+        "The gateway E2E test pattern uses a mock OAuth server (mock-oauth-server.js) started as a child process in base-test.js; new mock servers should follow the same pattern.",
+        "The UI adds MCP servers via an RPC call pattern handled in page-mcp.js, with a Streamable HTTP form that accepts a URL and Bearer token.",
+        "Pre-existing rustfmt violations exist in unrelated files (config/validate, providers) on the main branch — format check on changed files only to avoid noise.",
+        "The project uses a 'beads' issue tracker alongside GitHub; tasks are claimed before implementation begins."
+      ],
+      "code": [
+        {
+          "path": "crates/mcp/src/sse_transport.rs",
+          "line": 459,
+          "end_line": 495,
+          "finding": "SseTransport::is_alive() sends a GET request but only treats 2xx and 401 as alive. GET is optional in MCP Streamable HTTP spec — servers may return 405/403/400, which this code incorrectly maps to 'dead'. Fix: treat any HTTP response as alive; only network errors = dead."
+        },
+        {
+          "path": "crates/mcp/src/manager.rs",
+          "line": 424,
+          "end_line": 429,
+          "finding": "McpClientState::Ready branch calls is_alive() to determine 'running' vs 'dead' display string — this is the single callsite affected by the bug."
+        }
+      ],
+      "workflow": [
+        "Writing bug-demonstrating unit tests that assert current broken behavior (with flip-after-fix comments) is an effective way to document bugs and guide reviewers.",
+        "Using mockito for Rust HTTP mocking and a lightweight Node.js script for E2E HTTP mocking covers both layers without heavy dependencies.",
+        "Running cargo test on the specific crate (not workspace-wide) is faster for iteration during test development."
+      ]
+    },
+    "friction": [
+      "JS linting required multiple attempts to invoke correctly (wrong working directory on first tries before finding the repo root invocation).",
+      "rustfmt check produced noisy diffs from pre-existing violations in unrelated files, requiring a targeted per-file check to confirm the changed file was clean."
+    ],
+    "open_items": [
+      "The actual one-line fix to is_alive() was planned but not applied — tests currently assert the buggy behavior and must be flipped after the fix is implemented.",
+      "The E2E test assertion uses toContain(['running', 'dead']) as a temporary allowance; it should be tightened to toBe('running') once the fix lands.",
+      "Broader integration testing with @modelcontextprotocol/server-everything (official MCP test server) was identified but not wired up."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T20:55:13.277405Z",
+    "agent_lines": 347,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 347,
+    "agent_percentage": 100
+  }
+}
