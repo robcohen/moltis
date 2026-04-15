@@ -1,0 +1,212 @@
+Implement the following plan:
+
+# Plan: Matrix OIDC Authentication (Issue #711)
+
+## Context
+
+Matrix password authentication is increasingly rare. Modern homeservers (including matrix.org since April 2025) use Matrix Authentication Service (MAS), which implements OAuth 2.0/OIDC via MSC3861. Users on these homeservers cannot connect Moltis because only `password` and `access_token` auth modes exist today. This is blocking for users like the issue reporter.
+
+matrix-sdk 0.16 (already in use) has a built-in OAuth/OIDC API (`client.oauth()`) that requires no feature flags. It handles PKCE, dynamic client registration, token exchange, and automatic token refresh.
+
+## Design Decision: Two-Phase Browser Flow
+
+OIDC requires browser-based authentication. The flow mirrors the existing MCP/provider OAuth pattern:
+
+1. **Start** — Backend discovers OIDC metadata, registers client, returns auth URL
+2. **Complete** — User authenticates in browser, provider redirects to `/auth/callback`, backend exchanges code for tokens
+
+This reuses the existing `/auth/callback` handler in `crates/web/src/oauth.rs` with a third fallback for channel OIDC.
+
+## Implementation
+
+### Step 1: Config types (`crates/matrix/src/config.rs`)
+
+- Add `MatrixAuthMode` enum: `Password`, `AccessToken`, `Oidc` (serde `rename_all = "snake_case"`)
+- Add field `auth_mode: Option<MatrixAuthMode>` to `MatrixAccountConfig` (None = auto-detect from credentials for backward compat)
+- Add `oidc_issuer: Option<String>` (optional issuer URL override)
+- Update `RedactedConfig`, `Debug` impl, `Default` impl, tests
+- Keep full backward compatibility: existing configs with `password`/`access_token` and no `auth_mode` field work identically
+
+### Step 2: Auth mode dispatch (`crates/matrix/src/client.rs`)
+
+- Extend `AuthMode` enum with `Oidc` variant
+- Update `auth_mode()`: check explicit `config.auth_mode` first, then fall back to existing credential sniffing
+- Update `authenticate_client()`: add `AuthMode::Oidc` arm that calls `oidc::restore_oidc_session()`; return clear error if no saved session exists (OIDC requires the two-phase RPC flow first)
+- Update `build_client()`: accept auth mode parameter; when OIDC, enable `handle_refresh_tokens(true)` on `ClientBuilder`
+
+### Step 3: OIDC module (NEW: `crates/matrix/src/oidc.rs`)
+
+Core OIDC logic, keeping `client.rs` under 1500 lines:
+
+```
+pub struct OidcLoginPending { pub auth_url: String, pub state: String }
+
+// Session persistence
+fn oidc_session_path(account_id) -> PathBuf
+async fn save_oidc_session(account_id, session: &OAuthSession) -> ChannelResult<()>
+async fn load_oidc_session(account_id) -> ChannelResult<Option<OAuthSession>>
+
+// OIDC flow
+fn build_client_metadata(redirect_uri) -> ClientMetadata
+async fn start_oidc_login(client, account_id, config, redirect_uri) -> ChannelResult<OidcLoginPending>
+async fn finish_oidc_login(client, account_id, callback_url) -> ChannelResult<AuthenticatedMatrixAccount>
+async fn restore_oidc_session(client, account_id) -> ChannelResult<AuthenticatedMatrixAccount>
+
+// Token refresh persistence
+fn spawn_session_persistence_task(client, account_id) // subscribes to session changes
+```
+
+Key details:
+- Uses `client.oauth().server_metadata()` for discovery
+- Uses `client.oauth().register_client()` for dynamic registration
+- Uses `client.oauth().login().build()` to generate auth URL with PKCE
+- Uses `client.oauth().finish_login()` to exchange code for tokens
+- Spawns background task via `client.subscribe_to_session_changes()` to persist refreshed tokens
+- Cross-signing: uses `bootstrap_cross_signing_if_needed(None)` instead of password-based UIAA; handles `CrossSigningResetAuthType::OAuth` (already handled in existing code at `client.rs:428`)
+
+### Step 4: Plugin OIDC methods (`crates/matrix/src/plugin.rs`)
+
+Add to `MatrixPlugin`:
+- `oidc_start(account_id, homeserver, redirect_uri, config) -> Result<Value>` — builds client, starts OIDC flow, stores pending state in `AccountStateMap`
+- `oidc_complete(state, callback_url) -> Result<Value>` — finds pending state by CSRF token, finishes login, moves client to active state
+
+Add to `AccountState` (`crates/matrix/src/state.rs`):
+- `oidc_pending: Mutex<Option<OidcPendingState>>` — holds pre-auth `Client` + CSRF state + config between start/complete
+
+### Step 5: Service trait + gateway wiring
+
+**`crates/service-traits/src/interfaces.rs`** — Add to `ChannelService` trait:
+```rust
+async fn oauth_start(&self, params: Value) -> ServiceResult;
+async fn oauth_complete(&self, params: Value) -> ServiceResult;
+```
+With noop defaults in `NoopChannelService`.
+
+**`crates/gateway/src/channel.rs`** — Implement `oauth_start` and `oauth_complete` on `LiveChannelService`:
+- `oauth_start`: extract params, delegate to Matrix plugin's `oidc_start()`
+- `oauth_complete`: extract state+code, iterate plugins to find matching pending state, delegate to `oidc_complete()`
+
+**`crates/gateway/src/methods/services/channels.rs`** — Register RPC methods:
+- `"channels.oauth_start"` -> `channel.oauth_start(params)`
+- `"channels.oauth_complete"` -> `channel.oauth_complete(params)`
+
+### Step 6: Callback handler (`crates/web/src/oauth.rs`)
+
+Add channel OIDC as third fallback in the existing chain:
+```rust
+// Try provider_setup -> MCP -> channel
+Err(provider_error) => match state.gateway.services.mcp.oauth_complete(...) {
+    Err(mcp_error) => state.gateway.services.channel.oauth_complete(...)
+        .map_err(|ch_err| (provider_error, mcp_error, ch_err)),
+```
+
+### Step 7: Web UI
+
+**`crates/web/src/assets/js/channel-utils.js`**:
+- Add OIDC to `normalizeMatrixAuthMode()`
+- Add `matrixAuthModeGuidance("oidc")` text
+- Update `validateChannelFields()` — OIDC mode does not require credentials upfront
+
+**`crates/web/src/assets/js/page-channels.js`** — `AddMatrixModal`:
+- Add "OIDC (recommended)" as third auth mode option
+- When OIDC selected: hide credential input and ownership mode checkbox
+- On submit: call `channels.oauth_start` RPC, open returned `authUrl` in new tab
+- Show "Waiting for authentication..." state; poll `channels.status` for channel to appear
+- When complete, close waiting state and refresh channel list
+
+**`crates/web/src/assets/js/page-channels.js`** — `EditMatrixModal`:
+- For OIDC channels: show auth_mode read-only, hide credential fields
+- Add "Re-authenticate" button that triggers new OIDC flow
+
+**`crates/web/src/assets/js/onboarding-view.js`** — `MatrixForm`:
+- Same OIDC option and flow as AddMatrixModal
+
+### Step 8: Config template + validation
+
+**`crates/config/src/template.rs`** — Add OIDC doc comments to Matrix section
+**`crates/config/src/validate.rs`** — Add `auth_mode` and `oidc_issuer` to schema map
+
+### Step 9: Documentation (`docs/src/matrix.md`)
+
+Add OIDC authentication section explaining the three auth modes and when to use each.
+
+## Tests
+
+### Unit tests (Rust)
+
+**`crates/matrix/src/config.rs`**:
+- Config round-trip with `auth_mode: "oidc"` + `oidc_issuer`
+- `RedactedConfig` handles new fields
+- Defaults unchanged (backward compat)
+
+**`crates/matrix/src/client.rs`**:
+- `auth_mode()` returns `Oidc` when explicit `auth_mode = "oidc"`
+- `auth_mode()` backward compat: no `auth_mode` field still detects password/access_token
+- `auth_mode()` errors when `auth_mode = "oidc"` but homeserver is empty
+
+**`crates/matrix/src/oidc.rs`**:
+- `build_client_metadata()` produces valid structure
+- `save_oidc_session()` / `load_oidc_session()` round-trip (mock session)
+- `oidc_session_path()` returns expected path
+
+### E2E tests (Playwright)
+
+**NEW: `crates/web/ui/e2e/specs/channels-matrix.spec.js`** (following channels-nostr pattern):
+- OIDC option visible in auth mode selector
+- Selecting OIDC hides credential input
+- Homeserver required validation (OIDC mode)
+- Credential NOT required validation (OIDC mode)
+- Mock `channels.oauth_start` returns auth URL
+- OIDC-authenticated channel displays in channel list (mock `channels.status`)
+- Password/access_token modes still work (regression)
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `crates/matrix/src/config.rs` | Add `MatrixAuthMode`, `auth_mode`, `oidc_issuer` fields |
+| `crates/matrix/src/client.rs` | Extend `AuthMode`, update `auth_mode()`, `authenticate_client()`, `build_client()` |
+| `crates/matrix/src/oidc.rs` | **NEW** — OIDC flow, session persistence, token refresh |
+| `crates/matrix/src/lib.rs` | Add `pub mod oidc` |
+| `crates/matrix/src/state.rs` | Add `oidc_pending` field |
+| `crates/matrix/src/plugin.rs` | Add `oidc_start()`, `oidc_complete()` methods |
+| `crates/service-traits/src/interfaces.rs` | Add `oauth_start`, `oauth_complete` to `ChannelService` |
+| `crates/gateway/src/channel.rs` | Implement channel `oauth_start`/`oauth_complete` |
+| `crates/gateway/src/methods/services/channels.rs` | Register `channels.oauth_start`, `channels.oauth_complete` RPC |
+| `crates/web/src/oauth.rs` | Add channel OIDC as third callback fallback |
+| `crates/web/src/assets/js/channel-utils.js` | OIDC normalization, validation, guidance |
+| `crates/web/src/assets/js/page-channels.js` | OIDC option in AddMatrixModal, EditMatrixModal |
+| `crates/web/src/assets/js/onboarding-view.js` | OIDC option in MatrixForm |
+| `crates/config/src/template.rs` | OIDC config documentation |
+| `crates/config/src/validate.rs` | New field schema entries |
+| `docs/src/matrix.md` | OIDC authentication docs |
+| `crates/web/ui/e2e/specs/channels-matrix.spec.js` | **NEW** — E2E tests |
+
+## Verification
+
+1. `cargo check` — compiles
+2. `cargo test -p moltis-matrix` — all unit tests pass
+3. `just lint` — clippy clean
+4. `just format-check` — fmt clean
+5. `cd crates/web/ui && npx playwright test e2e/specs/channels-matrix.spec.js` — E2E tests pass
+6. `biome check --write` on changed JS files
+7. Manual QA: start Moltis, go to Channels, add Matrix with OIDC, verify browser opens auth page
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-fork-piper/baf40a30-75ac-4015-b900-810ce334695f.jsonl
+
+---
+
+proceed
+
+---
+
+commit push create a PR
+
+---
+
+proceed
+
+---
+
+proceed

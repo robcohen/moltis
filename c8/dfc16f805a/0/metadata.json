@@ -1,0 +1,99 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "c8dfc16f805a",
+  "session_id": "65fd5abf-436a-49eb-97a3-356fceb99bb1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T20:05:50.821065Z",
+  "branch": "fork-piper",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Cargo.lock",
+    "crates/channels/src/plugin.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate/schema_map.rs",
+    "crates/gateway/src/channel.rs",
+    "crates/gateway/src/methods/services/channels.rs",
+    "crates/matrix/Cargo.toml",
+    "crates/matrix/src/client.rs",
+    "crates/matrix/src/config.rs",
+    "crates/matrix/src/handler/tests.rs",
+    "crates/matrix/src/lib.rs",
+    "crates/matrix/src/oidc.rs",
+    "crates/matrix/src/plugin.rs",
+    "crates/matrix/src/state.rs",
+    "crates/service-traits/src/interfaces.rs",
+    "crates/web/src/assets/js/channel-utils.js",
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/page-channels.js",
+    "crates/web/src/oauth.rs",
+    "docs/src/matrix.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "dfeec15be87b",
+  "token_usage": {
+    "input_tokens": 215,
+    "cache_creation_tokens": 631112,
+    "cache_read_tokens": 33002100,
+    "output_tokens": 66208,
+    "api_call_count": 208
+  },
+  "summary": {
+    "intent": "Implement Matrix OIDC authentication (Issue #711) to support homeservers using Matrix Authentication Service (MAS/MSC3861), which have deprecated password auth since April 2025.",
+    "outcome": "Full two-phase OIDC browser flow implemented across 19 modified files and 1 new file (crates/matrix/src/oidc.rs), with 785+ tests passing, clippy clean, and a PR created.",
+    "learnings": {
+      "repo": [
+        "ChannelRegistry stores plugins as Arc\u003cRwLock\u003cdyn ChannelPlugin\u003e\u003e — downcasting is impossible; new capabilities require adding default trait methods to ChannelPlugin",
+        "OAuth callback chain follows a three-level fallback: provider_setup → MCP → channel; channel OIDC was added as the third arm",
+        "Error conversion from channel errors to ServiceErrors uses .map_err(|e| e.to_string())? pattern consistently",
+        "Pre-existing clippy errors exist in moltis-providers; scoping clippy to modified crates (--package flags) avoids noise",
+        "Quality gates: cargo test, just lint (clippy), just format-check (rustfmt), biome check --write for JS",
+        "The AccountState struct uses Mutex-wrapped Option fields for transient state (e.g. oidc_pending) held between two-phase flows"
+      ],
+      "code": [
+        {
+          "path": "crates/matrix/src/oidc.rs",
+          "finding": "matrix_sdk::store::RoomLoadSettings is the correct import path — RoomLoadSettings is re-exported through matrix_sdk's store module, not matrix_sdk_base directly"
+        },
+        {
+          "path": "crates/matrix/src/oidc.rs",
+          "finding": "Raw::new(val: \u0026T) returns serde_json::Result\u003cSelf\u003e; must be unwrapped. Localized::new requires explicit type annotation Vec::\u003c(LanguageTag, _)\u003e::new() when passing empty collections due to type inference limits"
+        },
+        {
+          "path": "crates/matrix/src/client.rs",
+          "finding": "should_rebuild_store_after_auth_error already only triggers for Password mode — OIDC auth failures naturally propagate without needing explicit guards"
+        },
+        {
+          "path": "crates/gateway/src/channel.rs",
+          "finding": "oauth_start/oauth_complete iterate all plugins via registry to find the one with a matching pending CSRF state, since the gateway has no direct reference to MatrixPlugin"
+        }
+      ],
+      "workflow": [
+        "Checking compilation incrementally per crate (cargo check -p) is faster than workspace-wide checks during iterative fixes",
+        "Distinguishing pre-existing lint/compile errors from newly introduced ones by filtering error output by file path saves debugging time",
+        "matrix-sdk-base is available as a transitive dep and accessible via matrix_sdk::store re-exports without adding it explicitly to Cargo.toml"
+      ]
+    },
+    "friction": [
+      "Rate limit hits mid-implementation caused two interruptions requiring 'proceed' prompts to continue",
+      "matrix-sdk 0.16 OAuth API types (RoomLoadSettings, Raw, Localized, ClientRegistrationData) required multiple cargo check iterations to discover correct import paths and constructor signatures",
+      "ChannelRegistry's trait-object storage required adding oidc_start/oidc_complete as default methods to ChannelPlugin trait rather than directly calling MatrixPlugin methods — architectural constraint not obvious upfront",
+      "Localized::new type inference failure with empty Vec required explicit turbofish annotation",
+      "Collapsible-if clippy lint in gateway/src/channel.rs required a fixup pass after initial implementation"
+    ],
+    "open_items": [
+      "E2E Playwright tests (crates/web/ui/e2e/specs/channels-matrix.spec.js) were specified in the plan but never created — the file does not appear in git status",
+      "Manual QA (start Moltis, add Matrix with OIDC, verify browser opens auth page) was not performed during the session",
+      "The config field was removed from OidcPendingState as unused — if the complete phase ever needs original config (e.g. for oidc_issuer override), it will need to be re-added",
+      "Re-authenticate flow for EditMatrixModal was added to the UI but the backend path (triggering a new oidc_start for an existing channel) was not explicitly tested"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T20:05:04.22454Z",
+    "agent_lines": 88,
+    "human_added": 955,
+    "human_modified": 27,
+    "human_removed": 0,
+    "total_committed": 1070,
+    "agent_percentage": 8.224299065420562
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "c8dfc16f805a",
+  "strategy": "manual-commit",
+  "branch": "fork-piper",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Cargo.lock",
+    "crates/channels/src/plugin.rs",
+    "crates/config/src/template.rs",
+    "crates/config/src/validate/schema_map.rs",
+    "crates/gateway/src/channel.rs",
+    "crates/gateway/src/methods/services/channels.rs",
+    "crates/matrix/Cargo.toml",
+    "crates/matrix/src/client.rs",
+    "crates/matrix/src/config.rs",
+    "crates/matrix/src/handler/tests.rs",
+    "crates/matrix/src/lib.rs",
+    "crates/matrix/src/oidc.rs",
+    "crates/matrix/src/plugin.rs",
+    "crates/matrix/src/state.rs",
+    "crates/service-traits/src/interfaces.rs",
+    "crates/web/src/assets/js/channel-utils.js",
+    "crates/web/src/assets/js/onboarding-view.js",
+    "crates/web/src/assets/js/page-channels.js",
+    "crates/web/src/oauth.rs",
+    "docs/src/matrix.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c8/dfc16f805a/0/metadata.json",
+      "transcript": "/c8/dfc16f805a/0/full.jsonl",
+      "context": "/c8/dfc16f805a/0/context.md",
+      "content_hash": "/c8/dfc16f805a/0/content_hash.txt",
+      "prompt": "/c8/dfc16f805a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 215,
+    "cache_creation_tokens": 631112,
+    "cache_read_tokens": 33002100,
+    "output_tokens": 66208,
+    "api_call_count": 208
+  }
+}
