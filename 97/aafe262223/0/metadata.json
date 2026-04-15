@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "97aafe262223",
+  "session_id": "3cbdf88a-944f-47a4-8bff-82e5cc85e2bd",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-15T13:57:08.098003Z",
+  "branch": "olive-gatsby",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/openai_compat/tests.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "62b04b8a215e",
+  "token_usage": {
+    "input_tokens": 59,
+    "cache_creation_tokens": 75811,
+    "cache_read_tokens": 3049887,
+    "output_tokens": 15712,
+    "api_call_count": 53
+  },
+  "summary": {
+    "intent": "Fix GitHub issue #712 where optional enum MCP tool parameters cause LLMs to send the literal string 'null' instead of a null value, by writing a regression test and patching the strict mode schema handler.",
+    "outcome": "Root cause identified (two-layer bug: canonicalization strips type from enums, make_nullable had no fallback for enum-only schemas), fix implemented with an add_null_to_enum() helper, 4 regression tests added, e2e scenario added, PR #724 created and a follow-up test added in response to a review comment.",
+    "learnings": {
+      "repo": [
+        "Schema canonicalization in sanitize_schema_for_openai_compat strips 'type': 'string' from enum properties, leaving bare {'enum': [...]} objects — valid JSON Schema but surprising for downstream processors.",
+        "strict_mode.rs make_nullable() only handled schemas with a 'type' field or anyOf/oneOf; enum-only schemas (post-canonicalization) fell through silently.",
+        "The project uses a 'beads' issue tracker alongside GitHub issues — issues must be claimed and closed there separately.",
+        "The workspace has a pre-existing clippy error in moltis-agents unrelated to providers work.",
+        "CUDA build targets fail on macOS — expected and unrelated to provider crate changes.",
+        "just test / just lint use --features local-llm-metal on macOS.",
+        "bd dolt pull errors are expected in worktrees with no Dolt remote configured."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/openai_compat/strict_mode.rs",
+          "finding": "make_nullable() needed two fixes: (1) when type field is present and an enum array exists, null must be added to the enum to keep it consistent with the nullable type; (2) a new fallback branch for enum-only schemas (no type/anyOf/oneOf) that adds null directly to the enum array."
+        },
+        {
+          "path": "crates/providers/src/openai_compat/schema_normalization.rs",
+          "finding": "sanitize_schema_for_openai_compat removes 'type' from enum schemas during canonicalization, which is the upstream cause of the enum-only fallback path being needed."
+        },
+        {
+          "path": "crates/providers/tests/e2e_scenarios/tool_arg_serialization.json",
+          "finding": "New e2e scenario 'issue-712-nullable-enum-params' added to cover Tavily-style MCP schemas with nullable enum parameters in provider integration tests."
+        }
+      ],
+      "workflow": [
+        "Write a failing test before the fix to confirm the bug is reproduced — the test failing with the expected wrong value validates the reproduction.",
+        "Adding a quick debug test inline to inspect intermediate schema state (after canonicalization) is an effective way to understand multi-stage transformations, then remove it before committing.",
+        "When clippy or lint fails, check git blame / main branch to confirm whether errors are pre-existing before investigating further.",
+        "PR review comments can surface missing test coverage for specific code paths (e.g., the post-canonicalization enum-only path) even when existing tests pass."
+      ]
+    },
+    "friction": [
+      "Two-layer bug made diagnosis non-obvious: the initial fix (handling type+enum mismatch) was correct but insufficient because canonicalization had already stripped the type field, requiring a second code path.",
+      "The e2e test through to_openai_tools initially failed due to enum value reordering from canonicalization, requiring debugging to understand the full pipeline.",
+      "bd dolt pull error on commit is noise in every commit workflow for this worktree.",
+      "CUDA build errors in workspace-wide test runs on macOS create noise when checking for regressions."
+    ],
+    "open_items": [
+      "Pre-existing clippy error in moltis-agents crate is unresolved and unrelated to this fix — should be addressed separately.",
+      "The canonicalization behavior of stripping 'type' from enum schemas is a footgun for other downstream processors beyond make_nullable — worth auditing for other places that assume a 'type' field will be present."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-15T13:56:47.675007Z",
+    "agent_lines": 29,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 29,
+    "agent_percentage": 100
+  }
+}
