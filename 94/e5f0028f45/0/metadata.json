@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "94e5f0028f45",
+  "session_id": "6ed19ca9-a4de-4ddf-89bf-134cbda9f1cd",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-16T19:41:24.605089Z",
+  "branch": "literate-coral",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/icons/masks/mask-brain.svg",
+    "crates/web/ui/input.css",
+    "crates/web/src/assets/js/page-chat.js",
+    "crates/web/src/assets/js/models.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "26a6eaa59f1e",
+  "checkpoint_transcript_start": 599,
+  "transcript_lines_at_start": 599,
+  "token_usage": {
+    "input_tokens": 43,
+    "cache_creation_tokens": 30992,
+    "cache_read_tokens": 5771152,
+    "output_tokens": 8012,
+    "api_call_count": 41
+  },
+  "summary": {
+    "intent": "Replace the sparkles icon with a brain icon in the thinking/reasoning toggle, and add a distinctive visual indicator to reasoning-capable models in the model dropdown.",
+    "outcome": "Created a new brain SVG icon, wired it into the icon system, replaced the sparkles icon in the chat UI, and added a brain icon badge to reasoning-capable model items in the dropdown. Changes were committed and pushed.",
+    "learnings": {
+      "repo": [
+        "Icons use SVG mask files stored at crates/web/src/assets/icons/masks/ with hashed filenames (e.g. mask-459dd5c95de89b9a.svg), Heroicons style 24x24 viewbox, stroke-based.",
+        "CSS icon classes are defined in crates/web/ui/input.css and reference ./icons/masks/ relative to the Tailwind output path (crates/web/src/assets/css/style.css), not relative to input.css itself.",
+        "There are two style.css files: crates/web/src/assets/style.css (gitignored, generated) and crates/web/src/assets/css/style.css (tracked in git). The CLAUDE.md build command outputs to the gitignored path; the tracked one must be rebuilt separately.",
+        "Model dropdown items are built in crates/web/src/assets/js/models.js via a buildModelItem function. Reasoning capability is a known property on model objects.",
+        "The reasoning toggle uses icon-sparkles class in crates/web/src/assets/js/page-chat.js."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/models.js",
+          "finding": "buildModelItem constructs model dropdown entries; this is where the brain icon badge for reasoning-capable models was added."
+        },
+        {
+          "path": "crates/web/src/assets/js/page-chat.js",
+          "finding": "Reasoning toggle button uses an icon class (changed from icon-sparkles to icon-brain)."
+        },
+        {
+          "path": "crates/web/ui/input.css",
+          "finding": "Icon CSS classes are defined here; icon-brain class was added referencing mask-brain.svg."
+        }
+      ],
+      "workflow": [
+        "When adding new icons, both the SVG mask file and the CSS class in input.css must be added, then Tailwind must be rebuilt to both output paths (gitignored and tracked).",
+        "Tailwind resolves CSS url() paths relative to the output file, not the input file — confirmed by comparing input.css location vs compiled style.css location.",
+        "Biome is used for JS linting and should be run on changed files before committing."
+      ]
+    },
+    "friction": [
+      "Icon path resolution was confusing: input.css uses ./icons/masks/ but lives in ui/, while SVGs live in src/assets/icons/masks/ — required tracing the Tailwind build to understand URL resolution is relative to output, not input.",
+      "Two style.css files exist (one gitignored, one tracked) with no obvious indication from the CLAUDE.md build command which is which — caused an extra investigation and rebuild step.",
+      "No brain icon existed in the project, requiring creation from scratch rather than reusing an existing asset.",
+      "Icon filenames use opaque hashes rather than semantic names, making it hard to know what icons exist without listing the directory."
+    ],
+    "open_items": [
+      "The brain SVG was created manually and may not perfectly match Heroicons style — visual QA of the icon rendering should be done.",
+      "Hash-based icon filenames vs the new mask-brain.svg (non-hashed) is an inconsistency that could cause confusion or break tooling that expects hashed names."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-16T19:41:03.472101Z",
+    "agent_lines": 14,
+    "human_added": 1,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 15,
+    "agent_percentage": 93.33333333333333
+  }
+}

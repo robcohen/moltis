@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "94e5f0028f45",
+  "strategy": "manual-commit",
+  "branch": "literate-coral",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/src/assets/icons/masks/mask-brain.svg",
+    "crates/web/src/assets/js/models.js",
+    "crates/web/src/assets/js/page-chat.js",
+    "crates/web/ui/input.css"
+  ],
+  "sessions": [
+    {
+      "metadata": "/94/e5f0028f45/0/metadata.json",
+      "transcript": "/94/e5f0028f45/0/full.jsonl",
+      "context": "/94/e5f0028f45/0/context.md",
+      "content_hash": "/94/e5f0028f45/0/content_hash.txt",
+      "prompt": "/94/e5f0028f45/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 43,
+    "cache_creation_tokens": 30992,
+    "cache_read_tokens": 5771152,
+    "output_tokens": 8012,
+    "api_call_count": 41
+  }
+}
