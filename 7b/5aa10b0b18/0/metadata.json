@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7b5aa10b0b18",
+  "session_id": "6ed19ca9-a4de-4ddf-89bf-134cbda9f1cd",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-16T19:45:41.614698Z",
+  "branch": "literate-coral",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/input.css"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "82be17f6d045",
+  "checkpoint_transcript_start": 829,
+  "transcript_lines_at_start": 829,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 1864,
+    "cache_read_tokens": 964676,
+    "output_tokens": 1007,
+    "api_call_count": 6
+  },
+  "summary": {
+    "intent": "Fix the reasoning effort toggle button width, which was too wide relative to its short text content.",
+    "outcome": "Overrode the inherited max-width and removed justify-content: space-between on the reasoning combo button in input.css to make it compact, then committed and pushed the fix.",
+    "learnings": {
+      "repo": [
+        "The reasoning combo button inherits .model-combo-btn styles including max-width: 220px and justify-content: space-between, which are designed for long model names and cause width/layout issues for shorter labels."
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/input.css",
+          "finding": "The .model-combo-btn class sets max-width: 220px and justify-content: space-between; the reasoning toggle button needs its own override to constrain width and use compact content alignment."
+        }
+      ],
+      "workflow": [
+        "CSS changes require a Tailwind rebuild step after editing input.css before the changes take effect."
+      ]
+    },
+    "friction": [
+      "The reasoning combo button inherited overly broad styles from .model-combo-btn, requiring a targeted override rather than being sized correctly out of the box."
+    ],
+    "open_items": []
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-16T19:45:32.843441Z",
+    "agent_lines": 5,
+    "human_added": 1,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "agent_percentage": 83.33333333333334
+  }
+}
