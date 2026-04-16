@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "633ef669a62d",
+  "strategy": "manual-commit",
+  "branch": "dramatic-stem",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/openai_compat/schema_normalization.rs",
+    "crates/providers/src/openai_compat/tests.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/63/3ef669a62d/0/metadata.json",
+      "transcript": "/63/3ef669a62d/0/full.jsonl",
+      "context": "/63/3ef669a62d/0/context.md",
+      "content_hash": "/63/3ef669a62d/0/content_hash.txt",
+      "prompt": "/63/3ef669a62d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 54,
+    "cache_creation_tokens": 118466,
+    "cache_read_tokens": 4045372,
+    "output_tokens": 34188,
+    "api_call_count": 50
+  }
+}
