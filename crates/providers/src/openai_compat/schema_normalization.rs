@@ -69,6 +69,12 @@ impl Transform for RestoreEnumTypeTransform {
             }
         }
 
+        // In JSON Schema, "number" subsumes "integer". When both appear
+        // (e.g. enum mixes 1 and 1.5), collapse to "number".
+        if types.contains("integer") && types.contains("number") {
+            types.remove("integer");
+        }
+
         // Only restore when all non-null values share a single type.
         if types.len() == 1 {
             let inferred_type = types.into_iter().next().unwrap_or_default();

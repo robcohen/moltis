@@ -563,6 +563,46 @@ fn sanitize_restores_type_on_boolean_enum() {
     );
 }
 
+/// Fireworks regression: integer enum values (e.g. priority levels) must
+/// also get their type restored after canonicalization.
+#[test]
+fn sanitize_restores_type_on_integer_enum() {
+    let mut schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "priority": { "type": "integer", "enum": [1, 2, 3] }
+        }
+    });
+
+    sanitize_schema_for_openai_compat(&mut schema);
+
+    assert_eq!(
+        schema["properties"]["priority"]["type"], "integer",
+        "type must be restored for integer enums"
+    );
+}
+
+/// Mixed integer+float enum values should infer "number" since JSON Schema
+/// "number" subsumes "integer".
+#[test]
+fn sanitize_infers_number_for_mixed_int_float_enum() {
+    let mut schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "threshold": {
+                "enum": [1, 1.5, 2]
+            }
+        }
+    });
+
+    sanitize_schema_for_openai_compat(&mut schema);
+
+    assert_eq!(
+        schema["properties"]["threshold"]["type"], "number",
+        "mixed integer+float enum should infer number"
+    );
+}
+
 /// End-to-end: `to_openai_tools` with strict=true must preserve type
 /// annotations on enum properties after the full pipeline.
 #[test]
