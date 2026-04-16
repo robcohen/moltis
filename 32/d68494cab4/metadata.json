@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "32d68494cab4",
+  "strategy": "manual-commit",
+  "branch": "innovative-fibre",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/node-host/src/runner.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/32/d68494cab4/0/metadata.json",
+      "transcript": "/32/d68494cab4/0/full.jsonl",
+      "context": "/32/d68494cab4/0/context.md",
+      "content_hash": "/32/d68494cab4/0/content_hash.txt",
+      "prompt": "/32/d68494cab4/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 57,
+    "cache_creation_tokens": 74989,
+    "cache_read_tokens": 2614430,
+    "output_tokens": 12997,
+    "api_call_count": 47
+  }
+}
