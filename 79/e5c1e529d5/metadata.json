@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "79e5c1e529d5",
+  "strategy": "manual-commit",
+  "branch": "shining-morning",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/providers/src/openai_compat/schema_normalization.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/79/e5c1e529d5/0/metadata.json",
+      "transcript": "/79/e5c1e529d5/0/full.jsonl",
+      "context": "/79/e5c1e529d5/0/context.md",
+      "content_hash": "/79/e5c1e529d5/0/content_hash.txt",
+      "prompt": "/79/e5c1e529d5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 82891,
+    "cache_read_tokens": 545337,
+    "output_tokens": 1712,
+    "api_call_count": 8
+  }
+}
