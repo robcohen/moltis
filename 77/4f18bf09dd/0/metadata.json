@@ -1,0 +1,101 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "774f18bf09dd",
+  "session_id": "65fd5abf-436a-49eb-97a3-356fceb99bb1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-17T10:31:59.71419Z",
+  "branch": "fork-piper",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/matrix/src/oidc.rs",
+    "crates/web/src/assets/js/channel-utils.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6269c131e3d7",
+  "token_usage": {
+    "input_tokens": 423,
+    "cache_creation_tokens": 1039920,
+    "cache_read_tokens": 88054827,
+    "output_tokens": 121404,
+    "api_call_count": 405
+  },
+  "summary": {
+    "intent": "Implement Matrix OIDC authentication (Issue #711) to support modern homeservers like matrix.org that use Matrix Authentication Service (MAS) with OAuth 2.0/OIDC via MSC3861, since existing password/access_token auth modes are insufficient.",
+    "outcome": "Full OIDC two-phase browser flow implemented across Rust backend and JS frontend, PR #730 created and merged to main, with 9 Greptile review comments resolved across 4 iterations; critical runtime bug fixed (trait method dispatch) and redirect URI normalization added after manual QA revealed failures.",
+    "learnings": {
+      "repo": [
+        "ChannelPlugin trait methods must be overridden in `impl ChannelPlugin for MatrixPlugin`, not as inherent methods on `impl MatrixPlugin` — the gateway dispatches through `dyn ChannelPlugin` so inherent methods are invisible",
+        "RPC response data is under `res.payload`, not `res.result` — all JS callers must use `res.payload?.auth_url` etc.",
+        "matrix-sdk re-exports `matrix_sdk_base::store` as `matrix_sdk::store`, so `matrix_sdk::store::RoomLoadSettings` works without adding matrix-sdk-base as a direct dep",
+        "The `url` crate is already a workspace dependency available to all crates",
+        "Tailwind emerald/blue pastel backgrounds (bg-emerald-500/10) with light text (text-emerald-100) produce illegible contrast — must use dark text (text-emerald-900) on light backgrounds (bg-emerald-50)",
+        "MAS (Matrix Authentication Service) rejects HTTPS redirect URIs for loopback addresses per RFC 8252 — must normalize localhost/127.0.0.1 redirects to http:// scheme",
+        "MAS also validates client_uri and rejects bare origins without trailing slash",
+        "E2E tests follow the channels-nostr.spec.js pattern with mock RPC via `page.route`"
+      ],
+      "code": [
+        {
+          "path": "crates/matrix/src/oidc.rs",
+          "line": 1,
+          "end_line": 300,
+          "finding": "New file: OIDC flow with start_oidc_login, finish_oidc_login, restore_oidc_session, session persistence (tokio::fs, not std::fs), token refresh background task via subscribe_to_session_changes, and normalize_redirect_uri for RFC 8252 loopback compliance"
+        },
+        {
+          "path": "crates/matrix/src/plugin.rs",
+          "line": 550,
+          "end_line": 594,
+          "finding": "oidc_start and oidc_complete must be in `impl ChannelPlugin for MatrixPlugin`, not in `impl MatrixPlugin` — gateway uses dyn ChannelPlugin dispatch"
+        },
+        {
+          "path": "crates/channels/src/plugin.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "ChannelPlugin trait extended with default noop oidc_start/oidc_complete methods returning 'OIDC login not supported' error — allows generic dispatch from gateway without downcasting"
+        },
+        {
+          "path": "crates/gateway/src/channel.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "oauth_start/oauth_complete iterate registry plugins, read-lock each as dyn ChannelPlugin, call trait methods; URL injection fixed by using url::Url builder with query_pairs_mut().append_pair() instead of string formatting"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-channels.js",
+          "line": 1,
+          "end_line": 600,
+          "finding": "OIDC polling interval stored in useRef (oidcPollRef) and cleared in resetForm() and modal onClose to prevent leak; OIDC is set as default auth mode"
+        }
+      ],
+      "workflow": [
+        "Greptile automated review caught: token exposure via Debug derive, blocking std::fs in async, URL injection, polling interval leak, panic! in production code — all high-signal findings worth addressing immediately",
+        "Manual QA after PR merge is essential — the trait dispatch bug and MAS redirect URI rejection were only discovered by running the actual flow",
+        "When adding trait methods for plugin dispatch, immediately verify the implementation is on the trait impl block, not the inherent impl block",
+        "Use `secrecy::Secret\u003cString\u003e` for OAuth tokens and implement manual Debug with [REDACTED] instead of deriving Debug",
+        "Dead config fields (oidc_issuer was documented but matrix-sdk 0.16 has no API to override issuer) should be removed rather than left as forward-looking stubs"
+      ]
+    },
+    "friction": [
+      "matrix-sdk 0.16 OAuth API types (RoomLoadSettings, Raw, Localized, ClientRegistrationData) required multiple rounds of compiler errors to discover correct import paths and constructor signatures",
+      "The oidc_start/oidc_complete trait dispatch bug was silent at compile time — only appeared at runtime as 'OIDC login not supported' error after full integration",
+      "MAS redirect URI rejection (invalid_redirect_uri) required understanding RFC 8252 loopback redirect semantics not documented in matrix-sdk",
+      "Two rate limit hits during the session ('You've hit your limit') interrupted implementation flow",
+      "Greptile re-flagged already-fixed issues on subsequent review iterations due to comment association with new commit hashes, creating noise in 4-iteration resolution loop",
+      "The encryption guidance banner incorrectly implied OIDC doesn't support encrypted chats — needed correction after implementation was complete"
+    ],
+    "open_items": [
+      "oidc_issuer config field removed because matrix-sdk 0.16 has no API to override the issuer URL — should be re-added when matrix-sdk exposes that capability",
+      "E2E tests mock the RPC layer but don't do live OIDC flow against a real MAS instance — full integration test against matrix.org or a local MAS would be needed for true confidence",
+      "EditMatrixModal re-authenticate flow (triggering new OIDC flow for existing channels) implemented in UI but not exercised in E2E tests",
+      "Onboarding OIDC flow (onboarding-view.js) has same polling/auth flow as AddMatrixModal but no dedicated E2E spec coverage",
+      "Cross-signing bootstrap for OIDC uses bootstrap_cross_signing_if_needed(None) — the CrossSigningResetAuthType::OAuth path in client.rs:428 should be verified works end-to-end with MAS"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-17T10:31:15.147292Z",
+    "agent_lines": 0,
+    "human_added": 309,
+    "human_modified": 5,
+    "human_removed": 0,
+    "total_committed": 309,
+    "agent_percentage": 0
+  }
+}
