@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "846fccb10a18",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/e2e/specs/channels-nostr.spec.js",
+    "crates/web/ui/e2e/specs/sessions.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/84/6fccb10a18/0/metadata.json",
+      "transcript": "/84/6fccb10a18/0/full.jsonl",
+      "context": "/84/6fccb10a18/0/context.md",
+      "content_hash": "/84/6fccb10a18/0/content_hash.txt",
+      "prompt": "/84/6fccb10a18/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 70,
+    "cache_creation_tokens": 134801,
+    "cache_read_tokens": 6184659,
+    "output_tokens": 27781,
+    "api_call_count": 68
+  }
+}
