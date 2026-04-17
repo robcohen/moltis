@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b3a2714fd875",
+  "strategy": "manual-commit",
+  "branch": "shade-nasturtium",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/nostr/src/bus.rs",
+    "crates/nostr/src/gift_wrap.rs",
+    "crates/nostr/tests/nostr_integration.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b3/a2714fd875/0/metadata.json",
+      "transcript": "/b3/a2714fd875/0/full.jsonl",
+      "context": "/b3/a2714fd875/0/context.md",
+      "content_hash": "/b3/a2714fd875/0/content_hash.txt",
+      "prompt": "/b3/a2714fd875/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 10594,
+    "cache_read_tokens": 1065044,
+    "output_tokens": 3552,
+    "api_call_count": 11
+  }
+}
