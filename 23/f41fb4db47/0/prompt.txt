@@ -1,0 +1,129 @@
+Implement the following plan:
+
+# Plan: NIP-59 Gift Wrap support for Nostr DMs
+
+**Issue**: [#759](https://github.com/moltis-org/moltis/issues/759)
+
+## Context
+
+The `moltis-nostr` crate uses NIP-04 (kind:4) for all DMs. NIP-04 is deprecated because it leaks social graph metadata — both sender and receiver pubkeys are visible in plain text. NIP-17/NIP-59 (Gift Wraps, kind:1059) wraps messages with ephemeral keys, fully hiding metadata. The nostr-sdk 0.44 already has complete NIP-59 support behind a `nip59` feature flag.
+
+## Strategy
+
+- **Inbound**: Accept BOTH kind:4 (legacy) and kind:1059 (gift wrap) for backward compat
+- **Outbound**: Switch entirely to NIP-59 gift wraps (kind:1059) — all modern clients support this
+- **OTP messages**: Also send via gift wrap for consistency
+
+## Files to modify
+
+### 1. `Cargo.toml` (workspace root, line 210)
+
+Add `nip59` to nostr-sdk features:
+```toml
+nostr-sdk = { features = ["nip04", "nip44", "nip59"], version = "0.44" }
+```
+
+### 2. NEW: `crates/nostr/src/gift_wrap.rs` (~80 lines)
+
+Shared helper for sending gift-wrapped DMs, used by outbound.rs and bus.rs OTP:
+
+```rust
+pub async fn send_gift_wrapped_dm(
+    client: &Client,
+    keys: &Keys,
+    recipient: &PublicKey,
+    text: &str,
+) -> Result<(), crate::error::Error>
+```
+
+Implementation (verified against nostr-sdk 0.44 API):
+1. `EventBuilder::private_msg(keys, *recipient, text, []).await` → returns `Event` (kind:1059)
+2. `client.send_event(&event).await` → publishes to relays
+3. Map errors to `crate::error::Error::Encryption` / `Error::Sdk`
+
+Also add an `unwrap_gift_wrap` helper for inbound:
+```rust
+pub async fn unwrap_gift_wrap(
+    keys: &Keys,
+    event: &Event,
+) -> Result<(PublicKey, String), crate::error::Error>
+```
+Uses `nip59::extract_rumor(keys, event)`, validates rumor kind is `PrivateDirectMessage` (14).
+
+Unit tests in this file:
+- `test_gift_wrap_round_trip` — wrap then unwrap, assert sender + content
+- `test_wrong_recipient_fails` — unwrap with wrong keys fails
+- `test_non_gift_wrap_rejected` — kind:1 event returns error
+
+### 3. `crates/nostr/src/lib.rs` (line 11)
+
+Add module: `pub mod gift_wrap;`
+
+### 4. `crates/nostr/src/bus.rs` — Inbound changes
+
+**Subscription filter** (lines 53-56): Two filters instead of one:
+```rust
+let gift_wrap_since = Timestamp::from(now_secs.saturating_sub(172_800)); // 2-day window
+let filters = vec![
+    Filter::new().kind(Kind::EncryptedDirectMessage).pubkey(bot_pubkey).since(since),
+    Filter::new().kind(Kind::GiftWrap).pubkey(bot_pubkey).since(gift_wrap_since),
+];
+```
+Gift wraps have randomly tweaked timestamps (0–2 days), so the wider window prevents missing recent messages.
+
+**`handle_event`** (lines 121-303): Restructure to route by kind:
+
+```
+a. Kind gate: skip unless EncryptedDirectMessage or GiftWrap
+b. Dedup (event.id — works for both)
+c. Route by kind:
+   - Kind:4 → self-msg check (event.pubkey), stale check (event.created_at), decrypt (NIP-04/44)
+   - Kind:1059 → unwrap via gift_wrap::unwrap_gift_wrap(), self-msg check (unwrapped sender),
+     stale check (rumor.created_at, NOT outer timestamp)
+d. Unified remainder: OTP, access control, size validation, emit, dispatch
+```
+
+**OTP functions** (`handle_otp_verification` line 360, `handle_otp_challenge` line 408):
+Replace inline `nip04::encrypt` + `Kind::EncryptedDirectMessage` with `gift_wrap::send_gift_wrapped_dm()`.
+
+### 5. `crates/nostr/src/outbound.rs` — Outbound changes
+
+**`send_text`** (lines 58-101): Replace NIP-04 encrypt + kind:4 publish with:
+```rust
+crate::gift_wrap::send_gift_wrapped_dm(&client, &keys, &recipient, text).await?;
+```
+
+Keep metrics and logging. `send_stream` unchanged (buffers and calls `send_text`).
+
+## Test plan
+
+### Unit tests (in `gift_wrap.rs`)
+- Round-trip: create gift wrap, unwrap, verify sender + content + kind:14
+- Wrong-recipient: unwrap with different keys → error
+- Non-gift-wrap: pass kind:1 event → `NotGiftWrap` error
+
+### Integration test (extend `tests/nostr_integration.rs`)
+- `nip59_gift_wrap_round_trip` — local (non-network) gift wrap create + unwrap
+- `send_and_receive_gift_wrapped_dm` — (`#[ignore]`, requires relay) full round-trip
+
+### Verification
+```bash
+cargo check                           # Feature resolution
+cargo test -p moltis-nostr            # Unit + integration
+just lint                             # Clippy
+just format-check                     # Formatting
+```
+
+## Key design decisions
+
+1. **No config toggle for outbound protocol** — default to NIP-59. A config option can be added later if legacy NIP-04 outbound is needed.
+2. **Reuse existing `Error::Encryption` variant** — no new error variants needed.
+3. **Gift wrap timestamp handling** — wider `since` window (2 days) for relay filter, staleness check uses rumor's `created_at`.
+4. **Shared helper module** — avoids duplicating gift wrap logic across bus.rs and outbound.rs.
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-shade-nasturtium/8720d84a-7683-4dc9-bb8b-e000398531f2.jsonl
+
+---
+
+commit push create a PR
