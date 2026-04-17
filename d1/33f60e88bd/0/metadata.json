@@ -1,0 +1,111 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d133f60e88bd",
+  "session_id": "65fd5abf-436a-49eb-97a3-356fceb99bb1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-17T14:53:19.766317Z",
+  "branch": "fork-piper",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "crates/channels/src/registry.rs",
+    "crates/gateway/src/channel.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "4b84c9e11b1d",
+  "token_usage": {
+    "input_tokens": 857,
+    "cache_creation_tokens": 1615114,
+    "cache_read_tokens": 244350421,
+    "output_tokens": 211424,
+    "api_call_count": 773
+  },
+  "summary": {
+    "intent": "Implement Matrix OIDC authentication (Issue #711) to support modern Matrix homeservers using Matrix Authentication Service (MAS/MSC3861), since matrix.org and others disabled password auth in April 2025.",
+    "outcome": "OIDC auth mode implemented end-to-end: config types, two-phase browser flow (start/complete RPCs), session persistence, token refresh, UI modals, callback routing, and cross-signing ownership bootstrap. PR #730 created and merged to main. Numerous runtime bugs fixed iteratively through live testing against matrix.org MAS.",
+    "learnings": {
+      "repo": [
+        "ChannelPlugin trait methods must be overridden in `impl ChannelPlugin for MatrixPlugin` — inherent methods on `MatrixPlugin` are not visible through `dyn ChannelPlugin` in the gateway",
+        "The registry's `account_index` is only updated via `start_account()` — OIDC bypasses this, requiring explicit `index_account()` calls after oauth_complete/oauth_start to make retry_ownership work",
+        "channel status uses `ch.status === 'connected'` not `ch.connected` — the RPC response shape uses a `status` string field",
+        "RPC response payload is at `res.payload` not `res.result` — consistent across all channel RPC calls",
+        "Existing cross-signing on matrix.org MAS requires browser approval URL (`?action=org.matrix.cross_signing_reset`) before a new device can take over — handled via `CrossSigningResetAuthType::OAuth`",
+        "`matrix_auth().logged_in()` returns false for OIDC sessions; use `client.user_id().is_some()` instead which works for both auth methods",
+        "ChannelEvent enum uses `#[serde(tag = 'kind', rename_all = 'snake_case')]` — new variants serialize automatically with `kind` field",
+        "The existing `/auth/callback` route (not `/api/oauth/callback`) handles OAuth callbacks — three-fallback chain: provider → MCP → channel",
+        "Ownership bootstrap runs inside `sync_once_and_spawn_loop` after initial sync — emitting a `StatusChanged` ChannelEvent is the correct way to push real-time ownership updates to the UI"
+      ],
+      "code": [
+        {
+          "path": "crates/matrix/src/plugin.rs",
+          "line": 606,
+          "end_line": 606,
+          "finding": "`state.client.matrix_auth().logged_in()` only works for password auth; OIDC sessions need `client.user_id().is_some()`"
+        },
+        {
+          "path": "crates/matrix/src/oidc.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "redirect_uri must be normalized from https://localhost to http://localhost for MAS registration (RFC 8252 loopback); client_uri must be a real HTTPS project URL, not localhost"
+        },
+        {
+          "path": "crates/channels/src/registry.rs",
+          "line": 268,
+          "end_line": 280,
+          "finding": "resolve_channel_type() uses account_index which is only populated via start_account() — OIDC flow needs explicit index_account() call"
+        },
+        {
+          "path": "crates/gateway/src/channel.rs",
+          "line": 818,
+          "end_line": 822,
+          "finding": "oauth_start originally built hardcoded config with only homeserver/auth_mode/access_token, dropping ownership_mode and all other form fields — must pass full config from JS"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-channels.js",
+          "line": 184,
+          "end_line": 186,
+          "finding": "Ownership card logic used `auth_mode !== 'password'` as catch-all for 'access token' message — OIDC falls through to wrong message; needs explicit OIDC branch"
+        },
+        {
+          "path": "crates/web/ui/input.css",
+          "line": 920,
+          "end_line": 920,
+          "finding": "`transition: opacity 0.15s` on provider-btn caused ghost text — when button text changes simultaneously with disabled state, browser composites old and new text during opacity transition"
+        }
+      ],
+      "workflow": [
+        "Safari renders ghost text when a text node inside \u003cbutton\u003e changes while an opacity transition is active — fix by keying the button element on its state so Preact destroys/recreates the DOM node rather than patching text in place",
+        "HTM/Preact template expressions with nested ternaries can create multiple text nodes; extracting to a helper function and wrapping in \u003cspan\u003e avoids this",
+        "Light-on-light color patterns (e.g. text-sky-100 on bg-sky-500/10, text-emerald-100 on bg-emerald-500/10) are unreadable in light mode — use bg-*-50 with text-*-900 for tinted info banners",
+        "For async ownership setup that completes after the RPC returns, push a WebSocket event (ChannelEvent::StatusChanged) rather than using setTimeout delays in the frontend",
+        "GPG-signed commits with YubiKey require interactive terminal presence — background bash tasks time out waiting for the YubiKey touch"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing repeatedly blocked background git commit/push tasks — required multiple manual taps and retries throughout the session",
+      "Went through 5+ iterations fixing the redirect_uri/client_uri for MAS: https→http normalization, wrong callback path (/api/oauth/callback vs /auth/callback), removing normalization that broke things again",
+      "channel status showed 'connected' before ownership bootstrap completed — required multiple approaches (setTimeout delay, then proper WebSocket StatusChanged event) before landing on the right fix",
+      "retry_ownership failed with 'unknown channel account' because the registry account_index wasn't updated after OIDC flow — root cause took multiple log sessions to identify",
+      "cross-signing bootstrap state is inconsistent across sessions: sometimes succeeds without approval, sometimes requires browser approval URL, depending on prior session state on MAS",
+      "Compilation errors from matrix-sdk types (RoomLoadSettings, Raw::new, Localized::new) required multiple iterations to resolve correct import paths",
+      "The `m.secret_storage.default_key` deserialization warnings appear on every sync — from a corrupted/incomplete secret storage state left by prior test sessions, not actionable"
+    ],
+    "open_items": [
+      "OIDC channels are not properly restored from the store on Moltis restart — `start_account` with OIDC mode tries `restore_oidc_session` but if the handle expired or session is stale, the channel may not restart cleanly",
+      "E2E tests are UI-only mocks — no integration tests against a real MAS instance; endpoint path mismatches and MAS policy rejections can't be caught by current test suite",
+      "Cross-signing ownership bootstrap for moltis_owned OIDC requires browser approval on every new device (each remove+reconnect) — MAS design constraint, but UX could be improved by detecting and reusing existing device keys when possible",
+      "Duplicate Matrix account guard (same user_id) is basic — doesn't handle the case of connecting the same account with different auth modes, or provide a merge/upgrade path",
+      "The `m.secret_storage.default_key` deserialization failures suggest the test account has corrupted secret storage state that should be cleaned up",
+      "No re-authenticate button implemented for OIDC channels in EditMatrixModal (was in the plan but deferred)",
+      "channels-matrix.spec.js E2E tests are UI-only with mocked RPCs — should be extended to test actual OIDC flow with a test MAS instance when available"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-17T14:52:22.192171Z",
+    "agent_lines": 21,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 21,
+    "agent_percentage": 100
+  }
+}
