@@ -1,0 +1,94 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "20013abc2796",
+  "session_id": "65fd5abf-436a-49eb-97a3-356fceb99bb1",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-17T10:23:56.876497Z",
+  "branch": "fork-piper",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/matrix/src/plugin.rs",
+    "crates/web/src/assets/js/page-channels.js",
+    "crates/web/src/assets/js/onboarding-view.js"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7f6d8aab3099",
+  "token_usage": {
+    "input_tokens": 401,
+    "cache_creation_tokens": 1024037,
+    "cache_read_tokens": 81597096,
+    "output_tokens": 113066,
+    "api_call_count": 385
+  },
+  "summary": {
+    "intent": "Implement Matrix OIDC authentication (Issue #711) so users on homeservers using Matrix Authentication Service (MAS/MSC3861) can connect to Moltis, which previously only supported password and access_token auth modes.",
+    "outcome": "Full OIDC two-phase browser flow implemented across Rust backend and JS frontend, PR #730 created and merged clean after 4 Greptile review iterations resolving 9 comments, plus a critical post-merge bug fix for OIDC trait dispatch.",
+    "learnings": {
+      "repo": [
+        "ChannelPlugin trait methods must be overridden in `impl ChannelPlugin for MatrixPlugin` — inherent `impl MatrixPlugin` methods are invisible when calling through `\u0026dyn ChannelPlugin` in the gateway registry",
+        "Gateway calls plugins via `Arc\u003cRwLock\u003cdyn ChannelPlugin\u003e\u003e`, so any new plugin capability must be added as a trait method with a default noop, not an inherent method",
+        "matrix-sdk 0.16 re-exports `matrix_sdk::store::RoomLoadSettings` from `matrix_sdk_base::store` — use the re-exported path to avoid adding matrix-sdk-base as an explicit dep",
+        "RPC response data is accessed via `res.payload`, not `res.result` — a subtle naming difference that caused silent failures in OIDC auth URL extraction",
+        "Error conversion from `moltis_channels::Error` to `ServiceError` in gateway uses `.map_err(|e| e.to_string())?`",
+        "The `oidc_issuer` config field was removed because matrix-sdk 0.16 discovers the issuer automatically from the homeserver URL with no API to override it — keeping dead config was worse than removing it",
+        "Session files with tokens should use `0o600` permissions via `tokio::fs::OpenOptions` + `OpenOptionsExt::mode()` on unix"
+      ],
+      "code": [
+        {
+          "path": "crates/matrix/src/plugin.rs",
+          "line": 540,
+          "end_line": 594,
+          "finding": "OIDC methods must live in `impl ChannelPlugin for MatrixPlugin`, not in `impl MatrixPlugin`, to be callable through `dyn ChannelPlugin` in the gateway"
+        },
+        {
+          "path": "crates/matrix/src/oidc.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "PersistedOidcSession must NOT use #[derive(Debug)] — tokens would leak; use a manual Debug impl with [REDACTED] for sensitive fields"
+        },
+        {
+          "path": "crates/gateway/src/channel.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Redirect URI construction for OIDC callback must use url::Url builder with query_pairs_mut().append_pair() to prevent URL parameter injection"
+        },
+        {
+          "path": "crates/web/src/assets/js/page-channels.js",
+          "line": 1,
+          "end_line": 50,
+          "finding": "setInterval IDs for polling must be stored in a useRef and cleared in resetForm() and modal onClose to prevent interval leaks on unmount"
+        }
+      ],
+      "workflow": [
+        "Greptile code review runs automatically on push; 4 iterations were needed to reach 0 comments — stale comments from old commits often reappear on new commits at shifted line numbers",
+        "When resolving merge conflicts between two test modules in the same file, both sets of tests should be kept (union, not one-wins)",
+        "biome check --write should be run on all modified JS files as part of the quality gate before committing",
+        "cargo clippy on modified crates specifically (not workspace-wide) avoids noise from pre-existing issues in unrelated crates like moltis-providers"
+      ]
+    },
+    "friction": [
+      "Inherent methods on MatrixPlugin were silently ignored when called through dyn ChannelPlugin — caused a runtime error 'OIDC login not supported' that only surfaced post-merge during manual QA, not in compilation or tests",
+      "Localized::new and Raw::new type inference failures required explicit type annotations that weren't obvious from the matrix-sdk docs",
+      "Clippy false positive on `#[cfg(unix)]` unix import in async file permission code required restructuring with cfg_if-style inline cfg blocks",
+      "res.result vs res.payload naming caused two separate bugs (auth_url and channel list) that were only caught by Greptile review, not by any tests",
+      "Rate limit hits mid-session required the user to say 'proceed' twice to continue, interrupting implementation flow",
+      "Accidental edit corruption in plugin.rs during the inherent→trait method migration required careful recovery by reading surrounding context"
+    ],
+    "open_items": [
+      "E2E Playwright tests (channels-matrix.spec.js) were listed in the plan but not implemented — the plan called for them but the implementation transcript ends without creating this file",
+      "oidc_issuer config field was removed entirely; if matrix-sdk ever exposes an API to override the OIDC issuer URL, it should be re-added",
+      "Token refresh persistence via spawn_session_persistence_task uses a background task — no mechanism to detect if the task dies silently (no health check or restart)",
+      "Cross-signing bootstrap for OIDC uses bootstrap_cross_signing_if_needed(None) — the OAuth reset flow (CrossSigningResetAuthType::OAuth) path should be verified with a real MAS homeserver",
+      "The onboarding MatrixForm OIDC flow was implemented but no polling cleanup was verified for the case where the user navigates away from onboarding mid-flow"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-17T10:23:17.765452Z",
+    "agent_lines": 127,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 127,
+    "agent_percentage": 100
+  }
+}
