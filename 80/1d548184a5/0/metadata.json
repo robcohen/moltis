@@ -1,0 +1,127 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "801d548184a5",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T18:44:20.721555Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/main.tsx",
+    "crates/web/ui/src/ui.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "502b308facd9",
+  "token_usage": {
+    "input_tokens": 8341,
+    "cache_creation_tokens": 983109,
+    "cache_read_tokens": 90818470,
+    "output_tokens": 133699,
+    "api_call_count": 371
+  },
+  "summary": {
+    "intent": "Migrate the moltis web UI from vanilla JavaScript with HTM templates to TypeScript with JSX/Preact, improving type safety and code quality. Then iteratively improve the codebase with enums, typed RPC/WebSocket layers, component extraction, and file splitting.",
+    "outcome": "Complete TypeScript migration delivered on branch feat/typescript-migration: 142 TS/TSX files replacing 135 JS files, Vite build pipeline, 0 tsc errors, typed RPC (107 methods), typed WebSocket events (28-member enum), ChannelType enum, shared form component library (15+ components), all files under 1500 lines, and local-validate passing clean.",
+    "learnings": {
+      "repo": [
+        "The project uses `include_dir!` to embed the `crates/web/src/assets/dist/` folder into the Rust binary — `dist/` must be committed so `cargo build` works without Node.js",
+        "local-validate.sh auto-detects PR number via `gh pr view`; running it before pushing finds an old PR and can produce misleading results",
+        "File size limit (1500 lines) is enforced by check-file-size.sh but originally only covered .rs files — TypeScript files were not checked",
+        "Biome could not lint inside HTM tagged template literals, so a11y issues (missing button types, labels without controls) were invisible pre-migration and surfaced only after JSX conversion",
+        "The share page (share.html, share-app.mjs, share-theme-init.js) is a standalone mini-app separate from the main SPA and was intentionally kept as vanilla JS",
+        "GPG-signed commits require a YubiKey tap; automated commit flows get cancelled if the pinentry dialog doesn't get focus",
+        "git add -A accidentally pulled in working-tree changes from other sessions/branches unrelated to the migration, causing Rust compile failures that had to be reverted",
+        "The original websocket.js called `sendChat()` without importing it — a pre-existing bug that was masked by the non-strict module environment; the TSX version uses `S.chatSendBtn.click()` instead",
+        "Source maps added 27MB to dist/ (11MB without), bloating the embedded binary — Vite sourcemap must be set to false for production builds"
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/src/ui.tsx",
+          "line": 164,
+          "end_line": 440,
+          "finding": "Vanilla DOM dialog builders (confirmDialog, shareVisibilityDialog, shareLinkDialog) duplicated the Preact Modal component — ~280 lines of imperative createElement that were refactored to use the existing Modal wrapper"
+        },
+        {
+          "path": "crates/web/ui/src/pages/ChatPage.tsx",
+          "line": 1,
+          "end_line": 1703,
+          "finding": "chatParams typed as Record\u003cstring,unknown\u003e but actual shape is ChatSendParams with text?, content?, _seq, model? — discriminated union ChatContentPart catches type/image_url field typos"
+        },
+        {
+          "path": "crates/web/ui/src/websocket.ts",
+          "line": 1,
+          "end_line": 208,
+          "finding": "Was 1593 lines; split into 5 sub-modules covering connection, reconnect, message routing, event dispatch, and frame parsing"
+        },
+        {
+          "path": "crates/web/ui/src/sessions.ts",
+          "line": 1,
+          "end_line": 489,
+          "finding": "Was 1732 lines; split into 3 sub-modules; Session/SessionMeta compatibility issues arose from subagent-introduced inconsistencies during migration"
+        },
+        {
+          "path": "crates/web/ui/vite.config.ts",
+          "line": 1,
+          "end_line": 50,
+          "finding": "sourcemap must be false in build config to avoid 27MB of .map files being committed to dist/ and embedded in the Rust binary"
+        },
+        {
+          "path": "crates/web/ui/src/components/forms/index.ts",
+          "line": 1,
+          "end_line": 20,
+          "finding": "Shared component barrel export for FormField, SectionLayout, ListItem, Badge, EmptyState, Loading, CopyButton, DangerZone, CodeDisplay"
+        },
+        {
+          "path": "crates/web/src/templates.rs",
+          "line": 1,
+          "end_line": 100,
+          "finding": "shiki_url template variable and DEFAULT_SHIKI_CDN_URL constant removed — shiki is now bundled by Vite at build time rather than loaded from CDN"
+        },
+        {
+          "path": "scripts/check-file-size.sh",
+          "line": 1,
+          "end_line": 30,
+          "finding": "Extended to cover .ts and .tsx files in addition to .rs files, enforcing the 1500-line limit on TypeScript"
+        }
+      ],
+      "workflow": [
+        "Subagents hallucinate imports — always verify generated code doesn't add imports that don't exist in the original (e.g., sendChat imported from ChatPage in websocket.ts)",
+        "Subagent output token limits prevent converting files over ~4000 lines in a single pass; files like SettingsPage (5656 lines) must be split across multiple agents",
+        "Running `biome check --write` followed by `biome check --write --unsafe` is the fastest path to auto-fix formatting + lint in two passes",
+        "TypeScript's `tsc --noEmit` and biome serve complementary roles: biome = formatting + lint rules (no type awareness), tsc = type errors (no formatting); both needed in CI",
+        "The `as unknown as X` pattern silences tsc without safety — tracking count as a quality metric (48 → 3) provides a concrete measure of type safety improvement",
+        "Parallel subagent batches (3-4 agents simultaneously) significantly accelerate large mechanical migrations but require a verification pass for import path consistency afterward"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing blocks automated commits — pinentry dialog doesn't get focus in the terminal session, causing commit cancellations requiring manual intervention",
+      "git add -A pulled in unrelated working-tree Rust changes from other sessions, causing Rust compile failures (CredentialStorage, request_webauthn_host) that required a revert commit",
+      "API rate limits hit twice mid-migration ('You've hit your limit'), requiring the user to manually resume with 'proceed'",
+      "Subagents introduced incorrect imports (sendChat, htm/preact) and kebab-case component paths instead of PascalCase, requiring a post-migration fix pass",
+      "SettingsPage at 5656 lines exceeded subagent output token limits — required splitting into two agent calls and manual stitching",
+      "local-validate.sh auto-detects PR via gh pr view, finding stale PRs when the branch hasn't been pushed yet, making it unreliable for pre-push validation",
+      "biome `noNonNullAssertedOptionalChain` rule surfaced 4 `?.prop!` patterns that required manual narrowing fixes after unsafe auto-fix introduced type errors",
+      "Source maps were silently added to dist/ by Vite default config, bloating committed dist by 27MB before being caught"
+    ],
+    "open_items": [
+      "~134 remaining `as HTML*Element` casts in querySelector/closest/createElement patterns — eliminating these requires migrating imperative registerPage+DOM pages to full Preact component trees",
+      "~32 `Record\u003cstring,unknown\u003e` in genuinely dynamic contexts (channel configs, ws frames, gon data) — need per-endpoint type refinement as features are worked on",
+      "RpcMethodMap has many `unknown` placeholder response types — should be refined individually as each endpoint is worked on",
+      "SecuritySection, SshSection, ConfigSection, RemoteAccessSection, VoiceSection not yet converted to use shared form components — complex custom layouts need individual extraction",
+      "E2E Playwright tests may need import path updates after the migration",
+      "Delete the old vendored luxon.mjs and share-app.mjs once the share page is migrated (currently kept as-is)",
+      "SettingsPage sections not yet migrated to shared components: SecuritySection, SshSection, ConfigSection, RemoteAccessSection, VoiceSection",
+      "No enums added for route names, event names string constants beyond ChannelType — string comparisons remain in router.ts and event dispatch",
+      "Consider adding `vite build` as a step in local-validate.sh or CI to catch bundler errors before pushing"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T18:43:28.583463Z",
+    "agent_lines": 162,
+    "human_added": 3,
+    "human_modified": 17,
+    "human_removed": 0,
+    "total_committed": 182,
+    "agent_percentage": 89.01098901098901
+  }
+}

@@ -1,0 +1,360 @@
+I'd like to make the JS part of web-ui safer/stronger, I'm considering moving to typescript to have types, enums, and safer typed code. Make a plan, tell me if that's worth it and how much code (LoC) has to be moved.
+
+---
+
+create a branch, write a plan in a markdown file in plans/ and proceed with option C, I'm away so just do all on your own until it's done.
+
+---
+
+proceed
+
+---
+
+proceed
+
+---
+
+I want to keep dist so cargo build works. Proceed with remaining work.
+
+---
+
+Will this branch make things safer now, with enums and typescript instead of JS?
+
+---
+
+first you should fix all issues I see when running local-validate
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Checking AppImage filename pattern...
+  ok: AppImage filename: matches release workflow pattern
+Checking binary tarball filename pattern...
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+  ok: binary tarball: matches release workflow pattern
+Checking release_tag() logic...
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+  ok: release.yml: AppImage naming matches install.sh
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+Diff in /Users/penso/tmp/molt/moltis/crates/gateway/src/public_origin.rs:45:
+     let host = parsed.host_str()?;
+     let mut origin = format!("{scheme}://{host}");
+     if let Some(port) = parsed.port() {
+-        let is_default_port = (scheme == "http" && port == 80) || (scheme == "https" && port == 443);
++        let is_default_port =
++            (scheme == "http" && port == 80) || (scheme == "https" && port == 443);
+         if !is_default_port {
+             origin.push(':');
+             origin.push_str(&port.to_string());
+Diff in /Users/penso/tmp/molt/moltis/crates/gateway/src/public_origin.rs:115:
+         first_header_value(headers, "x-forwarded-proto")
+             .or_else(|| forwarded_param(headers, "proto"))
+             .filter(|value| *value == "http" || *value == "https")
+-            .unwrap_or(if tls_active { "https" } else { "http" })
++            .unwrap_or(if tls_active {
++                "https"
++            } else {
++                "http"
++            })
+     } else if tls_active {
+         "https"
+     } else {
+[local/i18n] passed in 1s
+Diff in /Users/penso/tmp/molt/moltis/crates/httpd/src/auth_routes.rs:2:
+
+ use secrecy::ExposeSecret;
+
+-use {
+-    axum::{
+-        Json,
+-        extract::{ConnectInfo, State},
+-        http::StatusCode,
+-        response::IntoResponse,
+-        routing::{delete, get, post},
+-    },
++use axum::{
++    Json,
++    extract::{ConnectInfo, State},
++    http::StatusCode,
++    response::IntoResponse,
++    routing::{delete, get, post},
+ };
+
+ use {
+[local/biome] passed in 1s
+[local/install-docs] passed in 1s
+[local/install-names] passed in 1s
+error: Recipe `format-check` failed on line 14 with exit code 1
+[local/fmt] failed in 2s
+[local/fmt] total 3s
+[local/biome] total 1s
+[local/i18n] total 1s
+[local/install-names] total 1s
+[local/install-docs] total 1s
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 complet
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+[local/zizmor] passed in 8s
+All Rust files within 1500-line limit (0 allowlisted).
+[local/file-size] passed in 35s
+[local/file-size] total 36s
+[local/lockfile] passed in 1s
+cargo fetch --locked
+   Compiling llama-cpp-sys-2 v0.1.133
+    Checking llama-cpp-2 v0.1.133
+    Checking moltis-providers v0.1.0 (/Users/penso/tmp/molt/moltis/crates/providers)
+    Checking moltis-tools v0.1.0 (/Users/penso/tmp/molt/moltis/crates/tools)
+    Checking moltis-provider-setup v0.1.0 (/Users/penso/tmp/molt/moltis/crates/provider-setup)
+    Checking benchmarks v0.1.0 (/Users/penso/tmp/molt/moltis/crates/benchmarks)
+    Checking moltis-memory v0.1.0 (/Users/penso/tmp/molt/moltis/crates/memory)
+    Checking moltis-auth v0.1.0 (/Users/penso/tmp/molt/moltis/crates/auth)
+    Checking moltis-chat v0.1.0 (/Users/penso/tmp/molt/moltis/crates/chat)
+    Checking moltis-qmd v0.1.0 (/Users/penso/tmp/molt/moltis/crates/qmd)
+    Checking moltis-gateway v0.1.0 (/Users/penso/tmp/molt/moltis/crates/gateway)
+    Checking moltis-httpd v0.1.0 (/Users/penso/tmp/molt/moltis/crates/httpd)
+    Checking moltis-web v0.1.0 (/Users/penso/tmp/molt/moltis/crates/web)
+    Checking moltis-swift-bridge v0.1.0 (/Users/penso/tmp/molt/moltis/crates/swift-bridge)
+    Checking moltis v0.1.0 (/Users/penso/tmp/molt/moltis/crates/cli)
+error[E0433]: failed to resolve: could not find `CredentialStorage` in `moltis_auth`
+   --> crates/httpd/src/auth_routes/vault.rs:263:30
+    |
+263 |                 moltis_auth::CredentialStorage::Memory,
+    |                              ^^^^^^^^^^^^^^^^^
+    |                              |
+    |                              could not find `CredentialStorage` in `moltis_auth`
+    |                              help: a struct with a similar name exists: `CredentialStore`
+
+error[E0433]: failed to resolve: could not find `CredentialStorage` in `moltis_auth`
+   --> crates/httpd/src/auth_routes/vault.rs:309:30
+    |
+309 |                 moltis_auth::CredentialStorage::Memory,
+    |                              ^^^^^^^^^^^^^^^^^
+    |                              |
+    |                              could not find `CredentialStorage` in `moltis_auth`
+    |                              help: a struct with a similar name exists: `CredentialStore`
+
+error[E0425]: cannot find function `request_webauthn_host` in this scope
+   --> crates/httpd/src/auth_routes/vault.rs:273:13
+    |
+273 |             request_webauthn_host(&h, &state).as_deref(),
+    |             ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+184 +     use crate::auth_routes::request_webauthn_host;
+    |
+
+error[E0425]: cannot find function `request_webauthn_host` in this scope
+   --> crates/httpd/src/auth_routes/vault.rs:316:13
+    |
+316 |             request_webauthn_host(&h, &state).as_deref(),
+    |             ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+184 +     use crate::auth_routes::request_webauthn_host;
+    |
+
+error: unnecessary qualification
+   --> crates/httpd/src/auth_routes/vault.rs:262:40
+    |
+262 |             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: requested on the command line with `-D unused-qualifications`
+help: remove the unnecessary path segments
+    |
+262 -             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+262 +             credential_store: Arc::new(CredentialStore::new_with_storage(
+    |
+
+error: unnecessary qualification
+   --> crates/httpd/src/auth_routes/vault.rs:266:28
+    |
+266 |             gateway_state: moltis_gateway::state::GatewayState::new(
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+266 -             gateway_state: moltis_gateway::state::GatewayState::new(
+266 +             gateway_state: GatewayState::new(
+    |
+
+error: unnecessary qualification
+   --> crates/httpd/src/auth_routes/vault.rs:284:29
+    |
+284 |         let gateway_state = moltis_gateway::state::GatewayState::with_options(
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+284 -         let gateway_state = moltis_gateway::state::GatewayState::with_options(
+284 +         let gateway_state = GatewayState::with_options(
+    |
+
+error: unnecessary qualification
+   --> crates/httpd/src/auth_routes/vault.rs:308:40
+    |
+308 |             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+308 -             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+308 +             credential_store: Arc::new(CredentialStore::new_with_storage(
+    |
+
+error[E0599]: no function or associated item named `new_with_storage` found for struct `moltis_auth::CredentialStore` in the current scope
+   --> crates/httpd/src/auth_routes/vault.rs:262:70
+    |
+262 |             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+    |                                                                      ^^^^^^^^^^^^^^^^ function or associated item not found in `moltis_auth::CredentialStore`
+
+error[E0599]: no function or associated item named `default` found for struct `moltis_auth::ResolvedAuth` in the current scope
+   --> crates/httpd/src/auth_routes/vault.rs:267:44
+    |
+267 |                 moltis_auth::ResolvedAuth::default(),
+    |                                            ^^^^^^^ function or associated item not found in `moltis_auth::ResolvedAuth`
+
+error[E0599]: no function or associated item named `default` found for struct `moltis_auth::ResolvedAuth` in the current scope
+   --> crates/httpd/src/auth_routes/vault.rs:285:40
+    |
+285 |             moltis_auth::ResolvedAuth::default(),
+    |                                        ^^^^^^^ function or associated item not found in `moltis_auth::ResolvedAuth`
+
+error[E0599]: no function or associated item named `new_with_storage` found for struct `moltis_auth::CredentialStore` in the current scope
+   --> crates/httpd/src/auth_routes/vault.rs:308:70
+    |
+308 |             credential_store: Arc::new(moltis_auth::CredentialStore::new_with_storage(
+    |                                                                      ^^^^^^^^^^^^^^^^ function or associated item not found in `moltis_auth::CredentialStore`
+
+Some errors have detailed explanations: E0425, E0433, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `moltis-httpd` (lib test) due to 12 previous errors
+      Timing report saved to /Users/penso/tmp/molt/moltis/target/cargo-timings/cargo-timing-20260418T110417.115458Z.html
+error: Recipe `lint` failed with exit code 101
+[local/lint] failed in 62s
+~/t/m/moltis feat/typescript-migration ❯
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+ok all passing. Let's move to this part now:
+
+  What you didn't gain (yet)
+
+  No enums were added. The migration was mechanical — var → const, add type annotations, HTM → JSX. The codebase still uses:
+  - String literals for channel types ("telegram", "discord") instead of a ChannelType enum
+  - String comparisons for routes, event names, RPC methods
+  - Record<string, unknown> in many places where a discriminated union would be better
+
+  Many as casts. The type error fixes used ~100+ type assertions (as HTMLInputElement, as unknown as X) to make tsc happy. These are runtime-invisible — they silence the compiler
+   but don't add safety. A wrong cast is just as dangerous as untyped JS.
+
+  The architecture didn't change. The imperative DOM manipulation pattern (registerPage + innerHTML + document.getElementById) is preserved. That's where most real bugs come from
+   — stale DOM references, null elements, race conditions — and TypeScript doesn't help much there.
+
+  What would make it actually safer
+
+  If the goal is real type safety, the high-value next steps would be:
+
+  1. Add string enums for channel types, event names, RPC methods — replace all string matching
+  2. Type the RPC layer end-to-end — a typed sendRpc<"sessions.list">() that infers the response shape from the method name
+  3. Replace as casts with proper narrowing — especially in DOM code, use type guards instead of assertions
+  4. Migrate imperative pages to Preact components — the registerPage + raw DOM pattern bypasses all of Preact's type safety; actual component trees would be much safer
+  5. Type the WebSocket event dispatch — currently Record<string, unknown> payloads; a discriminated union ChatEvent | ErrorEvent | ... would catch handler mismatches
+
+  The branch is a solid foundation — the tooling is set up, everything compiles, the build works. But the safety gains are incremental until you add domain-level types (enums,
+  discriminated unions, typed RPC) on top. Want me to start on any of those?
+
+---
+
+proceed with the remaining tasks
+
+---
+
+keep doing for remaining tasks
+
+---
+
+I pushed the branch, let's proceed to keep improving, migrate to preact components.
+
+---
+
+Anything else you need to do to improve the code?
+
+---
+
+Anything else you need to do to improve the code?
+
+---
+
+can you fix one Record<string, unknown> so i see what it looks like
+
+---
+
+proceed fixing all of them now
+
+---
+
+<task-notification>
+<task-id>bw5luqt0q</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bw5luqt0q.output</output-file>
+<status>failed</status>
+<summary>Background command "TypeScript type check with no emit" failed with exit code 2</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bw5luqt0q.output
+
+---
+
+<task-notification>
+<task-id>bhsavvh0n</task-id>
+<tool-use-id>toolu_01Cde96EkhzVESt1UzV4XFPh</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bhsavvh0n.output</output-file>
+<status>failed</status>
+<summary>Background command "Run TypeScript compiler to check for type errors" failed with exit code 2</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bhsavvh0n.output
+
+---
+
+Add typescript lint in ./scripts/local-validate.sh but maybe biome does it?
+
+---
+
+Now split large typescript files per domain, no more big files, similar to rules for Rust. Add those rules to CLAUDE.md too.
+
+---
+
+Are you able to use preact template or something to make all TS/HTML ui component DRY? What's the best way to do that?
+
+---
+
+See if you can extract more components now
+
+---
+
+Should you do a component for modals and popup now (confirm dialogs) ?
