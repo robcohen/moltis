@@ -1,0 +1,107 @@
+Implement the following plan:
+
+# Plan: Add `server.external_url` config field
+
+## Context
+
+GitHub Discussion #782: Users running moltis behind a reverse proxy with SSL termination
+(e.g. `https://moltis.example.com`) can't tell moltis its public URL. Moltis thinks it's
+on `http://localhost:13131`, which breaks WebAuthn passkey auth and OIDC callbacks.
+
+Currently the only workaround is setting env vars (`MOLTIS_WEBAUTHN_RP_ID` +
+`MOLTIS_WEBAUTHN_ORIGIN`), which isn't discoverable or documented in the config file.
+This adds a first-class `server.external_url` config field.
+
+**Key insight:** OIDC redirect URIs and CORS/WS origin validation already work behind
+a reverse proxy because they use `window.location.origin` (browser-side) and `Host`
+header comparison respectively. The **only server-side component** that needs the
+external URL is **WebAuthn RP origin registration** at startup.
+
+## Changes
+
+### 1. Config schema — `crates/config/src/schema/system.rs`
+
+Add `external_url: Option<String>` to `ServerConfig` (after `terminal_enabled`).
+Add `effective_external_url()` helper that checks `MOLTIS_EXTERNAL_URL` env var first,
+then falls back to the config field value. Strip trailing slashes.
+
+### 2. Schema map — `crates/config/src/validate/schema_map.rs`
+
+Add `("external_url", Leaf)` to the `server` struct in `build_schema_map()` (~line 330).
+
+### 3. Semantic validation — `crates/config/src/validate/semantic.rs`
+
+Add validation for `server.external_url`:
+- Error if scheme is not `http://` or `https://` (same pattern as `upstream_proxy`)
+- Warning if URL has a trailing slash (WebAuthn origin must not have one)
+
+### 4. Config template — `crates/config/src/template.rs`
+
+Add commented-out `external_url` field after `update_releases_url` (~line 33):
+```toml
+# external_url = "https://moltis.example.com"  # Public URL when behind a reverse proxy
+                                                 # Used for WebAuthn passkey origins.
+                                                 # Env var MOLTIS_EXTERNAL_URL takes precedence.
+```
+
+### 5. Env var exclusion — `crates/config/src/loader/config_io.rs`
+
+Add `"MOLTIS_EXTERNAL_URL"` to the `EXCLUDED` list (~line 378) so it isn't
+double-processed by the generic `MOLTIS_` env override mechanism.
+
+### 6. WebAuthn wiring — `crates/gateway/src/server/prepare_core/post_state.rs`
+
+In `build_webauthn_registry()`: check `config.server.effective_external_url()` **before**
+the existing env var chain. If set, parse it to extract host (→ RP ID) and use full URL
+as origin. Fall through to existing env var chain if not set or invalid.
+
+Priority order becomes:
+1. `server.external_url` / `MOLTIS_EXTERNAL_URL` (new)
+2. `MOLTIS_WEBAUTHN_RP_ID` + `MOLTIS_WEBAUTHN_ORIGIN` (existing, for fine-grained control)
+3. Cloud platform env vars: `APP_DOMAIN`, `RENDER_*`, `FLY_*`, `RAILWAY_*` (existing)
+4. Localhost/hostname auto-detection (existing)
+
+### 7. Documentation — `docs/src/security.md`
+
+Update "Passkeys Behind Proxies" section (~line 492) to recommend `server.external_url`
+as the primary approach, with env vars as alternatives.
+
+### 8. Tests
+
+- Config parsing: `external_url` defaults to `None`, parses correctly from TOML
+- Validation: bad scheme → error, trailing slash → warning, valid https → clean
+- Schema map: `external_url` not flagged as unknown field
+- `effective_external_url()`: env var takes priority over config value, trailing slash stripped
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `crates/config/src/schema/system.rs` | Add field + helper method |
+| `crates/config/src/validate/schema_map.rs` | Register in schema map |
+| `crates/config/src/validate/semantic.rs` | URL validation rules |
+| `crates/config/src/template.rs` | Document in config template |
+| `crates/config/src/loader/config_io.rs` | Exclude from generic env overrides |
+| `crates/gateway/src/server/prepare_core/post_state.rs` | Wire into WebAuthn startup |
+| `docs/src/security.md` | Update reverse proxy guidance |
+
+## Verification
+
+1. `cargo test -p moltis-config` — config parsing + validation tests pass
+2. `cargo test -p moltis-gateway` — WebAuthn integration tests pass
+3. `just lint` — no clippy warnings
+4. `just format-check` — formatting clean
+5. Manual: set `external_url = "https://test.example.com"` in moltis.toml, start gateway,
+   verify log shows `WebAuthn RP registered` with the correct origin
+6. Manual: set `MOLTIS_EXTERNAL_URL=https://env.example.com`, verify it takes priority
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-stone-wood/09ea653c-a41a-4ec0-b6cc-64bfc0a02606.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments

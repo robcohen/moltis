@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e69b85acb7e1",
+  "strategy": "manual-commit",
+  "branch": "stone-wood",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/schema/system.rs",
+    "crates/config/src/schema/tests.rs",
+    "crates/gateway/src/server/prepare_core/post_state.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e6/9b85acb7e1/0/metadata.json",
+      "transcript": "/e6/9b85acb7e1/0/full.jsonl",
+      "context": "/e6/9b85acb7e1/0/context.md",
+      "content_hash": "/e6/9b85acb7e1/0/content_hash.txt",
+      "prompt": "/e6/9b85acb7e1/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 29,
+    "cache_creation_tokens": 19633,
+    "cache_read_tokens": 4669899,
+    "output_tokens": 6656,
+    "api_call_count": 27
+  }
+}
