@@ -1,0 +1,214 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "81c3fca144d7",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T19:20:27.944233Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/branding.ts",
+    "crates/web/ui/src/channel-utils.ts",
+    "crates/web/ui/src/chat-ui.ts",
+    "crates/web/ui/src/components/RunDetail.tsx",
+    "crates/web/ui/src/components/SessionHeader.tsx",
+    "crates/web/ui/src/components/SessionList.tsx",
+    "crates/web/ui/src/components/forms/Tabs.tsx",
+    "crates/web/ui/src/components/forms/index.ts",
+    "crates/web/ui/src/emoji-picker.tsx",
+    "crates/web/ui/src/events.ts",
+    "crates/web/ui/src/gon.ts",
+    "crates/web/ui/src/helpers.ts",
+    "crates/web/ui/src/i18n.ts",
+    "crates/web/ui/src/identity-utils.ts",
+    "crates/web/ui/src/login-app.tsx",
+    "crates/web/ui/src/logs-alert.ts",
+    "crates/web/ui/src/main.tsx",
+    "crates/web/ui/src/message-voice.ts",
+    "crates/web/ui/src/models.ts",
+    "crates/web/ui/src/nodes-selector.ts",
+    "crates/web/ui/src/onboarding-view.tsx",
+    "crates/web/ui/src/onboarding/steps/AuthStep.tsx",
+    "crates/web/ui/src/onboarding/steps/IdentityStep.tsx",
+    "crates/web/ui/src/onboarding/steps/ProviderStep.tsx",
+    "crates/web/ui/src/pages/AgentsPage.tsx",
+    "crates/web/ui/src/pages/ChannelsPage.tsx",
+    "crates/web/ui/src/pages/ChatPage.tsx",
+    "crates/web/ui/src/pages/CronsPage.tsx",
+    "crates/web/ui/src/pages/HooksPage.tsx",
+    "crates/web/ui/src/pages/ImagesPage.tsx",
+    "crates/web/ui/src/pages/McpPage.tsx",
+    "crates/web/ui/src/pages/MetricsPage.tsx",
+    "crates/web/ui/src/pages/NodesPage.tsx",
+    "crates/web/ui/src/pages/ProjectsPage.tsx",
+    "crates/web/ui/src/pages/ProvidersPage.tsx",
+    "crates/web/ui/src/pages/SettingsPage.tsx",
+    "crates/web/ui/src/pages/SkillsPage.tsx",
+    "crates/web/ui/src/pages/TerminalPage.tsx",
+    "crates/web/ui/src/pages/WebhooksPage.tsx",
+    "crates/web/ui/src/passkey-detect.ts",
+    "crates/web/ui/src/provider-validation.ts",
+    "crates/web/ui/src/providers.ts",
+    "crates/web/ui/src/router.ts",
+    "crates/web/ui/src/routes.ts",
+    "crates/web/ui/src/sandbox.ts",
+    "crates/web/ui/src/sessions.ts",
+    "crates/web/ui/src/sessions/session-history.ts",
+    "crates/web/ui/src/share-theme-init.ts",
+    "crates/web/ui/src/state.ts",
+    "crates/web/ui/src/stores/session-history-cache.ts",
+    "crates/web/ui/src/sw.ts",
+    "crates/web/ui/src/theme.ts",
+    "crates/web/ui/src/time-format.ts",
+    "crates/web/ui/src/tts-phrases.ts",
+    "crates/web/ui/src/types/channel.ts",
+    "crates/web/ui/src/types/gon.ts",
+    "crates/web/ui/src/types/index.ts",
+    "crates/web/ui/src/types/model.ts",
+    "crates/web/ui/src/types/rpc.ts",
+    "crates/web/ui/src/types/session.ts",
+    "crates/web/ui/src/ui.tsx",
+    "crates/web/ui/src/websocket.ts",
+    "crates/web/ui/src/ws-connect.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0780c8eda369",
+  "token_usage": {
+    "input_tokens": 8389,
+    "cache_creation_tokens": 1013723,
+    "cache_read_tokens": 107740741,
+    "output_tokens": 145454,
+    "api_call_count": 411
+  },
+  "summary": {
+    "intent": "Migrate the web UI from plain JavaScript with HTM tagged templates to TypeScript + JSX/TSX with Vite bundling, then incrementally improve type safety with enums, typed RPC/WebSocket layers, and reusable Preact components.",
+    "outcome": "Full TypeScript migration completed on branch feat/typescript-migration: 135 JS files → 142 TS/TSX files, Vite build pipeline established, typed RPC (107 methods), typed WebSocket events (28-member enum), ChannelType enum, shared component library (18 components + 2 hooks), all large files split under 1500 lines, local-validate passing clean. Branch rebased onto main with Matrix OIDC changes ported.",
+    "learnings": {
+      "repo": [
+        "The web UI uses Preact with HTM tagged templates (no JSX/bundler) served as native ES modules — a zero-build-step architecture intentionally chosen for fast dev iteration",
+        "Rust embeds JS/CSS via include_dir! macro; dist/ must be committed so cargo build works without Node.js installed",
+        "The codebase uses a registerPage + raw DOM imperative pattern alongside Preact components — mixed architecture that limits type safety gains",
+        "local-validate.sh runs checks in parallel; it auto-detects PR from gh pr view and can fail if an unrelated PR is detected on an unpushed branch",
+        "File size limit (1500 lines) in check-file-size.sh previously only checked .rs files — TS/TSX was not covered until this session",
+        "git add -A accidentally picks up unrelated working-tree changes from other sessions — stray Rust files from other branches were committed and had to be reverted",
+        "Biome cannot lint inside HTM tagged template literals — a11y violations in old code were invisible until migration to JSX made them visible",
+        "Locale files (en/fr/zh, 54 files) use plain export default {} objects — Node.js dynamic import() works on .ts files that contain only object literals",
+        "GPG/YubiKey signing requires physical tap for each commit — background/automated commits will block waiting for PIN entry",
+        "Vite build generates source maps by default adding 27MB to dist/ — must be disabled in vite.config.ts for embedded binary use",
+        "Subagents occasionally hallucinate imports (sendChat imported from ChatPage into websocket.ts) — cross-file call relationships must be verified against originals",
+        "The rebase of this branch produced repeated dist/ file conflicts for every commit — resolving with --ours and rebuilding at the end is the right strategy"
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/src/types/rpc.ts",
+          "line": 1,
+          "end_line": 120,
+          "finding": "RpcMethodMap maps 107 RPC method name strings to their request/response types — sendRpc\u003c'models.list'\u003e() infers response shape at compile time"
+        },
+        {
+          "path": "crates/web/ui/src/types/ws-events.ts",
+          "line": 1,
+          "end_line": 80,
+          "finding": "WsEventName enum (28 members) + WsEventPayloadMap discriminated union — onEvent(WsEventName.Chat, cb) gives cb a typed ChatPayload automatically"
+        },
+        {
+          "path": "crates/web/ui/src/channel-utils.ts",
+          "line": 1,
+          "end_line": 30,
+          "finding": "ChannelType enum replaces ~60 string literal comparisons ('telegram', 'discord', etc.)"
+        },
+        {
+          "path": "crates/web/ui/src/state.ts",
+          "line": 1,
+          "end_line": 50,
+          "finding": "S.$\u003cT\u003e() generic DOM accessor eliminates most HTMLElement→specific-type casts at call sites"
+        },
+        {
+          "path": "crates/web/ui/src/components/forms/index.ts",
+          "line": 1,
+          "end_line": 20,
+          "finding": "Barrel export for 18 shared form/UI components — TextField, SelectField, TabBar, Modal, Badge, EmptyState, Loading, useSaveState, useRpc, etc."
+        },
+        {
+          "path": "crates/web/ui/src/hooks/useRpc.ts",
+          "line": 1,
+          "end_line": 40,
+          "finding": "useRpc hook encapsulates useEffect + sendRpc + loading/error state pattern repeated in every page"
+        },
+        {
+          "path": "crates/web/ui/src/ui.tsx",
+          "line": 164,
+          "end_line": 440,
+          "finding": "Pre-refactor: ~280 lines of imperative createElement dialogs duplicating the Preact Modal component above them — replaced with JSX components"
+        },
+        {
+          "path": "crates/web/ui/vite.config.ts",
+          "line": 1,
+          "end_line": 30,
+          "finding": "sourcemap: false required to avoid 27MB of .map files being committed and embedded in the Rust binary via include_dir!"
+        },
+        {
+          "path": "crates/web/src/templates.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "shiki_url template variable and DEFAULT_SHIKI_CDN_URL removed — Vite bundles shiki at build time eliminating the CDN dependency and CSP allowlist entry"
+        },
+        {
+          "path": "scripts/check-file-size.sh",
+          "line": 1,
+          "end_line": 20,
+          "finding": "Extended to check .ts/.tsx files in addition to .rs — previously only Rust was covered"
+        },
+        {
+          "path": "scripts/local-validate.sh",
+          "line": 1,
+          "end_line": 60,
+          "finding": "Added tsc --noEmit check running in parallel with biome — biome handles formatting/lint rules but does not do type checking"
+        }
+      ],
+      "workflow": [
+        "Biome handles formatting + lint rules but NOT TypeScript type checking — both biome and tsc --noEmit are needed in CI",
+        "Subagents are effective for parallel file conversion but hallucinate imports and use wrong directory assumptions — always verify cross-file dependencies",
+        "For large file conversions (5000+ lines), subagents hit output token limits — must split into part 1/part 2 subagents",
+        "After rebase with many conflicts, rebuild dist/ fresh rather than resolving individual generated file conflicts",
+        "git add -A is dangerous in a mixed workspace — stage specific paths to avoid picking up unrelated changes from other in-progress work",
+        "TypeScript strict mode with 0 errors is achievable via as-casts initially, but as-casts are runtime-invisible — replace with type guards and proper interfaces iteratively",
+        "Splitting large files (\u003e1500 lines) is mechanical but requires updating all import paths — a subagent can do this but needs the full dependency graph",
+        "Extracting shared components from repeated JSX patterns requires reading 3-4 files first to identify the canonical pattern before writing the abstraction"
+      ]
+    },
+    "friction": [
+      "YubiKey/GPG signing blocked every commit during autonomous operation — the session had to pause multiple times for physical taps",
+      "git add -A in early commits accidentally included unrelated Rust working-tree changes (auth_routes/vault.rs, public_origin.rs) causing cargo check failures that had to be diagnosed and reverted",
+      "Subagents hit output token limits on 5000+ line files (SettingsPage 6855 lines, providers 2325) — required manual split into part1/part2 subagents",
+      "Rebase produced repeated dist/ file conflicts on every commit — no clean way to skip generated file conflicts during interactive rebase",
+      "Biome a11y rules (useButtonType, noLabelWithoutControl) became visible for the first time after JSX migration — 289 new violations that were pre-existing but invisible in HTM templates",
+      "TypeScript strict mode produced 236 errors after mechanical migration — required a dedicated subagent pass to fix with proper narrowing vs. as-casts",
+      "Background task notifications arrived after the main conversation had already fixed the issues — caused confusion about whether current state was clean",
+      "The sendChat cross-module reference in websocket.ts was hallucinated by a subagent — required reading original JS to determine it was never imported, was a pre-existing loose reference",
+      "npx --prefix does not set working directory for tsc — the local-validate.sh script needed cd crates/web/ui \u0026\u0026 npx tsc pattern instead",
+      "Rate limits hit twice during the autonomous migration pass ('You've hit your limit') requiring user to resume the session"
+    ],
+    "open_items": [
+      "234 remaining as HTML*Element casts from querySelector/closest/createElement — eliminating these requires migrating imperative registerPage pages to Preact component trees (own PR)",
+      "32 Record\u003cstring, unknown\u003e in genuinely dynamic contexts (channel configs, ws frames, gon data) — need concrete interface definitions as each feature is worked on",
+      "Provider modals system (~2200 lines of imperative createElement in providers/) — full Preact component rewrite deferred to own PR",
+      "464 inline style objects — should be replaced with Tailwind classes but is a CSS cleanup pass, not a component extraction",
+      "Refine unknown placeholder types in RpcMethodMap — 107 methods typed but response types default to unknown until individual endpoints are refined",
+      "SettingsPage split into 12 section files — remaining sections (SecuritySection, SshSection, ConfigSection, RemoteAccessSection, VoiceSection) not yet converted to shared form components due to complex custom layouts",
+      "E2E tests (38 files, ~11K LoC) not migrated to TypeScript — low value but creates inconsistency",
+      "useRpcAll variant or multi-fetch hook not built — pages with multiple concurrent RPC calls still use manual useEffect chains",
+      "dist/ is committed to git — long-term this means every UI change adds binary diffs; consider a cargo build.rs script that runs npm build instead",
+      "Delete old JS source (crates/web/src/assets/js/) was done but share-app.mjs and share-theme-init.js remain as vanilla JS — share page not yet migrated to the Vite pipeline"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T19:19:21.119922Z",
+    "agent_lines": 17340,
+    "human_added": 6351,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 23692,
+    "agent_percentage": 73.18926219821037
+  }
+}
