@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7c316e9cb3e2",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/dist/chunks/onboarding-view.js",
+    "crates/web/src/assets/dist/chunks/open-modal.js",
+    "crates/web/src/assets/dist/chunks/provider-oauth.js",
+    "crates/web/src/assets/dist/chunks/theme.js",
+    "crates/web/src/assets/dist/chunks/webauthn-helpers.js",
+    "crates/web/src/assets/dist/login.js",
+    "crates/web/src/assets/dist/main.js",
+    "crates/web/src/assets/dist/onboarding.js",
+    "crates/web/ui/src/onboarding-view.tsx",
+    "crates/web/ui/src/pages/ChannelsPage.tsx",
+    "crates/web/ui/src/pages/ChatPage.tsx",
+    "crates/web/ui/src/pages/SettingsPage.tsx",
+    "crates/web/ui/src/providers.ts",
+    "crates/web/ui/src/sessions.ts",
+    "crates/web/ui/src/websocket.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7c/316e9cb3e2/0/metadata.json",
+      "transcript": "/7c/316e9cb3e2/0/full.jsonl",
+      "context": "/7c/316e9cb3e2/0/context.md",
+      "content_hash": "/7c/316e9cb3e2/0/content_hash.txt",
+      "prompt": "/7c/316e9cb3e2/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8460,
+    "cache_creation_tokens": 1130133,
+    "cache_read_tokens": 139136849,
+    "output_tokens": 156685,
+    "api_call_count": 470
+  }
+}
