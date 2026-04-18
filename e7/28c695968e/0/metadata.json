@@ -1,0 +1,84 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e728c695968e",
+  "session_id": "c124c6f9-e1a5-4ef8-ab49-20d6db3fe0a4",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T11:10:06.203164Z",
+  "branch": "jeweled-wake",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/sandbox/docker.rs",
+    "crates/tools/src/sandbox/host.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6b25e9fd104d",
+  "token_usage": {
+    "input_tokens": 200,
+    "cache_creation_tokens": 55648,
+    "cache_read_tokens": 1937236,
+    "output_tokens": 7834,
+    "api_call_count": 36
+  },
+  "summary": {
+    "intent": "Fix repeated sandbox package installs (dpkg processes visible in htop with no logs) by adding observability logging and a provisioning guard to prevent redundant apt-get runs.",
+    "outcome": "Implemented all 5 planned changes across docker.rs and host.rs: provisioning guard with HashSet\u003cString\u003e, debug/info logging at all key decision points, docker build stdout logging, and full provision_packages output capture. All 216 sandbox tests pass and lib clippy is clean.",
+    "learnings": {
+      "repo": [
+        "DockerSandbox.ensure_ready() is called on every tool exec — idempotent by design but causes repeated provisioning under failure conditions",
+        "The retry path in exec.rs:634-659 calls cleanup() + ensure_ready() on container death, triggering the full pipeline including apt-get",
+        "When startup pre-build fails, is_prebuilt=false causes provision_packages() to run on every new container",
+        "Pre-existing clippy errors exist in task_list.rs test code — unrelated to sandbox changes",
+        "cargo fmt has pre-existing diffs in code-index, gateway, and qmd files — not in sandbox files"
+      ],
+      "code": [
+        {
+          "path": "crates/tools/src/sandbox/docker.rs",
+          "line": 309,
+          "end_line": 373,
+          "finding": "ensure_ready() decision points: early return if container running (~320-322), docker run (~352), is_prebuilt decision (~368)"
+        },
+        {
+          "path": "crates/tools/src/sandbox/docker.rs",
+          "line": 407,
+          "end_line": 431,
+          "finding": "build_image() only logged stderr on failure — stdout was silently discarded on both success and failure"
+        },
+        {
+          "path": "crates/tools/src/sandbox/docker.rs",
+          "line": 267,
+          "end_line": 300,
+          "finding": "resolve_local_image() had no logging when image found locally"
+        },
+        {
+          "path": "crates/tools/src/sandbox/host.rs",
+          "line": 13,
+          "end_line": 40,
+          "finding": "provision_packages() used 2\u003e\u00261 | tail -5 shell pipe, discarding most output and conflating stdout/stderr"
+        }
+      ],
+      "workflow": [
+        "cargo clippy --lib excludes test code, useful for isolating pre-existing test lint issues from new changes",
+        "cargo fmt --check on a specific package (-p moltis-tools) confirms only your files are clean without being blocked by repo-wide formatting debt"
+      ]
+    },
+    "friction": [
+      "Pre-existing clippy errors in task_list.rs test code required running clippy with --lib to confirm no regressions in the changed code",
+      "Pre-existing cargo fmt diffs in unrelated files (code-index, gateway, qmd) required scoping fmt check to moltis-tools only"
+    ],
+    "open_items": [
+      "The provisioning guard (HashSet on DockerSandbox) only prevents redundant provisioning within a single DockerSandbox instance lifetime — does not persist across process restarts",
+      "Pre-existing clippy warnings in task_list.rs test code were not fixed as they are out of scope",
+      "Repo-wide cargo fmt issues in code-index, gateway, and qmd files were not addressed",
+      "Manual QA with RUST_LOG=moltis_tools=debug not performed in transcript — only automated tests were run"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T11:09:46.836426Z",
+    "agent_lines": 73,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 73,
+    "agent_percentage": 100
+  }
+}

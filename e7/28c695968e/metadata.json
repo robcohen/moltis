@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "e728c695968e",
+  "strategy": "manual-commit",
+  "branch": "jeweled-wake",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/sandbox/docker.rs",
+    "crates/tools/src/sandbox/host.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e7/28c695968e/0/metadata.json",
+      "transcript": "/e7/28c695968e/0/full.jsonl",
+      "context": "/e7/28c695968e/0/context.md",
+      "content_hash": "/e7/28c695968e/0/content_hash.txt",
+      "prompt": "/e7/28c695968e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 200,
+    "cache_creation_tokens": 55648,
+    "cache_read_tokens": 1937236,
+    "output_tokens": 7834,
+    "api_call_count": 36
+  }
+}
