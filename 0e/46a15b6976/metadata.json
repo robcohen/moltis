@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0e46a15b6976",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/assets/login.html",
+    "crates/web/src/assets/onboarding.html",
+    "crates/web/src/templates.rs",
+    "crates/web/src/templates/index.html",
+    "crates/web/ui/src/chat-ui.ts",
+    "crates/web/ui/src/code-highlight.ts",
+    "crates/web/ui/src/components/SessionHeader.tsx",
+    "crates/web/ui/src/emoji-picker.tsx",
+    "crates/web/ui/src/i18n.ts",
+    "crates/web/ui/src/identity-utils.ts",
+    "crates/web/ui/src/main.tsx",
+    "crates/web/ui/src/message-voice.ts",
+    "crates/web/ui/src/models.ts",
+    "crates/web/ui/src/onboarding-view.tsx",
+    "crates/web/ui/src/pages/ChannelsPage.tsx",
+    "crates/web/ui/src/pages/ChatPage.tsx",
+    "crates/web/ui/src/pages/OnboardingPage.tsx",
+    "crates/web/ui/src/pages/ProvidersPage.tsx",
+    "crates/web/ui/src/pages/SettingsPage.tsx",
+    "crates/web/ui/src/provider-oauth.ts",
+    "crates/web/ui/src/push.ts",
+    "crates/web/ui/src/run-detail-mount.tsx",
+    "crates/web/ui/src/sandbox.ts",
+    "crates/web/ui/src/sessions.ts",
+    "crates/web/ui/src/state.ts",
+    "crates/web/ui/src/stores/model-store.ts",
+    "crates/web/ui/src/stores/node-store.ts",
+    "crates/web/ui/src/stores/project-store.ts",
+    "crates/web/ui/src/sw.ts",
+    "crates/web/ui/src/ui.tsx",
+    "crates/web/ui/src/voice-input.ts",
+    "crates/web/ui/src/websocket.ts",
+    "crates/web/ui/src/ws-connect.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0e/46a15b6976/0/metadata.json",
+      "transcript": "/0e/46a15b6976/0/full.jsonl",
+      "context": "/0e/46a15b6976/0/context.md",
+      "content_hash": "/0e/46a15b6976/0/content_hash.txt",
+      "prompt": "/0e/46a15b6976/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 5212,
+    "cache_creation_tokens": 449804,
+    "cache_read_tokens": 12887842,
+    "output_tokens": 52231,
+    "api_call_count": 97
+  }
+}
