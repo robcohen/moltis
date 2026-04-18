@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9cfb48573a5a",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/components/forms/FormField.tsx",
+    "crates/web/ui/src/components/forms/ListItem.tsx",
+    "crates/web/ui/src/components/forms/SectionLayout.tsx",
+    "crates/web/ui/src/components/forms/index.ts",
+    "crates/web/ui/src/pages/AgentsPage.tsx",
+    "crates/web/ui/src/pages/HooksPage.tsx",
+    "crates/web/ui/src/pages/sections/ConfigSection.tsx",
+    "crates/web/ui/src/pages/sections/EnvironmentSection.tsx",
+    "crates/web/ui/src/pages/sections/SecuritySection.tsx",
+    "crates/web/ui/src/pages/sections/SshSection.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9c/fb48573a5a/0/metadata.json",
+      "transcript": "/9c/fb48573a5a/0/full.jsonl",
+      "context": "/9c/fb48573a5a/0/context.md",
+      "content_hash": "/9c/fb48573a5a/0/content_hash.txt",
+      "prompt": "/9c/fb48573a5a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8330,
+    "cache_creation_tokens": 971498,
+    "cache_read_tokens": 87218473,
+    "output_tokens": 131181,
+    "api_call_count": 362
+  }
+}

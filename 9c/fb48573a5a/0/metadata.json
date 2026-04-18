@@ -1,0 +1,132 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9cfb48573a5a",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T18:33:56.85868Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/components/forms/FormField.tsx",
+    "crates/web/ui/src/components/forms/ListItem.tsx",
+    "crates/web/ui/src/components/forms/SectionLayout.tsx",
+    "crates/web/ui/src/components/forms/index.ts",
+    "crates/web/ui/src/pages/AgentsPage.tsx",
+    "crates/web/ui/src/pages/HooksPage.tsx",
+    "crates/web/ui/src/pages/sections/ConfigSection.tsx",
+    "crates/web/ui/src/pages/sections/EnvironmentSection.tsx",
+    "crates/web/ui/src/pages/sections/SecuritySection.tsx",
+    "crates/web/ui/src/pages/sections/SshSection.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ee4d74d59c67",
+  "token_usage": {
+    "input_tokens": 8330,
+    "cache_creation_tokens": 971498,
+    "cache_read_tokens": 87218473,
+    "output_tokens": 131181,
+    "api_call_count": 362
+  },
+  "summary": {
+    "intent": "Migrate the web UI from plain JavaScript with HTM tagged templates to TypeScript with JSX/TSX and Vite bundling, then progressively improve type safety with enums, typed interfaces, and shared components.",
+    "outcome": "Complete migration accomplished: 135 JS files → 142 TypeScript/TSX files, Vite build pipeline established, 0 tsc errors, all local-validate checks passing. Additional type safety improvements added: typed RPC layer (107 methods), WebSocket event enum (28 events), ChannelType enum, elimination of all `as any`, reduction of `as unknown as` from 48→3, shared form component library extracted, all files split under 1500-line limit.",
+    "learnings": {
+      "repo": [
+        "The web UI uses Preact with HTM tagged templates (no bundler) serving native ES modules — migrating to JSX/TSX required adding Vite as a build step",
+        "Rust embeds JS assets via `include_dir!` macro in `crates/web/src/assets.rs`; the `dist/` output must be committed so `cargo build` works without Node.js",
+        "The app uses a `registerPage` + raw DOM pattern (`document.getElementById`, `querySelector`) for imperative page management — this bypasses Preact's type safety",
+        "`local-validate.sh` runs checks in parallel using background jobs; biome handles formatting/lint but NOT type checking — tsc must be run separately",
+        "The file size CI check (`scripts/check-file-size.sh`) originally only scanned `.rs` files, not TypeScript — it was updated to enforce the 1500-line limit on TS/TSX too",
+        "The `shiki_url` CDN variable in `templates.rs` was previously needed for syntax highlighting but became unnecessary after Vite bundled shiki at build time",
+        "Git commits require YubiKey tap for GPG signing — unattended batch commits will stall waiting for pinentry",
+        "The `sendChat` function was referenced in `websocket.js` without being imported — a pre-existing bug masked by non-strict module semantics; fixed by triggering the send button click instead",
+        "Locale files (54 `.js` files) could be dynamically imported as `.ts` by Node.js because they contain only `export default { ... }` object literals",
+        "The `S.$()` DOM accessor helper was made generic `S.$\u003cT\u003e()` to eliminate ~40 redundant `as HTML*Element` casts at call sites"
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/src/components/forms/FormField.tsx",
+          "line": 1,
+          "finding": "New shared component library: TextField, TextAreaField, SelectField, CheckboxField, SectionHeading, SaveButton, useSaveState(), StatusMessage, SettingsCard, ListItem, Badge — DRY patterns for settings sections"
+        },
+        {
+          "path": "crates/web/ui/src/types/ws-events.ts",
+          "line": 1,
+          "finding": "New: WsEventName enum (28 events) + WsEventPayloadMap discriminated union — typed WebSocket event dispatch replacing Record\u003cstring, unknown\u003e payloads"
+        },
+        {
+          "path": "crates/web/ui/src/types/rpc.ts",
+          "line": 1,
+          "finding": "New: RpcMethodMap with all 107 RPC methods typed — sendRpc\u003c'models.list'\u003e() infers Promise\u003cRpcResponse\u003cModelInfo[]\u003e\u003e"
+        },
+        {
+          "path": "crates/web/ui/src/sessions.ts",
+          "finding": "?.prop! patterns (optional chain + non-null assertion) were replaced with proper null guards — biome rule noNonNullAssertedOptionalChain"
+        },
+        {
+          "path": "crates/web/ui/vite.config.ts",
+          "finding": "sourcemap: false set to prevent 27MB of .map files being committed and embedded in the release binary via include_dir!"
+        },
+        {
+          "path": "crates/web/ui/src/pages/ChatPage.tsx",
+          "finding": "ChatSendParams interface + ChatContentPart discriminated union added to type chat message building — replaces Record\u003cstring, unknown\u003e for RPC payload"
+        },
+        {
+          "path": "crates/web/src/templates.rs",
+          "finding": "shiki_url field removed from IndexTemplate struct after Vite bundled shiki; DEFAULT_SHIKI_CDN_URL constant and CDN CSP allowlisting also removed"
+        },
+        {
+          "path": "scripts/check-file-size.sh",
+          "finding": "Updated to scan both *.rs and *.ts/*.tsx files for the 1500-line limit"
+        },
+        {
+          "path": "scripts/local-validate.sh",
+          "finding": "Added tsc --noEmit check running from crates/web/ui/ in parallel with biome; i18n script updated from .js to .ts locale file extension"
+        },
+        {
+          "path": "scripts/i18n-check.sh",
+          "line": 52,
+          "finding": "Was filtering for .js locale files — updated to .ts after migration; Node.js can dynamically import .ts files that are pure export default objects"
+        }
+      ],
+      "workflow": [
+        "Subagents hallucinate imports — the websocket.ts subagent added a spurious `sendChat` import from ChatPage that never existed in the original",
+        "`git add -A` in a shared working directory can accidentally stage unrelated in-progress changes from other branches/sessions; prefer `git add` by specific paths",
+        "Running `biome check --write` before `biome check --write --unsafe` finds fixable errors in two passes — unsafe fixes handle string concatenation → template literal conversions",
+        "Vite build succeeds even with tsc type errors because it strips types — always run tsc --noEmit separately to catch real type issues",
+        "For large files (5000+ lines), subagents hit output token limits and produce empty files — split into part 1/part 2 subagents or handle directly",
+        "biome a11y rules (useButtonType, noLabelWithoutControl, etc.) were implicitly disabled for HTM templates since biome couldn't parse template literals — these surface as new errors after JSX migration and are best suppressed in biome.json to match pre-migration behavior",
+        "The `npx --prefix crates/web/ui tsc` command does NOT change working directory — must use `(cd crates/web/ui \u0026\u0026 npx tsc)` for tsc to find tsconfig.json"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing blocked unattended commits repeatedly throughout the session — required manual intervention multiple times",
+      "Subagent hallucinated a `sendChat` import in websocket.ts that never existed in the original codebase, causing a build error that required manual debugging",
+      "`git add -A` accidentally staged unrelated Rust file changes (vault.rs, auth_routes.rs, public_origin.rs) from other in-progress work, causing cargo check failures that needed to be diagnosed and reverted",
+      "SettingsPage.tsx at 5656 lines hit subagent output token limits causing empty file output — required splitting into part 1/part 2 subagent calls",
+      "Biome's `npx --prefix` approach doesn't work for tsc since it doesn't set working directory — discovered after the check silently passed without actually type-checking",
+      "Background tsc tasks ran against intermediate states and reported errors that were already fixed, causing confusion about actual error count",
+      "Rate limits hit twice mid-migration requiring user to manually resume with 'proceed'",
+      "The i18n check script's `.js` → `.ts` extension change was missed initially, causing a local-validate failure after migration"
+    ],
+    "open_items": [
+      "234 remaining `as HTML*Element` casts from querySelector/closest/createElement — require migrating imperative registerPage+DOM pages to actual Preact component trees to eliminate",
+      "32 `Record\u003cstring, unknown\u003e` instances in genuinely dynamic contexts (channel configs, WebSocket frames, gon data) intentionally left untyped",
+      "SecuritySection, SshSection, ConfigSection, RemoteAccessSection, VoiceSection not converted to shared form components — complex custom layouts that need individual treatment",
+      "E2E tests (38 Playwright files, ~11K LoC) not migrated to TypeScript — assessed as optional/low value",
+      "Delete vendored .mjs files for the main SPA (still kept luxon.mjs for share page)",
+      "RpcMethodMap has `unknown` placeholder response types for many of the 107 methods — should be refined per endpoint as features are worked on",
+      "SettingsPage.tsx was split but still needs sections that weren't converted to shared components (SecuritySection, SshSection, etc.)",
+      "The share page (share-app.mjs, share-theme-init.js) was intentionally left as plain JS since it's a standalone small page separate from the main SPA Vite build"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T18:33:01.765892Z",
+    "agent_lines": 222,
+    "human_added": 0,
+    "human_modified": 47,
+    "human_removed": 16,
+    "total_committed": 269,
+    "agent_percentage": 82.5278810408922
+  }
+}
