@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ac773375940",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T17:13:20.45022Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "scripts/local-validate.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "58422dc46ba6",
+  "token_usage": {
+    "input_tokens": 6099,
+    "cache_creation_tokens": 916738,
+    "cache_read_tokens": 67293605,
+    "output_tokens": 107327,
+    "api_call_count": 308
+  },
+  "summary": {
+    "intent": "Migrate the web UI from vanilla JavaScript with HTM tagged templates to TypeScript with JSX/Preact, then iteratively improve type safety by adding enums, typed RPC, typed WebSocket events, and eliminating unsafe casts.",
+    "outcome": "Full TypeScript/TSX migration completed on branch feat/typescript-migration: 142 TS/TSX files replacing 135 JS files, Vite build pipeline, 0 tsc errors, 0 `as any`, typed RPC (107 methods), typed WS events (28-member enum), ChannelType enum, and Record\u003cstring,unknown\u003e reduced from ~159 to 69. local-validate passes including new tsc check.",
+    "learnings": {
+      "repo": [
+        "The project uses Rust's include_dir! to embed static assets — dist/ must be committed so cargo build works without Node.js",
+        "The file-size CI check (1500-line limit) only applies to .rs files, not TypeScript/TSX",
+        "local-validate.sh requires a git-tracked clean tree to run properly; it auto-detects PR from gh pr view and fails if no PR exists",
+        "Biome does formatting and lint but NOT type checking — tsc --noEmit is needed separately for type errors",
+        "The share page (share.html) uses its own standalone JS (share-app.mjs, share-theme-init.js, luxon.mjs) separate from the main SPA and should not be deleted",
+        "The original page-chat.js referenced sendChat without importing it — a pre-existing latent bug masked by non-strict module loading",
+        "git add -A in a shared working directory accidentally staged unrelated in-progress Rust changes from other sessions, requiring a revert commit",
+        "GPG-signed commits require YubiKey tap for each commit — automated commit loops will stall waiting for pinentry"
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/vite.config.ts",
+          "finding": "sourcemap must be disabled in Vite config to prevent 27MB of .map files being committed to dist/ and embedded in the release binary"
+        },
+        {
+          "path": "crates/web/ui/src/pages/ChatPage.tsx",
+          "finding": "ChatSendParams and ChatContentPart discriminated union replaces Record\u003cstring,unknown\u003e for chat RPC payloads; content parts typed as {type:'text';text:string} | {type:'image_url';image_url:{url:string}}"
+        },
+        {
+          "path": "crates/web/ui/src/types/rpc.ts",
+          "finding": "RpcMethodMap with 107 entries enables sendRpc\u003c'models.list'\u003e() to infer response type at compile time via overloaded signatures"
+        },
+        {
+          "path": "crates/web/ui/src/types/ws-events.ts",
+          "finding": "WsEventName enum (28 events) + WsEventPayloadMap enables typed onEvent() where payload type is inferred from event name"
+        },
+        {
+          "path": "crates/web/src/templates.rs",
+          "finding": "shiki_url template variable and DEFAULT_SHIKI_CDN_URL removed since Vite bundles Shiki at build time — CDN allowlist in CSP no longer needed"
+        },
+        {
+          "path": "crates/web/ui/src/sessions.ts",
+          "finding": "?.prop! (noNonNullAssertedOptionalChain) patterns existed — optional chain makes the non-null assertion contradictory and should be replaced with explicit null guards"
+        },
+        {
+          "path": "scripts/local-validate.sh",
+          "finding": "tsc must be run as `cd crates/web/ui \u0026\u0026 npx tsc --noEmit` rather than npx --prefix because --prefix only sets install location, not working directory for tsconfig resolution"
+        }
+      ],
+      "workflow": [
+        "HTM tagged templates are opaque strings to TypeScript — migrating to JSX is required to get typed props, typed children, and attribute checking",
+        "Subagents hitting output token limits on large files (5000+ lines) silently produce no output — must check file existence after agent completes",
+        "Mechanical TS migration produces ~100+ `as` casts to silence tsc; a second pass replacing them with type guards and typed helpers provides the real safety gains",
+        "targetValue(e)/targetChecked(e) typed event helpers eliminate e.target as HTMLInputElement casts across form handlers",
+        "Generic S.$\u003cT\u003e() DOM accessor eliminates redundant casts at getElementById call sites",
+        "Biome a11y rules (useButtonType, noLabelWithoutControl) become newly visible after HTM→JSX migration because biome could not lint inside HTM template literals",
+        "Removing source maps from Vite build reduces committed dist/ from 27MB to 11MB"
+      ]
+    },
+    "friction": [
+      "YubiKey GPG signing required manual tap for every commit — automated sessions stall at pinentry prompts",
+      "git add -A accidentally staged unrelated in-progress Rust files (vault.rs, auth_routes.rs etc.) causing cargo check failures that required a revert commit",
+      "Subagent token limit on SettingsPage.tsx (5656 lines) caused silent failure — file was not created, requiring manual detection and split conversion",
+      "Subagents introduced hallucinated imports (sendChat from ChatPage in websocket.ts) that broke the Vite build",
+      "Subagents used kebab-case import paths (../components/session-header) instead of PascalCase filenames (SessionHeader.tsx), requiring manual fixup",
+      "npx --prefix does not set the working directory for tsc — initial local-validate tsc command was broken and required a fix",
+      "local-validate requires a pushed PR to run end-to-end; running it on an unpushed branch causes it to pick up stale PR context",
+      "Rate limits hit mid-session twice, requiring user to issue 'proceed' to resume work"
+    ],
+    "open_items": [
+      "134 remaining `as HTML*Element` casts from querySelector/closest/createElement — eliminating them requires migrating imperative registerPage+DOM pages to Preact component trees",
+      "32 dynamic Record\u003cstring,unknown\u003e usages in channel configs, ws frames, and gon data that need per-endpoint interface definitions as features are worked on",
+      "SettingsPage.tsx at 6855 lines — should be split into sub-page components in a future PR (file-size check only covers .rs files so CI does not enforce this)",
+      "Migrate remaining imperative pages (ChannelsPage, SettingsPage, ChatPage, onboarding-view) from registerPage+innerHTML pattern to Preact component trees for full type safety",
+      "Refine RpcMethodMap response types — many entries use unknown placeholders that should be replaced with concrete interfaces as individual endpoints are touched",
+      "E2E Playwright tests may need minor import path updates after the JS→TS rename",
+      "Consider adding vite build step to CI so the committed dist/ stays in sync with source changes"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T17:12:34.437126Z",
+    "agent_lines": 0,
+    "human_added": 5,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 5,
+    "agent_percentage": 0
+  }
+}
