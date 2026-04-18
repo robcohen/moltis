@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5dd2dbf04f1d",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-18T11:59:46.015937Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/events.ts",
+    "crates/web/ui/src/helpers.ts",
+    "crates/web/ui/src/identity-utils.ts",
+    "crates/web/ui/src/pages/ProvidersPage.tsx",
+    "crates/web/ui/src/provider-validation.ts",
+    "crates/web/ui/src/stores/mcp-store.ts",
+    "crates/web/ui/src/tts-phrases.ts",
+    "crates/web/ui/src/types/index.ts",
+    "crates/web/ui/src/types/rpc-methods.ts",
+    "crates/web/ui/src/types/ws-events.ts",
+    "crates/web/ui/src/websocket.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2ff23186fd6a",
+  "token_usage": {
+    "input_tokens": 5965,
+    "cache_creation_tokens": 518448,
+    "cache_read_tokens": 34232150,
+    "output_tokens": 73336,
+    "api_call_count": 196
+  },
+  "summary": {
+    "intent": "Migrate the web UI from vanilla JS with HTM tagged templates to TypeScript with JSX/TSX, adding a Vite build pipeline, then follow up with domain-level type safety improvements (typed RPC, typed WebSocket events, enums).",
+    "outcome": "Full migration completed: 81 JS files + 54 locale files converted to 142 TS/TSX files, Vite build pipeline added, 0 tsc errors, Rust compiles clean, all local-validate checks passing. Typed RPC registry and typed WebSocket event dispatch added as a follow-up commit.",
+    "learnings": {
+      "repo": [
+        "The main SPA uses a registerPage + imperative DOM manipulation pattern that bypasses Preact's type safety entirely — this is where most real bugs originate.",
+        "The share page (share-app.mjs, share-theme-init.js, vendor/luxon.mjs) is a completely separate standalone from the main SPA and must NOT be deleted with the main JS source.",
+        "Rust asset embedding uses include_dir! so the Vite dist/ output must be committed for cargo build to work without Node.js installed.",
+        "The original websocket.js called sendChat() without importing it — a pre-existing ReferenceError that was invisible in permissive ES module mode.",
+        "biome could not lint HTM tagged templates (opaque strings), so migrating to JSX surfaced ~300+ previously invisible a11y violations (useButtonType, noLabelWithoutControl, etc.) that needed to be suppressed to match pre-migration behavior.",
+        "The i18n-check.sh script dynamically imports locale files and works fine with .ts files that export plain objects — Node.js handles them as valid ESM without a loader.",
+        "The shiki CDN URL was previously injected as a Rust template variable and allowlisted in CSP; after migration shiki is bundled by Vite and the CDN logic was removed from templates.rs entirely."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/js/websocket.js",
+          "finding": "sendChat() is called inside a click handler but never imported — pre-existing bug that compiled silently under HTM/ES modules. Fixed in websocket.ts by triggering the send button click instead."
+        },
+        {
+          "path": "scripts/i18n-check.sh",
+          "line": 52,
+          "end_line": 52,
+          "finding": "File filter was hardcoded to .js; changed to .ts after locale files were renamed during migration."
+        },
+        {
+          "path": "crates/web/ui/src/types/rpc-methods.ts",
+          "finding": "New file: typed RPC method registry mapping method names to request/response shapes, enabling sendRpc\u003c'sessions.list'\u003e() to infer response type from method name."
+        },
+        {
+          "path": "crates/web/ui/src/types/ws-events.ts",
+          "finding": "New file: discriminated union for all WebSocket event payloads replacing Record\u003cstring, unknown\u003e throughout the codebase."
+        },
+        {
+          "path": "crates/web/src/templates.rs",
+          "finding": "Removed shiki_url field from template struct and DEFAULT_SHIKI_CDN_URL constant after Vite bundles shiki at build time."
+        }
+      ],
+      "workflow": [
+        "Subagents reliably hallucinate imports for functions that don't exist in the target file — always verify cross-file imports after subagent conversions.",
+        "git add -A is dangerous in a workspace with multiple in-progress branches; it silently picks up uncommitted working-tree changes from other crates, causing unrelated compile errors downstream.",
+        "Splitting a 5600-line file across two subagent calls (part 1 / part 2) is necessary when a single agent hits output token limits on large file conversions.",
+        "biome --fix handles most formatting and lint issues automatically; the remaining errors after --fix are almost always a11y rules that require config-level suppression or manual fixes.",
+        "local-validate auto-detects PR number via gh pr view, which picks up stale PRs when the branch hasn't been pushed yet — run individual checks (fmt, biome, i18n, lint) directly to validate without a PR."
+      ]
+    },
+    "friction": [
+      "Hit Anthropic rate limits twice mid-session, requiring manual 'proceed' prompts to resume work.",
+      "git add -A accidentally committed unrelated Rust files (vault.rs, public_origin.rs, auth_routes.rs) from other in-progress branches, causing 12 Rust compilation errors that had to be diagnosed and reverted.",
+      "SettingsPage.tsx at 5656 lines exceeded subagent output token limits — required two separate subagent calls and manual verification that the file was actually written.",
+      "Subagent hallucinated a sendChat import from ChatPage.tsx in websocket.ts; required reading original JS source to understand the actual call pattern.",
+      "SSH push requires a YubiKey tap; branch could not be pushed during the automated session and remains unpushed.",
+      "Kebab-case component import paths (session-header, session-list) from subagent output didn't match the PascalCase TSX filenames — required a grep-and-fix pass.",
+      "Pre-existing Rust formatting issues in files unrelated to the migration (public_origin.rs, auth_routes.rs) were caught by local-validate after being accidentally staged."
+    ],
+    "open_items": [
+      "Replace 443+ 'as' type assertions with proper type guards and null checks — current casts silence the compiler but provide no runtime safety.",
+      "Add string enums for channel types ('telegram', 'discord', etc.), route names, and RPC method name constants to replace raw string literals.",
+      "Migrate the registerPage + imperative DOM manipulation pattern to proper Preact component trees — this is the highest-impact remaining safety improvement.",
+      "Push feat/typescript-migration branch to remote (blocked on YubiKey availability).",
+      "E2E tests (38 files, ~11K LoC) may need import path updates; not yet validated against the new build output.",
+      "Consider adding 'dist/' to .gitignore with a CI step to build it, vs keeping it committed — current decision is to commit dist/ for cargo build without Node.js.",
+      "A11y issues (useButtonType x177, noLabelWithoutControl x112, etc.) were suppressed in biome.json to match pre-migration behavior but represent real accessibility debt."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-18T11:58:55.339699Z",
+    "agent_lines": 545,
+    "human_added": 1750,
+    "human_modified": 10,
+    "human_removed": 0,
+    "total_committed": 2305,
+    "agent_percentage": 23.644251626898047
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5dd2dbf04f1d",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/events.ts",
+    "crates/web/ui/src/helpers.ts",
+    "crates/web/ui/src/identity-utils.ts",
+    "crates/web/ui/src/pages/ProvidersPage.tsx",
+    "crates/web/ui/src/provider-validation.ts",
+    "crates/web/ui/src/stores/mcp-store.ts",
+    "crates/web/ui/src/tts-phrases.ts",
+    "crates/web/ui/src/types/index.ts",
+    "crates/web/ui/src/types/rpc-methods.ts",
+    "crates/web/ui/src/types/ws-events.ts",
+    "crates/web/ui/src/websocket.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/5d/d2dbf04f1d/0/metadata.json",
+      "transcript": "/5d/d2dbf04f1d/0/full.jsonl",
+      "context": "/5d/d2dbf04f1d/0/context.md",
+      "content_hash": "/5d/d2dbf04f1d/0/content_hash.txt",
+      "prompt": "/5d/d2dbf04f1d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 5965,
+    "cache_creation_tokens": 518448,
+    "cache_read_tokens": 34232150,
+    "output_tokens": 73336,
+    "api_call_count": 196
+  }
+}
