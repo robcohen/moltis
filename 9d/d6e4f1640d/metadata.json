@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9dd6e4f1640d",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "crates/web/src/assets/dist/chunks/jsxRuntime.module.js",
+    "crates/web/src/assets/dist/chunks/onboarding-view.js",
+    "crates/web/src/assets/dist/chunks/open-modal.js",
+    "crates/web/src/assets/dist/chunks/theme.js",
+    "crates/web/src/assets/dist/chunks/voice-utils.js",
+    "crates/web/src/assets/dist/chunks/ws-connect.js",
+    "crates/web/src/assets/dist/login.js",
+    "crates/web/src/assets/dist/main.js",
+    "crates/web/src/assets/dist/onboarding.js",
+    "crates/web/src/assets/js/helpers.js",
+    "crates/web/src/assets/js/nodes-selector.js",
+    "crates/web/src/assets/js/providers.js",
+    "crates/web/src/assets/js/state.js",
+    "crates/web/src/assets/js/stores/model-store.js",
+    "crates/web/src/assets/js/stores/node-store.js",
+    "crates/web/ui/src/channel-utils.ts",
+    "crates/web/ui/src/login-app.tsx",
+    "crates/web/ui/src/main.tsx",
+    "crates/web/ui/src/pages/CronsPage.tsx",
+    "crates/web/ui/src/pages/McpPage.tsx",
+    "crates/web/ui/src/pages/SkillsPage.tsx",
+    "crates/web/ui/src/pages/channels/modals/AddMatrixModal.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9d/d6e4f1640d/0/metadata.json",
+      "transcript": "/9d/d6e4f1640d/0/full.jsonl",
+      "context": "/9d/d6e4f1640d/0/context.md",
+      "content_hash": "/9d/d6e4f1640d/0/content_hash.txt",
+      "prompt": "/9d/d6e4f1640d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8920,
+    "cache_creation_tokens": 3077257,
+    "cache_read_tokens": 396047022,
+    "output_tokens": 231577,
+    "api_call_count": 868
+  }
+}
