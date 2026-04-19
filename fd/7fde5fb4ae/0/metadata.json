@@ -1,0 +1,134 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "fd7fde5fb4ae",
+  "session_id": "9e572566-be2d-4a7a-9809-9468c2a5f29f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-19T17:23:01.478864Z",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/templates/index.html",
+    "crates/web/ui/src/onboarding-app.tsx",
+    "crates/web/ui/vite.config.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "aabcb4ffc96d",
+  "token_usage": {
+    "input_tokens": 8996,
+    "cache_creation_tokens": 3114074,
+    "cache_read_tokens": 453720948,
+    "output_tokens": 250521,
+    "api_call_count": 942
+  },
+  "summary": {
+    "intent": "Migrate the web UI from vanilla JavaScript with HTM tagged templates to TypeScript with JSX/Preact, add type safety improvements (enums, typed RPC, typed WebSocket events), and ensure all tests pass.",
+    "outcome": "Full TypeScript migration completed with Vite build pipeline, 142 TS/TSX files replacing 135 JS files, 0 tsc errors, local-validate mostly passing (248/253 e2e tests pass), though the preserveModules refactor attempt was reverted and the shim system remains.",
+    "learnings": {
+      "repo": [
+        "The project uses Askama for HTML templates — there are two copies of templates: crates/web/src/templates/ (used at runtime by Askama) and crates/web/src/assets/ (static copies that were stale). Always update templates/ not assets/.",
+        "E2E tests use playwright and dynamically import individual JS modules (e.g. import('js/state.js')). With Vite bundling these no longer exist as separate files, requiring either shims or preserveModules.",
+        "The i18n system uses dynamic imports with paths like './locales/en/common.js' — after renaming locale files to .ts, these paths must be updated to .ts or Vite won't bundle the locale chunks.",
+        "The local-validate.sh script runs multiple parallel checks: biome (lint+format), tsc (type checking), fmt (Rust fmt), i18n parity, file-size (1500 line limit, was Rust-only, now includes TS/TSX), e2e tests, zizmor (GHA security), install-names, install-docs, and lockfile.",
+        "The file-size check in check-file-size.sh only covered .rs files initially; it was extended to cover .ts and .tsx files as part of this migration.",
+        "nextest.toml can configure per-crate thread limits to prevent flaky tests under load — moltis-qmd uses fake shell scripts that time out under high parallelism.",
+        "The original JS used window globals like window.__voiceOnboardingSaveSettingsRequest as test hooks; these need to be re-exposed after bundling.",
+        "The e2e helpers.js file derives asset prefix by finding script[type='module'][src*='js/app.js'] — any app entry point must match this pattern.",
+        "Committing dist/ (built output) is intentional so cargo build works without Node.js. Source maps were disabled to reduce binary size from 27MB to 11MB.",
+        "The share page (share.html, share-app.mjs, share-theme-init.js) is a standalone page not bundled by Vite — it must keep its own vendor luxon.mjs."
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/src/i18n.ts",
+          "line": 57,
+          "end_line": 57,
+          "finding": "Dynamic imports use './locales/${lng}/common.js' — must be .ts extension after migration or Vite won't bundle locale chunks, causing t() to return raw keys"
+        },
+        {
+          "path": "crates/web/ui/src/main.tsx",
+          "line": 1,
+          "end_line": 50,
+          "finding": "Must expose window.__moltis_state (state module) and window.__moltis_modules (all modules tests import) for e2e shim compatibility"
+        },
+        {
+          "path": "crates/web/src/templates/index.html",
+          "line": 1,
+          "end_line": 20,
+          "finding": "Template needs both the real dist/main.js entry AND a compat js/app.js script tag so e2e helpers can find the app via querySelector"
+        },
+        {
+          "path": "crates/web/src/assets/js/state.js",
+          "line": 1,
+          "end_line": 30,
+          "finding": "E2E shim that proxies state module functions (setConnected, setWs, setChatSeq, etc.) from window.__moltis_state for tests that do import('js/state.js')"
+        },
+        {
+          "path": ".config/nextest.toml",
+          "line": 1,
+          "end_line": 20,
+          "finding": "Added [[profile.default.overrides]] with filter='package(moltis-qmd)' and max-threads=1 to prevent QMD shell script tests from timing out under load"
+        },
+        {
+          "path": "crates/web/ui/playwright.config.cjs",
+          "line": 1,
+          "end_line": 5,
+          "finding": "Must be .cjs extension (not .js) because package.json has type:module, which makes .js files ES modules that can't use require()"
+        },
+        {
+          "path": "crates/web/ui/e2e/package.json",
+          "line": 1,
+          "end_line": 3,
+          "finding": "New file with {type:commonjs} to override parent package.json's type:module for the e2e directory, allowing require() in spec files"
+        },
+        {
+          "path": "crates/web/ui/src/ui.tsx",
+          "line": 140,
+          "end_line": 200,
+          "finding": "VanillaConfirmDialog must use provider-modal-backdrop/provider-modal CSS classes (not Modal component's modal-overlay) — e2e tests look for .provider-modal locator"
+        },
+        {
+          "path": "crates/web/ui/vite.config.ts",
+          "line": 1,
+          "end_line": 40,
+          "finding": "Three entry points: app (src/app.tsx), login-app (src/login-app.tsx), onboarding-app (src/onboarding-app.tsx). Output to dist/ with no source maps."
+        }
+      ],
+      "workflow": [
+        "When using git rebase and accepting 'ours' for conflict resolution, file splits (where large files are split into sub-modules) need to be re-done after rebase since the trimming of parent files is lost.",
+        "Biome's a11y rules (useButtonType, noLabelWithoutControl, noStaticElementInteractions, useKeyWithClickEvents) are now enforced on TSX that was previously unanalyzable HTM — these should be disabled in biome.json to match pre-migration behavior.",
+        "Running git add -A can accidentally pick up uncommitted changes from other branches/sessions on disk — use specific file paths when staging.",
+        "The GPG/YubiKey signing flow requires the pinentry dialog to get focus; background tasks cannot successfully sign commits.",
+        "When subagents convert large files, they sometimes create stub implementations instead of fully porting complex components — always verify sub-components are complete by running e2e tests.",
+        "preserveModules:true in Vite rollupOptions outputs each source file as its own module — cleaner than shims but requires careful handling of entry point naming and emptyOutDir conflicts with static files."
+      ]
+    },
+    "friction": [
+      "YubiKey/GPG signing required physical tap for every commit — multiple commits failed in background tasks, requiring manual user intervention repeatedly.",
+      "Rebase conflict resolution repeatedly lost file splits (parent files reverted to pre-split full content), requiring re-splitting 7 large files multiple times.",
+      "Subagents creating stub implementations ('full TSX conversion pending') instead of actually porting complex JS components (ChannelStep, VoiceStep, RemoteAccessStep in onboarding) — caused 17+ e2e failures.",
+      "The i18n locale .js→.ts extension bug caused ALL translations to silently fail (t() returned raw keys like 'actions.cancel') with no obvious error in tsc or Vite build.",
+      "preserveModules Vite experiment introduced 9 new e2e regressions and had to be reverted — the interaction between preserveModules, entryFileNames, and the static js/ files was complex.",
+      "E2E tests dynamically import individual JS modules that no longer exist as separate files after Vite bundling — required creating 14+ shim files and exposing all modules on window.__moltis_modules.",
+      "The moltis-qmd tests have a 5-second timeout for shell script execution that's too tight when running under full test suite load (4267 tests), causing flaky failures.",
+      "The git add -A in early commits accidentally included uncommitted Rust files from other in-progress work, requiring a revert commit to clean up."
+    ],
+    "open_items": [
+      "Switch to Vite preserveModules:true to eliminate all 14+ shim files and make e2e tests import real bundled modules directly — requires solving emptyOutDir/static file conflict",
+      "Migrate remaining imperative DOM pages (registerPage + raw DOM) to proper Preact component trees to eliminate the remaining ~134 as-HTML*Element casts from querySelector/closest",
+      "Refine ~32 remaining Record\u003cstring,unknown\u003e in dynamic data contexts (channel configs, ws frames, gon data) with proper discriminated union types",
+      "The /clear e2e test is flaky (passes alone, sometimes fails in full suite) — investigate race condition in chat sequence reset",
+      "agents.preset.save RPC test fails — likely a backend issue with the preset save endpoint, not a frontend issue",
+      "Provider modals (~2200 lines of imperative DOM in providers/) are the last major component area not converted to Preact — still uses createElement patterns with 139 DOM calls",
+      "The shim files (js/state.js, js/helpers.js, etc.) are a maintenance burden — each new function added to a module needs to be added to the corresponding shim",
+      "SettingsPage.tsx is still 6885 lines — exceeds the 1500-line limit but the TS file size check wasn't catching it (need to verify check-file-size.sh covers all TS files)"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-19T17:21:56.120928Z",
+    "agent_lines": 0,
+    "human_added": 936,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 936,
+    "agent_percentage": 0
+  }
+}

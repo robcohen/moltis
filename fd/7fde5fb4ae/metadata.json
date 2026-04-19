@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "fd7fde5fb4ae",
+  "strategy": "manual-commit",
+  "branch": "feat/typescript-migration",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/src/templates/index.html",
+    "crates/web/ui/src/onboarding-app.tsx",
+    "crates/web/ui/vite.config.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fd/7fde5fb4ae/0/metadata.json",
+      "transcript": "/fd/7fde5fb4ae/0/full.jsonl",
+      "context": "/fd/7fde5fb4ae/0/context.md",
+      "content_hash": "/fd/7fde5fb4ae/0/content_hash.txt",
+      "prompt": "/fd/7fde5fb4ae/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8996,
+    "cache_creation_tokens": 3114074,
+    "cache_read_tokens": 453720948,
+    "output_tokens": 250521,
+    "api_call_count": 942
+  }
+}
