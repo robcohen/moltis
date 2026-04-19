@@ -3,7 +3,7 @@
   "checkpoint_id": "35ba8ef4df38",
   "strategy": "manual-commit",
   "branch": "feat/typescript-migration",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "crates/web/src/assets/dist/chunks/jsxRuntime.module.js",
     "crates/web/src/assets/dist/chunks/onboarding-view.js",
@@ -23,13 +23,20 @@
       "context": "/35/ba8ef4df38/0/context.md",
       "content_hash": "/35/ba8ef4df38/0/content_hash.txt",
       "prompt": "/35/ba8ef4df38/0/prompt.txt"
+    },
+    {
+      "metadata": "/35/ba8ef4df38/1/metadata.json",
+      "transcript": "/35/ba8ef4df38/1/full.jsonl",
+      "context": "/35/ba8ef4df38/1/context.md",
+      "content_hash": "/35/ba8ef4df38/1/content_hash.txt",
+      "prompt": "/35/ba8ef4df38/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 2,
-    "cache_creation_tokens": 30123,
-    "cache_read_tokens": 0,
-    "output_tokens": 46,
-    "api_call_count": 1
+    "input_tokens": 9016,
+    "cache_creation_tokens": 3149371,
+    "cache_read_tokens": 464915539,
+    "output_tokens": 253032,
+    "api_call_count": 957
   }
 }
