@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8714989d1820",
+  "strategy": "manual-commit",
+  "branch": "wiggly-hydrangea",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/httpd/src/error.rs",
+    "crates/mcp-agent-bridge/Cargo.toml",
+    "crates/mcp-agent-bridge/src/adapter.rs",
+    "crates/mcp-agent-bridge/src/error.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/87/14989d1820/0/metadata.json",
+      "transcript": "/87/14989d1820/0/full.jsonl",
+      "context": "/87/14989d1820/0/context.md",
+      "content_hash": "/87/14989d1820/0/content_hash.txt",
+      "prompt": "/87/14989d1820/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 17591,
+    "cache_read_tokens": 4408005,
+    "output_tokens": 5841,
+    "api_call_count": 32
+  }
+}
