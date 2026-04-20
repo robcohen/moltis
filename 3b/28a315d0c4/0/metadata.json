@@ -1,0 +1,59 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3b28a315d0c4",
+  "session_id": "ce2930c7-5027-4560-b7bc-f8abee9f6db7",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T08:32:34.016356Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "website/changelog/index.html",
+    "CHANGELOG.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b493d4d922df",
+  "checkpoint_transcript_start": 173,
+  "transcript_lines_at_start": 173,
+  "token_usage": {
+    "input_tokens": 6,
+    "cache_creation_tokens": 915,
+    "cache_read_tokens": 333183,
+    "output_tokens": 410,
+    "api_call_count": 4
+  },
+  "summary": {
+    "intent": "Fix a CI failure caused by Node 20 incompatibility with .ts locale file imports, then cut a new release.",
+    "outcome": "Deployed a fix that copies .ts locale files to temp .mjs files before importing on Node 20, and published release 20260420.01 with updated changelog.",
+    "learnings": {
+      "repo": [
+        "Release versioning follows a date-based scheme: YYYYMMDD.NN (e.g., 20260420.01).",
+        "Release process involves changelog updates (website/changelog/index.html and CHANGELOG.md), lockfile sync, tagging, and pushing."
+      ],
+      "code": [
+        {
+          "path": "website/changelog/index.html",
+          "finding": "Changelog is maintained in both website/changelog/index.html and CHANGELOG.md."
+        }
+      ],
+      "workflow": [
+        "Node 20 CI runners cannot import .ts files directly; workaround is to copy them to temp .mjs files before importing.",
+        "CI failures on the same commit can share a single root cause fix — no need to address each run separately."
+      ]
+    },
+    "friction": [
+      "Two CI runs failed on the same commit (781e83cd) due to Node 20's inability to handle .ts file extensions at import time."
+    ],
+    "open_items": [
+      "The .ts-to-.mjs temp file workaround is a hack for Node 20 compatibility — could be revisited if the project upgrades its CI runner or adopts a proper transpilation step."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T08:32:24.39771Z",
+    "agent_lines": 12,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 12,
+    "agent_percentage": 100
+  }
+}

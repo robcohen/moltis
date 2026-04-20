@@ -1,0 +1,9 @@
+push a new release
+
+---
+
+Fix CI failures: https://github.com/moltis-org/moltis/actions/runs/24651349564 https://github.com/moltis-org/moltis/actions/runs/24639296471
+
+---
+
+push a new release then
