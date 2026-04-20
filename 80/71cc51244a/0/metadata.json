@@ -1,0 +1,103 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "8071cc51244a",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T19:32:37.834043Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/skill_tools.rs",
+    "crates/tools/src/skill_tools/read_ops.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6ed6bdcb9d7f",
+  "token_usage": {
+    "input_tokens": 571,
+    "cache_creation_tokens": 1176890,
+    "cache_read_tokens": 142721619,
+    "output_tokens": 141073,
+    "api_call_count": 485
+  },
+  "summary": {
+    "intent": "Add a curated set of default bundled skills to Moltis by embedding them in the binary (mirroring the web UI assets pattern), copying from Hermes Agent and OpenClaw repos, and surfacing them in the web UI with category filtering.",
+    "outcome": "Successfully shipped PR #797 with 101 bundled skills across 22 categories, embedded via include_dir!, with CompositeSkillDiscoverer, category UI with search/filter, inline skill detail panel, auto-install hints on read_skill, format fallback for large skill lists, and 15 automated tests that caught 6 real bugs.",
+    "learnings": {
+      "repo": [
+        "Skills are discovered in multiple places: crates/skills/src/discover.rs for the agent prompt (via crates/chat/src/prompt.rs::discover_skills_if_enabled), crates/gateway/src/services.rs for the RPC skill listing, and crates/web/src/api.rs for the REST API — all three needed updating independently",
+        "The SkillSource::Bundled variant required adding match arms in discover.rs, watcher.rs, prompt_gen.rs, services.rs, and skill_tools.rs — exhaustive match enforcement caught missed arms at compile time",
+        "Directory names must exactly match the frontmatter 'name' field in SKILL.md — find_skill_dir searches by directory name, so mismatches cause silent read_skill failures (6 found: trl-fine-tuning, serving-vllm, etc.)",
+        "Auto-install via tokio::process::Command runs on the gateway host process, not in the agent sandbox — wrong environment, so installs succeed but binaries aren't visible to exec tool calls",
+        "The @ character in unquoted YAML scalar values (e.g. @anthropic-ai/claude-code) is a YAML reserved indicator and causes parse failures; must be double-quoted",
+        "crates/tools/src/skill_tools.rs was refactored into a module (skill_tools/) on main during the PR, requiring re-porting all changes to read_ops.rs on merge",
+        "npm --ignore-scripts breaks scoped package installations (@scope/package) in some npm versions",
+        "BundledSkillStore uses dev-mode filesystem fallback (reads from src/assets/ at runtime) and release-mode include_dir! embedding — same three-tier pattern as web assets"
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/prompt.rs",
+          "line": 14,
+          "end_line": 14,
+          "finding": "discover_skills_if_enabled() used plain FsSkillDiscoverer — bundled skills never appeared in agent system prompt until fixed to use CompositeSkillDiscoverer. This was the root cause of the agent not finding bundled skills."
+        },
+        {
+          "path": "crates/web/src/api.rs",
+          "finding": "api_skills_handler created its own FsSkillDiscoverer with only Personal+Project paths — bundled skills showed in agent prompt but not in web UI /api/skills endpoint"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "skill_detail RPC handler had no Bundled source branch — clicking bundled skills in web UI did nothing (detail panel didn't load)"
+        },
+        {
+          "path": "crates/skills/src/requirements.rs",
+          "finding": "run_install executes on gateway host process, not in agent sandbox. Changed to return install commands as strings instead of executing them."
+        },
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "Both FS and embedded discovery must be recursive to handle mlops sub-categories (3+ directory levels like mlops/training/axolotl/SKILL.md)"
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool execute() must normalize empty string file_path to None — models frequently send file_path:'' on first call, causing an error that wastes a round-trip before they retry with null"
+        }
+      ],
+      "workflow": [
+        "Greptile automated review caught security issues (godmode skill bundled by default, path traversal in sidecar reads) and code quality issues that manual review missed",
+        "Writing tests before bulk-copying skills would have caught the directory/name mismatch problem earlier — the 15 bundled tests caught 6 real silent failures",
+        "Python sed-based frontmatter injection is fragile; a Python script that parses and rewrites YAML blocks is more reliable",
+        "Merging main frequently surfaced conflicts in generated CSS (style.css) and refactored Rust modules — resolve generated files by regenerating, re-port logic changes to new module structure",
+        "The pattern 'copy vendored files, inject origin: metadata, run cleanup script' worked well for bulk-porting skills from multiple sources"
+      ]
+    },
+    "friction": [
+      "Auto-install ran on gateway host instead of agent sandbox — installs appeared to succeed but binaries were invisible to the agent's exec tool",
+      "npm --ignore-scripts flag broke @scoped package installs; removing it fixed it but the EINVALIDPACKAGENAME error persisted due to host/sandbox environment mismatch",
+      "Model consistently sends file_path:'' (empty string) on first read_skill call, causing an error and a wasted round-trip before retrying with null",
+      "6 bundled skills had directory names that didn't match frontmatter name field, causing silent read_skill failures only caught by writing tests",
+      "crates/tools/src/skill_tools.rs was refactored into a module on main mid-PR, requiring manually re-porting all changes to the new read_ops.rs file on merge",
+      "YAML @ character in unquoted scalars broke frontmatter parsing for claude-code, codex, blogwatcher, xurl, songsee — only surfaced at runtime via WARN logs",
+      "godmode/red-teaming skill was bundled by default — Greptile flagged it as a P1 security concern requiring removal",
+      "Tailwind-generated style.css always conflicted on merge; required regeneration rather than conflict resolution",
+      "unused import warning for SkillDiscoverer trait in prompt.rs due to cfg feature blocks each importing it locally — required removing the top-level import",
+      "sed-based origin metadata injection corrupted some SKILL.md files on first attempt; required re-copying from source and using Python instead"
+    ],
+    "open_items": [
+      "plan skill still references .hermes/plans/ directory — needs updating to Moltis equivalent path",
+      "google-workspace skill references Hermes-managed OAuth2 setup — partially cleaned but still functionally Hermes-specific",
+      "obliteratus (LLM refusal removal) skill is bundled — appropriateness for default inclusion not explicitly decided",
+      "Ineligible skills (missing required binaries) appear in system prompt without any indicator — annotating with eligible='false' in the \u003cskill\u003e tag was noted as a follow-up improvement",
+      "Auto-install now provides install commands as hints in install_note field rather than executing them — depends on the agent proactively running exec with those commands; no guarantee it will",
+      "summarize skill @steipete/summarize package install keeps failing with EINVALIDPACKAGENAME — may need the package name verified against the npm registry",
+      "No caching of bundled skill discovery results — CompositeSkillDiscoverer re-reads embedded files on every discovery call"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T19:31:37.97411Z",
+    "agent_lines": 659,
+    "human_added": 1267,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1926,
+    "agent_percentage": 34.215991692627206
+  }
+}
