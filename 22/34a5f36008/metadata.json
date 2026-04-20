@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2234a5f36008",
+  "strategy": "manual-commit",
+  "branch": "legendary-holiday",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "scripts/local-validate.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/22/34a5f36008/0/metadata.json",
+      "transcript": "/22/34a5f36008/0/full.jsonl",
+      "context": "/22/34a5f36008/0/context.md",
+      "content_hash": "/22/34a5f36008/0/content_hash.txt",
+      "prompt": "/22/34a5f36008/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 90,
+    "cache_creation_tokens": 128145,
+    "cache_read_tokens": 7911105,
+    "output_tokens": 22054,
+    "api_call_count": 73
+  }
+}

@@ -1,0 +1,569 @@
+Implement the following plan:
+
+# Plan: Centralized command registry + wire all commands through all channels
+
+## Context
+
+Issue [#788](https://github.com/moltis-org/moltis/issues/788) — user can't `/stop` or `/peek`
+from Telegram. The gateway has 15 working commands but each channel maintains its own hardcoded
+list of command names (for interception, help text, and platform registration). Lists have drifted:
+Telegram is missing `stop`/`peek`, Slack is missing 8 commands, Nostr has no command interception
+at all. Adding future commands will repeat this problem.
+
+**Fix:** Create a single command registry in `moltis-channels` (the shared dependency) and have
+every channel derive its behavior from it.
+
+## Design: centralized `CommandDef` registry
+
+### New file: `crates/channels/src/commands.rs`
+
+```rust
+pub struct CommandDef {
+    pub name: &'static str,
+    pub description: &'static str,
+}
+
+/// The single source of truth for all channel commands.
+pub fn all_commands() -> &'static [CommandDef] { ... }
+
+/// Whether a command name is a known channel command.
+/// Handles the `/sh` special case: only intercepts toggle sub-commands
+/// (empty, "on", "off", "exit", "status"), not arbitrary shell input.
+pub fn is_channel_command(cmd: &str, full_text: &str) -> bool { ... }
+
+/// Generate help text (one line per command, `/name — description`).
+pub fn help_text() -> String { ... }
+```
+
+Commands in the list (matching gateway dispatch):
+
+| Category | Commands |
+|----------|----------|
+| Session  | `new`, `clear`, `compact`, `context`, `sessions`, `attach` |
+| Control  | `approvals`, `approve`, `deny`, `agent`, `model`, `sandbox`, `sh`, `stop`, `peek` |
+| Meta     | `help` (handled locally by channels, not gateway — still needs to be in the list for interception) |
+
+### Channel changes
+
+**Telegram** (`crates/telegram/src/handlers/implementation.rs`)
+- `should_intercept_slash_command()` → call `moltis_channels::commands::is_channel_command(cmd, cmd_text)`
+- Help text string → call `moltis_channels::commands::help_text()` (remove hardcoded string)
+
+**Telegram** (`crates/telegram/src/bot.rs`)
+- Bot command registration → map `commands::all_commands()` to `BotCommand`s
+
+**Discord** (`crates/discord/src/commands.rs`)
+- `build_commands()` → map `commands::all_commands()` to `CreateCommand`s
+- Filter out commands that don't work well as Discord slash commands if needed (e.g., `approve N` needs args), or include all and let users type args
+
+**Slack** (`crates/slack/src/commands.rs`)
+- `command_definitions()` → map `commands::all_commands()` to `SlackCommandDef`s
+- `generate_manifest_snippet()` and `command_definitions_json()` stay but consume the central list
+
+**Matrix** (`crates/matrix/src/handler/implementation.rs`)
+- `HELP_TEXT` constant → call `commands::help_text()`
+
+**Nostr** (`crates/nostr/src/bus.rs`)
+- Add command interception before `dispatch_to_chat`: if text starts with `/` and
+  `is_channel_command()` returns true, call `dispatch_command()` instead
+- Pattern: same as WhatsApp handler (`crates/whatsapp/src/handlers.rs:396-424`)
+
+**WhatsApp / MS Teams** — no changes needed (already route all `/` to gateway)
+
+### Gateway test
+
+**`crates/gateway/src/channel_events/commands/dispatch.rs`** (or a test module)
+- Add a test that asserts every command name from `commands::all_commands()` (except `"help"`)
+  has a matching arm in `dispatch_command`. This catches future drift at compile/test time.
+
+## Files to create
+
+1. `crates/channels/src/commands.rs` — centralized command registry
+
+## Files to modify
+
+1. `crates/channels/src/lib.rs` — add `pub mod commands` + re-export
+2. `crates/telegram/src/handlers/implementation.rs` — use `is_channel_command()` + `help_text()`
+3. `crates/telegram/src/bot.rs` — derive bot commands from `all_commands()`
+4. `crates/discord/src/commands.rs` — derive slash commands from `all_commands()`
+5. `crates/slack/src/commands.rs` — derive definitions from `all_commands()`
+6. `crates/matrix/src/handler/implementation.rs` — use `help_text()`
+7. `crates/nostr/src/bus.rs` — add command interception
+8. `crates/gateway/src/channel_events/commands/dispatch.rs` — add coverage test
+
+## Out of scope
+
+- Fallback models, markdown editing from web UI (separate features from #788)
+- Centralized `/help` handler in gateway (channels handle help locally)
+- Discord argument registration for commands like `/approve N` (Discord doesn't have freeform args on slash commands by default — these work via text-based `/` already)
+
+## Verification
+
+1. `cargo check`
+2. `cargo +nightly-2025-11-30 fmt --all -- --check`
+3. `just lint`
+4. `just test` (the new gateway test should pass)
+5. Manual: send `/stop` and `/peek` from Telegram to verify interception
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-legendary-holiday/9fc5b600-c925-499d-9b27-9c9cd18e2fb7.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments
+
+---
+
+Base directory for this skill: /Users/penso/.claude/skills/greploop
+
+# Greploop
+
+Iteratively fix a PR/MR/CL until Greptile gives a perfect review: 5/5 confidence, zero unresolved comments.
+
+## Inputs
+
+- **PR/MR/CL number** (optional): If not provided, detect the PR/MR for the current branch, or the default pending changelist for p4.
+
+## Instructions
+
+### 0. Detect platform
+
+First check for Perforce, then fall back to git remote detection:
+
+```bash
+# Check for Perforce environment
+if p4 info >/dev/null 2>&1; then
+  VCS="perforce"
+else
+  REMOTE_URL=$(git remote get-url origin)
+  if echo "$REMOTE_URL" | grep -qi "gitlab"; then
+    VCS="gitlab"
+  else
+    VCS="github"
+  fi
+fi
+```
+
+For self-hosted GitLab instances whose hostname doesn't contain "gitlab", the user can override by passing `--vcs gitlab` as an input. For Perforce, pass `--vcs perforce`.
+
+### 1. Identify the PR/MR/CL
+
+**GitHub:**
+```bash
+gh pr view --json number,headRefName -q '{number: .number, branch: .headRefName}'
+```
+
+**GitLab:**
+```bash
+glab mr view --output json | jq '{iid: .iid, branch: .source_branch}'
+```
+
+Switch to the PR/MR branch if not already on it.
+
+**Perforce:**
+```bash
+# List pending changelists for current user/client
+p4 changes -s pending -u $P4USER -c $P4CLIENT
+
+# Describe a specific CL
+p4 describe -s <CL_NUMBER>
+```
+
+Ensure the correct workspace (`p4 client`) is set before proceeding.
+
+Key field differences:
+- GitHub: `number`, `headRefName`, `headRefOid`
+- GitLab: `iid`, `source_branch`, `sha`
+- Perforce: changelist number, `P4CLIENT`, shelved files
+
+### 2. Loop
+
+Repeat the following cycle. **Max 5 iterations** to avoid runaway loops.
+
+#### A. Trigger Greptile review
+
+Push/shelve the latest changes (if any):
+
+**GitHub/GitLab:**
+```bash
+git push
+```
+
+**Perforce:**
+```bash
+# Re-shelve to update the shelved files for review
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+**GitHub** — check if Greptile is already running before posting a new trigger comment:
+
+```bash
+GREPTILE_STATE=$(gh pr checks <PR_NUMBER> --json name,state | jq -r '.[] | select(.name | test("greptile"; "i")) | .state')
+```
+
+If Greptile is **not** already running (`PENDING` or `IN_PROGRESS`), request a fresh review:
+
+```bash
+if [ "$GREPTILE_STATE" != "PENDING" ] && [ "$GREPTILE_STATE" != "IN_PROGRESS" ]; then
+  gh pr comment <PR_NUMBER> --body "@greptile review"
+fi
+```
+
+Then poll for the Greptile check run to complete:
+
+```bash
+HEAD_SHA=$(gh pr view <PR_NUMBER> --json headRefOid -q .headRefOid)
+
+while true; do
+  GREPTILE_CHECK=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA/check-runs" \
+    --jq '.check_runs[] | select(.name | test("greptile"; "i"))' 2>/dev/null)
+  
+  if [ -z "$GREPTILE_CHECK" ]; then
+    echo "Waiting for Greptile check to appear..."
+    sleep 5
+    continue
+  fi
+  
+  STATUS=$(echo "$GREPTILE_CHECK" | jq -r '.status // "completed"')
+  CONCLUSION=$(echo "$GREPTILE_CHECK" | jq -r '.conclusion // "pending"')
+  
+  if [ "$STATUS" = "completed" ]; then
+    if [ "$CONCLUSION" = "success" ]; then
+      echo "Greptile check passed!"
+    else
+      echo "Greptile check completed with: $CONCLUSION"
+    fi
+    break
+  fi
+  
+  echo "Waiting for Greptile... (status: $STATUS)"
+  sleep 10
+done
+```
+
+**GitLab** — check if Greptile is already running before posting a trigger comment:
+
+```bash
+PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+GREPTILE_RUNNING=$(echo "$PIPELINES" | jq '[.[] | select(.status == "running" or .status == "pending")] | length')
+```
+
+If no pipeline is running, post a trigger comment:
+
+```bash
+if [ "$GREPTILE_RUNNING" = "0" ]; then
+  glab mr note <MR_IID> --message "@greptile review"
+fi
+```
+
+**Perforce** — Perforce does not have native check runs. If Greptile is integrated via a webhook triggered on `p4 shelve`, wait for it to process. Check your Greptile installation's webhook endpoint or dashboard for the review status. Poll by re-fetching the Greptile review comment on the CL until a score appears.
+
+Then poll for the Greptile pipeline job to complete (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+HEAD_SHA=$(glab mr view <MR_IID> --output json | jq -r '.sha')
+
+while true; do
+  PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+  # Find the most recent pipeline for this SHA
+  PIPELINE_ID=$(echo "$PIPELINES" | jq -r --arg sha "$HEAD_SHA" \
+    '[.[] | select(.sha == $sha)] | sort_by(.id) | last | .id // empty')
+
+  if [ -z "$PIPELINE_ID" ]; then
+    echo "Waiting for Greptile pipeline to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOBS=$(glab api "projects/:fullpath/pipelines/$PIPELINE_ID/jobs")
+  GREPTILE_JOB=$(echo "$JOBS" | jq '.[] | select(.name | test("greptile"; "i"))')
+
+  if [ -z "$GREPTILE_JOB" ]; then
+    echo "Waiting for Greptile job to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOB_STATUS=$(echo "$GREPTILE_JOB" | jq -r '.status')
+
+  if [ "$JOB_STATUS" = "success" ] || [ "$JOB_STATUS" = "failed" ] || [ "$JOB_STATUS" = "canceled" ]; then
+    echo "Greptile job completed with: $JOB_STATUS"
+    break
+  fi
+
+  echo "Waiting for Greptile... (status: $JOB_STATUS)"
+  sleep 10
+done
+```
+
+#### B. Fetch Greptile review results
+
+Greptile may surface its score in two places — check **both** (three for Perforce):
+
+**GitHub:**
+
+**1. PR description (body):**
+```bash
+gh pr view <PR_NUMBER> --json body -q '.body'
+```
+
+**2. PR reviews:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews
+```
+
+Look for the most recent entry from `greptile-apps[bot]` or `greptile-apps-staging[bot]`.
+
+**GitLab:**
+
+**1. MR description (body):**
+```bash
+glab mr view <MR_IID> --output json | jq -r '.description'
+```
+
+**2. MR notes (comments):**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/notes"
+```
+
+Filter for notes from the Greptile bot user (check the `author.username` field — the exact username may vary per installation; verify on first run).
+
+**Perforce:**
+
+**1. CL description:**
+```bash
+p4 describe -s <CL_NUMBER>
+```
+Check the description field for a Greptile-appended score block.
+
+**2. CL comments / review notes:**
+```bash
+p4 review -c <CL_NUMBER>
+```
+Look for comments from the Greptile bot user. The exact mechanism depends on your Greptile installation (it may post via a review tool like Swarm or directly via `p4 review`).
+
+For all platforms, parse the text for:
+- **Confidence score**: a pattern like `3/5` or `5/5` (or `Confidence: 3/5`).
+- **Comment count**: Number of inline review comments noted in the summary.
+
+Use whichever source has the **most recent** score.
+
+Also fetch all unresolved inline comments:
+
+**GitHub:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments
+```
+
+**GitLab:**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions"
+```
+
+Filter to `DiffNote` type discussions (`notes[0].type == "DiffNote"`) from Greptile that are on the latest commit and not yet resolved (`"resolved": false`).
+
+**Perforce:**
+```bash
+# Fetch inline diff comments from Greptile bot on the shelved CL
+p4 review -c <CL_NUMBER>
+```
+
+Filter to comments from the Greptile bot user that have not been marked as resolved/addressed.
+
+#### C. Check exit conditions
+
+Stop the loop if **any** of these are true:
+
+- Confidence score is **5/5** AND there are **zero unresolved comments**
+- Max iterations reached (report current state)
+
+#### D. Fix actionable comments
+
+For each unresolved Greptile comment:
+
+1. Read the file and understand the comment in context.
+2. Determine if it's actionable (code change needed) or informational.
+3. If actionable, make the fix.
+4. If informational or a false positive, note it but still resolve the thread.
+
+#### E. Resolve threads
+
+**GitHub** — fetch unresolved review threads and resolve all that have been addressed (see [GraphQL reference](references/graphql-queries.md)):
+
+```bash
+gh api graphql -f query='
+query($cursor: String) {
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR_NUMBER) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes { body path author { login } }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Resolve addressed threads:
+
+```bash
+gh api graphql -f query='
+mutation {
+  t1: resolveReviewThread(input: {threadId: "ID1"}) { thread { isResolved } }
+  t2: resolveReviewThread(input: {threadId: "ID2"}) { thread { isResolved } }
+}'
+```
+
+**GitLab** — fetch unresolved discussions and resolve each one (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions?per_page=100"
+```
+
+Filter for `"resolved": false` discussions. Then resolve each by its `id`:
+
+```bash
+glab api --method PUT \
+  "projects/:fullpath/merge_requests/<MR_IID>/discussions/<DISCUSSION_ID>" \
+  --field resolved=true
+```
+
+Repeat for each unresolved discussion ID. (GitLab has no batch resolution — loop through each one.)
+
+#### F. Commit and push / re-shelve
+
+**GitHub/GitLab:**
+```bash
+git add -A
+git commit -m "address greptile review feedback (greploop iteration N)"
+git push
+```
+
+**Perforce:**
+```bash
+# Stage changes back into the CL and re-shelve for the next review round
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+Then go back to step **A**.
+
+### 3. Report
+
+After exiting the loop, summarize:
+
+| Field              | Value      |
+| ------------------ | ---------- |
+| Platform           | GitHub / GitLab / Perforce |
+| Iterations         | N          |
+| Final confidence   | X/5        |
+| Comments resolved  | N          |
+| Remaining comments | N (if any) |
+
+If the loop exited due to max iterations, list any remaining unresolved comments and suggest next steps.
+
+## Output format
+
+```
+Greploop complete.
+  Platform:      GitHub
+  Iterations:    2
+  Confidence:    5/5
+  Resolved:      7 comments
+  Remaining:     0
+```
+
+If not fully resolved:
+
+```
+Greploop stopped after 5 iterations.
+  Platform:      GitLab
+  Confidence:    4/5
+  Resolved:      12 comments
+  Remaining:     2
+
+Remaining issues:
+  - src/auth.ts:45 — "Consider rate limiting this endpoint"
+  - src/db.ts:112 — "Missing index on user_id column"
+```
+
+**Perforce example:**
+
+```
+Greploop complete.
+  Platform:      Perforce
+  Changelist:    12345
+  Iterations:    3
+  Confidence:    5/5
+  Resolved:      9 comments
+  Remaining:     0
+```
+
+---
+
+merge main to this branch and solve conflicts.
+
+---
+
+Would it make sense to have:
+
+/// A channel command definition.
+#[derive(Debug, Clone, Copy)]
+pub struct CommandDef {
+    /// The command name without the leading `/`.
+    pub name: &'static str,
+    /// Short description shown in help text and platform autocomplete.
+    pub description: &'static str,
+}
+
+Be an enum instead, to leverage the type system and ensure all commands are used
+
+---
+
+how to fix the tsc error?
+
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+⠙i18n parity OK: 3 locales, 18 namespaces.
+⠴🌈 zizmor v1.22.0
+[local/biome] passed in 1s
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+⠧[local/install-names] passed in 2s
+installation docs avoid versionless GitHub asset URLs
+
+
+                This is not the tsc command you are looking for
+
+
+To get access to the TypeScript compiler, tsc, from the command line either:
+
+- Use npm install typescript to first add TypeScript to your project before using npx
+- Use yarn to avoid accidentally running code from un-installed packages
+[local/i18n] passed in 2s
+
+---
+
+so the local validate script should run this
