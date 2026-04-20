@@ -1,0 +1,117 @@
+Implement the following plan:
+
+# Plan: Centralized command registry + wire all commands through all channels
+
+## Context
+
+Issue [#788](https://github.com/moltis-org/moltis/issues/788) — user can't `/stop` or `/peek`
+from Telegram. The gateway has 15 working commands but each channel maintains its own hardcoded
+list of command names (for interception, help text, and platform registration). Lists have drifted:
+Telegram is missing `stop`/`peek`, Slack is missing 8 commands, Nostr has no command interception
+at all. Adding future commands will repeat this problem.
+
+**Fix:** Create a single command registry in `moltis-channels` (the shared dependency) and have
+every channel derive its behavior from it.
+
+## Design: centralized `CommandDef` registry
+
+### New file: `crates/channels/src/commands.rs`
+
+```rust
+pub struct CommandDef {
+    pub name: &'static str,
+    pub description: &'static str,
+}
+
+/// The single source of truth for all channel commands.
+pub fn all_commands() -> &'static [CommandDef] { ... }
+
+/// Whether a command name is a known channel command.
+/// Handles the `/sh` special case: only intercepts toggle sub-commands
+/// (empty, "on", "off", "exit", "status"), not arbitrary shell input.
+pub fn is_channel_command(cmd: &str, full_text: &str) -> bool { ... }
+
+/// Generate help text (one line per command, `/name — description`).
+pub fn help_text() -> String { ... }
+```
+
+Commands in the list (matching gateway dispatch):
+
+| Category | Commands |
+|----------|----------|
+| Session  | `new`, `clear`, `compact`, `context`, `sessions`, `attach` |
+| Control  | `approvals`, `approve`, `deny`, `agent`, `model`, `sandbox`, `sh`, `stop`, `peek` |
+| Meta     | `help` (handled locally by channels, not gateway — still needs to be in the list for interception) |
+
+### Channel changes
+
+**Telegram** (`crates/telegram/src/handlers/implementation.rs`)
+- `should_intercept_slash_command()` → call `moltis_channels::commands::is_channel_command(cmd, cmd_text)`
+- Help text string → call `moltis_channels::commands::help_text()` (remove hardcoded string)
+
+**Telegram** (`crates/telegram/src/bot.rs`)
+- Bot command registration → map `commands::all_commands()` to `BotCommand`s
+
+**Discord** (`crates/discord/src/commands.rs`)
+- `build_commands()` → map `commands::all_commands()` to `CreateCommand`s
+- Filter out commands that don't work well as Discord slash commands if needed (e.g., `approve N` needs args), or include all and let users type args
+
+**Slack** (`crates/slack/src/commands.rs`)
+- `command_definitions()` → map `commands::all_commands()` to `SlackCommandDef`s
+- `generate_manifest_snippet()` and `command_definitions_json()` stay but consume the central list
+
+**Matrix** (`crates/matrix/src/handler/implementation.rs`)
+- `HELP_TEXT` constant → call `commands::help_text()`
+
+**Nostr** (`crates/nostr/src/bus.rs`)
+- Add command interception before `dispatch_to_chat`: if text starts with `/` and
+  `is_channel_command()` returns true, call `dispatch_command()` instead
+- Pattern: same as WhatsApp handler (`crates/whatsapp/src/handlers.rs:396-424`)
+
+**WhatsApp / MS Teams** — no changes needed (already route all `/` to gateway)
+
+### Gateway test
+
+**`crates/gateway/src/channel_events/commands/dispatch.rs`** (or a test module)
+- Add a test that asserts every command name from `commands::all_commands()` (except `"help"`)
+  has a matching arm in `dispatch_command`. This catches future drift at compile/test time.
+
+## Files to create
+
+1. `crates/channels/src/commands.rs` — centralized command registry
+
+## Files to modify
+
+1. `crates/channels/src/lib.rs` — add `pub mod commands` + re-export
+2. `crates/telegram/src/handlers/implementation.rs` — use `is_channel_command()` + `help_text()`
+3. `crates/telegram/src/bot.rs` — derive bot commands from `all_commands()`
+4. `crates/discord/src/commands.rs` — derive slash commands from `all_commands()`
+5. `crates/slack/src/commands.rs` — derive definitions from `all_commands()`
+6. `crates/matrix/src/handler/implementation.rs` — use `help_text()`
+7. `crates/nostr/src/bus.rs` — add command interception
+8. `crates/gateway/src/channel_events/commands/dispatch.rs` — add coverage test
+
+## Out of scope
+
+- Fallback models, markdown editing from web UI (separate features from #788)
+- Centralized `/help` handler in gateway (channels handle help locally)
+- Discord argument registration for commands like `/approve N` (Discord doesn't have freeform args on slash commands by default — these work via text-based `/` already)
+
+## Verification
+
+1. `cargo check`
+2. `cargo +nightly-2025-11-30 fmt --all -- --check`
+3. `just lint`
+4. `just test` (the new gateway test should pass)
+5. Manual: send `/stop` and `/peek` from Telegram to verify interception
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-legendary-holiday/9fc5b600-c925-499d-9b27-9c9cd18e2fb7.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments
