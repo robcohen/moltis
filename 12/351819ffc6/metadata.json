@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "12351819ffc6",
+  "strategy": "manual-commit",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/gateway/src/server/prepare_core/post_state.rs",
+    "crates/skills/src/prompt_gen.rs",
+    "crates/tools/src/skill_tools.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/12/351819ffc6/0/metadata.json",
+      "transcript": "/12/351819ffc6/0/full.jsonl",
+      "context": "/12/351819ffc6/0/context.md",
+      "content_hash": "/12/351819ffc6/0/content_hash.txt",
+      "prompt": "/12/351819ffc6/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 360,
+    "cache_creation_tokens": 513170,
+    "cache_read_tokens": 68352355,
+    "output_tokens": 102502,
+    "api_call_count": 311
+  }
+}

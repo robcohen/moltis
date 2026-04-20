@@ -1,0 +1,103 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "12351819ffc6",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T17:03:35.62513Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/skills/src/prompt_gen.rs",
+    "crates/tools/src/skill_tools.rs",
+    "crates/gateway/src/server/prepare_core/post_state.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2a482352571d",
+  "token_usage": {
+    "input_tokens": 360,
+    "cache_creation_tokens": 513170,
+    "cache_read_tokens": 68352355,
+    "output_tokens": 102502,
+    "api_call_count": 311
+  },
+  "summary": {
+    "intent": "Add 100+ default bundled skills to Moltis (ported from Hermes Agent and OpenClaw), embedded in the binary like web UI assets, with category metadata, web UI filtering, and a prompt format fallback system.",
+    "outcome": "Successfully implemented a complete bundled skills system: 101 skills embedded via include_dir!, category metadata extracted from directory structure, web UI category filter pills, three-tier prompt format fallback, origin provenance tracking, and full PR review cycle with all comments resolved.",
+    "learnings": {
+      "repo": [
+        "Moltis uses include_dir! for embedding static assets at compile time — skills follow the same pattern as crates/web/src/assets/",
+        "Skills are discovered via a priority chain: Project \u003e Personal \u003e Registry \u003e Plugin \u003e Bundled — user skills override bundled by name",
+        "SkillSource enum is used exhaustively in discover.rs and watcher.rs — adding a new variant requires updating all match arms",
+        "crates/skills/src/discover.rs has a FsSkillDiscoverer that needed a CompositeSkillDiscoverer wrapper to merge FS + bundled sources",
+        "The gateway forwards features like bundled-skills through a chain: skills -\u003e tools -\u003e gateway -\u003e cli Cargo.toml",
+        "Hermes mlops skills use 3-level nesting (mlops/training/axolotl/) requiring recursive directory traversal in discovery",
+        "Directory name must match frontmatter 'name' field — 6 skills had mismatches causing silent read failures",
+        "normalize_relative_skill_file_path() must be applied to sidecar paths to prevent path traversal in dev-mode filesystem fallback",
+        "generate_skills_prompt() is called from append_skills_section in post_state.rs — single call site makes adding max_chars budget straightforward",
+        "red-teaming/godmode skill should not be bundled by default — security-sensitive skills require explicit user opt-in"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore uses include_dir! in release mode and filesystem fallback in dev mode, identical pattern to crates/web/src/assets.rs"
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "CompositeSkillDiscoverer must use seen.insert() (not !seen.contains()) to deduplicate within the bundled set itself, not just across FS vs bundled"
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "Three-tier fallback: full (name+desc+attrs) -\u003e compact (self-closing, no desc) -\u003e truncated (binary search for largest prefix fitting budget). Default budget 30KB covers ~300+ skills at full format"
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool needs with_bundled() constructor and read_bundled() path; sidecar reads must call normalize_relative_skill_file_path() before passing to store"
+        },
+        {
+          "path": "crates/skills/src/watcher.rs",
+          "finding": "Exhaustive match on SkillSource — Bundled arm is a no-op (bundled skills are not file-watched)"
+        },
+        {
+          "path": "crates/skills/src/assets/creative/p5js/templates/viewer.html",
+          "finding": "CDN script tags require integrity= SRI hash attribute — CodeQL flags CDN without integrity checks"
+        }
+      ],
+      "workflow": [
+        "Python script for injecting YAML frontmatter is more reliable than sed for multi-line structured content",
+        "First sed-based origin injection attempt corrupted files by truncating content — required re-copy from source",
+        "cargo check is sufficient for validating compilation when disk space prevents full test compilation (llama-cpp dependency is large)",
+        "Running tests with --test bundled and filtering specific test names helps validate feature-specific behavior quickly",
+        "Writing a test that iterates all discovered skills and calls read_skill() on each is a high-value integration test that catches name/directory mismatches",
+        "GitHub GraphQL API (gh api graphql) is needed to resolve PR review threads — REST API doesn't expose thread resolution",
+        "Background tasks (run_in_background) for git push can complete before the foreground response reads output — always check task output file"
+      ]
+    },
+    "friction": [
+      "First sed-based frontmatter injection corrupted skill files by truncating content — required full re-copy from Hermes and rewrite using Python",
+      "Disk space issues in worktree prevented running gateway tests (llama-cpp compilation requires significant space)",
+      "Background task output file polling via jq failed with parse errors when Greptile review wasn't yet available",
+      "Resolving GitHub PR review threads required GraphQL mutations — word splitting in bash required careful quoting of thread IDs",
+      "Skills crate watcher.rs had an exhaustive match that wasn't caught until gateway compilation — skills crate compiled fine but gateway failed",
+      "Arc import was already in scope in services.rs but std::sync::Arc::new() fully-qualified usage triggered lint warnings after edits",
+      "CompositeSkillDiscoverer deduplication bug (within-bundled duplicates) was only caught by Greptile review, not by existing tests"
+    ],
+    "open_items": [
+      "Some skills still reference ~/.hermes/ paths in GitHub auth skills — cosmetic cleanup deferred",
+      "OpenClaw 'extensions/' platform-specific skills (Feishu, QQBot, ACP) were skipped — could be useful for those platforms",
+      "Prompt format fallback compact mode truncates to largest fitting prefix — could be smarter (e.g., prioritize by category or usage frequency)",
+      "Skills with external binary requirements (requires: bins) have no runtime check UI — web UI could show which required tools are installed",
+      "~25 additional openclaw skills were deemed openclaw-specific and skipped — worth revisiting which are actually portable",
+      "No mechanism yet to update bundled skills when upstream Hermes/OpenClaw repos change — manual copy process",
+      "red-teaming/godmode removed from defaults but no opt-in mechanism for power users who want it"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T17:02:57.780817Z",
+    "agent_lines": 324,
+    "human_added": 3295,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3619,
+    "agent_percentage": 8.952749378281293
+  }
+}
