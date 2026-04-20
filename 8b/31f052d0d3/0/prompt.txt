@@ -1,0 +1,583 @@
+I got some markdown back from the LLM in a session but I see markdown in the web ui, I would have expected to see bold/h1 etc (html version of markdown) instead. This is the whole chat:
+
+[system] You are a helpful assistant. You can use tools when needed.
+
+Your name is Rex 🤖.
+
+## Soul
+
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the "Great question!" and "I'd be happy to help!" — just help. Actions speak louder than filler words.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring. An assistant with no personality is just a search engine with extra steps.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. Search for it. _Then_ ask if you're stuck. The goal is to come back with answers, not questions.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it. Be careful with external actions (emails, tweets, anything public). Be bold with internal ones (reading, organizing, learning).
+
+**Remember you're a guest.** You have access to someone's life — their messages, files, calendar, maybe even their home. That's intimacy. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them. They're how you persist.
+
+If you change this file, tell the user — it's your soul, and they should know.
+
+---
+
+_This file is yours to evolve. As you learn who you are, update it._
+The user's name is Fabien.
+
+## Runtime
+
+Host: host=m4max | os=macos | arch=aarch64 | shell=zsh | provider=openai-codex | model=openai-codex::gpt-5.4 | session=session:8d1e764b-5390-4b48-90bd-b700c1e8a228 | surface=web | session_kind=web | data_dir=.moltis/ | sudo_non_interactive=false | sudo_status=requires_password | timezone=Europe/Lisbon | accept_language=en-US,en;q=0.9
+Sandbox(exec): enabled=true | mode=all | backend=apple-container | scope=session | image=moltis-rex-sandbox:f3cb633941a09741d9760cf0c90d536fa3e97cb02509b7e96723c29eec14b9d4 | home=/home/sandbox | workspace_mount=ro | workspace_path=.moltis/
+Execution routing:
+- `exec` runs inside sandbox when `Sandbox(exec): enabled=true`.
+- When sandbox is disabled, `exec` runs on the host and may require approval.
+- In sandbox mode, `~` and relative paths resolve under `Sandbox(exec): home=...` (usually `/home/sandbox`).
+- Persistent workspace files live under `Host: data_dir=...`; when mounted, the same path appears as `Sandbox(exec): workspace_path=...`.
+- With `workspace_mount=ro`, sandbox commands may read mounted files but cannot modify them.
+- For durable long-term memory mutations, prefer `memory_save`, `memory_forget`, or `memory_delete` over shell writes to `MEMORY.md` or `memory/*.md`.
+- Sandbox/host routing changes are expected runtime behavior. Do not frame them as surprising or anomalous.
+
+## Available Skills
+
+<available_skills>
+<skill name="template-skill" source="skill">
+Starter skill template (safe to copy and edit)
+</skill>
+<skill name="tmux" source="skill">
+Run and interact with terminal applications (htop, vim, etc.) using tmux sessions in the sandbox
+</skill>
+<skill name="apple-reminders" source="bundled" category="apple">
+Manage Apple Reminders via remindctl CLI (list, add, complete, delete).
+</skill>
+<skill name="imessage" source="bundled" category="apple">
+Send and receive iMessages/SMS via the imsg CLI on macOS.
+</skill>
+<skill name="findmy" source="bundled" category="apple">
+Track Apple devices and AirTags via FindMy.app on macOS using AppleScript and screen capture.
+</skill>
+<skill name="apple-notes" source="bundled" category="apple">
+Manage Apple Notes via the memo CLI on macOS (create, view, search, edit).
+</skill>
+<skill name="blogwatcher" source="bundled" category="research">
+Monitor blogs and RSS/Atom feeds for updates using the blogwatcher-cli tool. Add blogs, scan for new articles, track read status, and filter by category.
+</skill>
+<skill name="gemini" source="bundled" category="research">
+Gemini CLI for one-shot Q&A, summaries, and generation.
+</skill>
+<skill name="summarize" source="bundled" category="research">
+Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).
+</skill>
+<skill name="polymarket" source="bundled" category="research">
+Query Polymarket prediction market data — search markets, get prices, orderbooks, and price history. Read-only via public REST APIs, no API key needed.
+</skill>
+<skill name="llm-wiki" source="bundled" category="research">
+Karpathy's LLM Wiki — build and maintain a persistent, interlinked markdown knowledge base. Ingest sources, query compiled knowledge, and lint for consistency.
+</skill>
+<skill name="arxiv" source="bundled" category="research">
+Search and retrieve academic papers from arXiv using their free REST API. No API key needed. Search by keyword, author, category, or ID. Combine with web_extract or the ocr-and-documents skill to read full paper content.
+</skill>
+<skill name="research-paper-writing" source="bundled" category="research">
+End-to-end pipeline for writing ML/AI research papers — from experiment design through analysis, drafting, revision, and submission. Covers NeurIPS, ICML, ICLR, ACL, AAAI, COLM. Integrates automated experiment monitoring, statistical analysis, iterative writing, and citation verification.
+</skill>
+<skill name="minecraft-modpack-server" source="bundled" category="gaming">
+Set up a modded Minecraft server from a CurseForge/Modrinth server pack zip. Covers NeoForge/Forge install, Java version, JVM tuning, firewall, LAN config, backups, and launch scripts.
+</skill>
+<skill name="pokemon-player" source="bundled" category="gaming">
+Play Pokemon games autonomously via headless emulation. Starts a game server, reads structured game state from RAM, makes strategic decisions, and sends button inputs — all from the terminal.
+</skill>
+<skill name="xurl" source="bundled" category="social-media">
+Interact with X/Twitter via xurl, the official X API CLI. Use for posting, replying, quoting, searching, timelines, mentions, likes, reposts, bookmarks, follows, DMs, media upload, and raw v2 endpoint access.
+</skill>
+<skill name="webhook-subscriptions" source="bundled" category="devops">
+Create and manage webhook subscriptions for event-driven agent activation. Use when the user wants external services (GitHub, GitLab, Stripe, Linear, PagerDuty, Sentry, or any generic source) to trigger agent runs by POSTing events to a URL.
+</skill>
+<skill name="jupyter-live-kernel" source="bundled" category="data-science">
+Use a live Jupyter kernel for stateful, iterative Python execution via hamelnb. Load this skill when the task involves exploration, iteration, or inspecting intermediate results — data science, ML experimentation, API exploration, or building up complex code step-by-step. Uses terminal to run CLI commands against a live Jupyter kernel. No new tools required.
+
+</skill>
+<skill name="peekaboo" source="bundled" category="software-development">
+Capture and automate macOS UI with the Peekaboo CLI.
+</skill>
+<skill name="test-driven-development" source="bundled" category="software-development">
+Use when implementing any feature or bugfix, before writing implementation code. Enforces RED-GREEN-REFACTOR cycle with test-first approach.
+</skill>
+<skill name="systematic-debugging" source="bundled" category="software-development">
+Use when encountering any bug, test failure, or unexpected behavior. 4-phase root cause investigation — NO fixes without understanding the problem first.
+</skill>
+<skill name="plan" source="bundled" category="software-development">
+Plan mode for Hermes — inspect context, write a markdown plan into the active workspace's `.hermes/plans/` directory, and do not execute the work.
+</skill>
+<skill name="oracle" source="bundled" category="software-development">
+Best practices for using the oracle CLI (prompt + file bundling, engines, sessions, and file attachment patterns).
+</skill>
+<skill name="skill-creator" source="bundled" category="software-development">
+Create, edit, improve, or audit AgentSkills. Use when creating a new skill from scratch or when asked to improve, review, audit, tidy up, or clean up an existing skill or SKILL.md file. Also use when editing or restructuring a skill directory (moving files to references/ or scripts/, removing stale content, validating against the AgentSkills spec). Triggers on phrases like "create a skill", "author a skill", "tidy up a skill", "improve this skill", "review the skill", "clean up the skill", "audit the skill".
+</skill>
+<skill name="github" source="bundled" category="software-development">
+GitHub operations via `gh` CLI: issues, PRs, CI runs, code review, API queries. Use when: (1) checking PR status or CI, (2) creating/commenting on issues, (3) listing/filtering PRs or issues, (4) viewing run logs. NOT for: complex web UI interactions requiring manual browser flows (use browser tooling when available), bulk operations across many repos (script with gh api), or when gh auth is not configured.
+</skill>
+<skill name="mcporter" source="bundled" category="software-development">
+Use the mcporter CLI to list, configure, auth, and call MCP servers/tools directly (HTTP or stdio), including ad-hoc servers, config edits, and CLI/type generation.
+</skill>
+<skill name="writing-plans" source="bundled" category="software-development">
+Use when you have a spec or requirements for a multi-step task. Creates comprehensive implementation plans with bite-sized tasks, exact file paths, and complete code examples.
+</skill>
+<skill name="requesting-code-review" source="bundled" category="software-development">
+Pre-commit verification pipeline — static security scan, baseline-aware quality gates, independent reviewer subagent, and auto-fix loop. Use after code changes and before committing, pushing, or opening a PR.
+
+</skill>
+<skill name="subagent-driven-development" source="bundled" category="software-development">
+Use when executing implementation plans with independent tasks. Dispatches fresh delegate_task per task with two-stage review (spec compliance then code quality).
+</skill>
+<skill name="dspy" source="bundled" category="mlops">
+Build complex AI systems with declarative programming, optimize prompts automatically, create modular RAG systems and agents with DSPy - Stanford NLP's framework for systematic LM programming
+</skill>
+<skill name="huggingface-hub" source="bundled" category="mlops">
+Hugging Face Hub CLI (hf) — search, download, and upload models and datasets, manage repos, query datasets with SQL, deploy inference endpoints, manage Spaces and buckets.
+</skill>
+<skill name="fine-tuning-with-trl" source="bundled" category="mlops">
+Fine-tune LLMs using reinforcement learning with TRL - SFT for instruction tuning, DPO for preference alignment, PPO/GRPO for reward optimization, and reward model training. Use when need RLHF, align model with preferences, or train from human feedback. Works with HuggingFace Transformers.
+</skill>
+<skill name="axolotl" source="bundled" category="mlops">
+Expert guidance for fine-tuning LLMs with Axolotl - YAML configs, 100+ models, LoRA/QLoRA, DPO/KTO/ORPO/GRPO, multimodal support
+</skill>
+<skill name="unsloth" source="bundled" category="mlops">
+Expert guidance for fast fine-tuning with Unsloth - 2-5x faster training, 50-80% less memory, LoRA/QLoRA optimization
+</skill>
+<skill name="segment-anything-model" source="bundled" category="mlops">
+Foundation model for image segmentation with zero-shot transfer. Use when you need to segment any object in images using points, boxes, or masks as prompts, or automatically generate all object masks in an image.
+</skill>
+<skill name="audiocraft-audio-generation" source="bundled" category="mlops">
+PyTorch library for audio generation including text-to-music (MusicGen) and text-to-sound (AudioGen). Use when you need to generate music from text descriptions, create sound effects, or perform melody-conditioned music generation.
+</skill>
+<skill name="obliteratus" source="bundled" category="mlops">
+Remove refusal behaviors from open-weight LLMs using OBLITERATUS — mechanistic interpretability techniques (diff-in-means, SVD, whitened SVD, LEACE, SAE decomposition, etc.) to excise guardrails while preserving reasoning. 9 CLI methods, 28 analysis modules, 116 model presets across 5 compute tiers, tournament evaluation, and telemetry-driven recommendations. Use when a user wants to uncensor, abliterate, or remove refusal from an LLM.
+</skill>
+<skill name="serving-llms-vllm" source="bundled" category="mlops">
+Serves LLMs with high throughput using vLLM's PagedAttention and continuous batching. Use when deploying production LLM APIs, optimizing inference latency/throughput, or serving models with limited GPU memory. Supports OpenAI-compatible endpoints, quantization (GPTQ/AWQ/FP8), and tensor parallelism.
+</skill>
+<skill name="llama-cpp" source="bundled" category="mlops">
+Run LLM inference with llama.cpp on CPU, Apple Silicon, AMD/Intel GPUs, or NVIDIA — plus GGUF model conversion and quantization (2–8 bit with K-quants and imatrix). Covers CLI, Python bindings, OpenAI-compatible server, and Ollama/LM Studio integration. Use for edge deployment, M1/M2/M3/M4 Macs, CUDA-less environments, or flexible local quantization.
+</skill>
+<skill name="outlines" source="bundled" category="mlops">
+Guarantee valid JSON/XML/code structure during generation, use Pydantic models for type-safe outputs, support local models (Transformers, vLLM), and maximize inference speed with Outlines - dottxt.ai's structured generation library
+</skill>
+<skill name="evaluating-llms-harness" source="bundled" category="mlops">
+Evaluates LLMs across 60+ academic benchmarks (MMLU, HumanEval, GSM8K, TruthfulQA, HellaSwag). Use when benchmarking model quality, comparing models, reporting academic results, or tracking training progress. Industry standard used by EleutherAI, HuggingFace, and major labs. Supports HuggingFace, vLLM, APIs.
+</skill>
+<skill name="weights-and-biases" source="bundled" category="mlops">
+Track ML experiments with automatic logging, visualize training in real-time, optimize hyperparameters with sweeps, and manage model registry with W&B - collaborative MLOps platform
+</skill>
+<skill name="openai-whisper" source="bundled" category="audio">
+Local speech-to-text with the Whisper CLI (no API key).
+</skill>
+<skill name="sherpa-onnx-tts" source="bundled" category="audio">
+Local text-to-speech via sherpa-onnx (offline, no cloud)
+</skill>
+<skill name="sag" source="bundled" category="audio">
+ElevenLabs text-to-speech with mac-style say UX.
+</skill>
+<skill name="openai-whisper-api" source="bundled" category="audio">
+Transcribe audio via OpenAI Audio Transcriptions API (Whisper).
+</skill>
+<skill name="github-auth" source="bundled" category="github">
+Set up GitHub authentication for the agent using git (universally available) or the gh CLI. Covers HTTPS tokens, SSH keys, credential helpers, and gh auth — with a detection flow to pick the right method automatically.
+</skill>
+<skill name="github-repo-management" source="bundled" category="github">
+Clone, create, fork, configure, and manage GitHub repositories. Manage remotes, secrets, releases, and workflows. Works with gh CLI or falls back to git + GitHub REST API via curl.
+</skill>
+<skill name="github-pr-workflow" source="bundled" category="github">
+Full pull request lifecycle — create branches, commit changes, open PRs, monitor CI status, auto-fix failures, and merge. Works with gh CLI or falls back to git + GitHub REST API via curl.
+</skill>
+<skill name="github-code-review" source="bundled" category="github">
+Review code changes by analyzing git diffs, leaving inline comments on PRs, and performing thorough pre-push review. Works with gh CLI or falls back to git + GitHub REST API via curl.
+</skill>
+<skill name="github-issues" source="bundled" category="github">
+Create, manage, triage, and close GitHub issues. Search existing issues, add labels, assign people, and link to PRs. Works with gh CLI or falls back to git + GitHub REST API via curl.
+</skill>
+<skill name="codebase-inspection" source="bundled" category="github">
+Inspect and analyze codebases using pygount for LOC counting, language breakdown, and code-vs-comment ratios. Use when asked to check lines of code, repo size, language composition, or codebase stats.
+</skill>
+<skill name="obsidian" source="bundled" category="note-taking">
+Read, search, and create notes in the Obsidian vault.
+</skill>
+<skill name="baoyu-infographic" source="bundled" category="creative">
+Generate professional infographics with 21 layout types and 21 visual styles. Analyzes content, recommends layout×style combinations, and generates publication-ready infographics. Use when user asks to create "infographic", "visual summary", "信息图", "可视化", or "高密度信息大图".
+</skill>
+<skill name="songwriting-and-ai-music" source="bundled" category="creative">
+Songwriting craft, AI music generation prompts (Suno focus), parody/adaptation techniques, phonetic tricks, and lessons learned. These are tools and ideas, not rules. Break any of them when the art calls for it.
+
+</skill>
+<skill name="ascii-video" source="bundled" category="creative">
+Production pipeline for ASCII art video — any format. Converts video/audio/images/generative input into colored ASCII character video output (MP4, GIF, image sequence). Covers: video-to-ASCII conversion, audio-reactive music visualizers, generative ASCII art animations, hybrid video+audio reactive, text/lyrics overlays, real-time terminal rendering. Use when users request: ASCII video, text art video, terminal-style video, character art animation, retro text visualization, audio visualizer in ASCII, converting video to ASCII art, matrix-style effects, or any animated ASCII output.
+</skill>
+<skill name="ideation" source="bundled" category="creative">
+Generate project ideas through creative constraints. Use when the user says 'I want to build something', 'give me a project idea', 'I'm bored', 'what should I make', 'inspire me', or any variant of 'I have tools but no direction'. Works for code, art, hardware, writing, tools, and anything that can be made.
+</skill>
+<skill name="excalidraw" source="bundled" category="creative">
+Create hand-drawn style diagrams using Excalidraw JSON format. Generate .excalidraw files for architecture diagrams, flowcharts, sequence diagrams, concept maps, and more. Files can be opened at excalidraw.com or uploaded for shareable links.
+</skill>
+<skill name="ascii-art" source="bundled" category="creative">
+Generate ASCII art using pyfiglet (571 fonts), cowsay, boxes, toilet, image-to-ascii, remote APIs (asciified, ascii.co.uk), and LLM fallback. No API keys required.
+</skill>
+<skill name="popular-web-designs" source="bundled" category="creative">
+54 production-quality design systems extracted from real websites. Load a template to generate HTML/CSS that matches the visual identity of sites like Stripe, Linear, Vercel, Notion, Airbnb, and more. Each template includes colors, typography, components, layout rules, and ready-to-use CSS values.
+
+</skill>
+<skill name="manim-video" source="bundled" category="creative">
+Production pipeline for mathematical and technical animations using Manim Community Edition. Creates 3Blue1Brown-style explainer videos, algorithm visualizations, equation derivations, architecture diagrams, and data stories. Use when users request: animated explanations, math animations, concept visualizations, algorithm walkthroughs, technical explainers, 3Blue1Brown style videos, or any programmatic animation with geometric/mathematical content.
+</skill>
+<skill name="pixel-art" source="bundled" category="creative">
+Convert images into retro pixel art with hardware-accurate palettes (NES, Game Boy, PICO-8, C64, etc.), and animate them into short videos. Presets cover arcade, SNES, and 10+ era-correct looks. Use `clarify` to let the user pick a style before generating.
+</skill>
+<skill name="p5js" source="bundled" category="creative">
+Production pipeline for interactive and generative visual art using p5.js. Creates browser-based sketches, generative art, data visualizations, interactive experiences, 3D scenes, audio-reactive visuals, and motion graphics — exported as HTML, PNG, GIF, MP4, or SVG. Covers: 2D/3D rendering, noise and particle systems, flow fields, shaders (GLSL), pixel manipulation, kinetic typography, WebGL scenes, audio analysis, mouse/keyboard interaction, and headless high-res export. Use when users request: p5.js sketches, creative coding, generative art, interactive visualizations, canvas animations, browser-based visual art, data viz, shader effects, or any p5.js project.
+</skill>
+<skill name="architecture-diagram" source="bundled" category="creative">
+Generate dark-themed SVG diagrams of software systems and cloud infrastructure as standalone HTML files with inline SVG graphics. Semantic component colors (cyan=frontend, emerald=backend, violet=database, amber=cloud/AWS, rose=security, orange=message bus), JetBrains Mono font, grid background. Best suited for software architecture, cloud/VPC topology, microservice maps, service-mesh diagrams, database + API layer diagrams, security groups, message buses — anything that fits a tech-infra deck with a dark aesthetic. If a more specialized diagramming skill exists for the subject (scientific, educational, hand-drawn, animated, etc.), prefer that — otherwise this skill can also serve as a general-purpose SVG diagram fallback. Based on Cocoon AI's architecture-diagram-generator (MIT).
+</skill>
+<skill name="discord" source="bundled" category="messaging">
+Discord ops via the message tool (channel=discord).
+</skill>
+<skill name="bluebubbles" source="bundled" category="messaging">
+Use when you need to send or manage iMessages via BlueBubbles (recommended iMessage integration). Calls go through the generic message tool with channel="bluebubbles".
+</skill>
+<skill name="imsg" source="bundled" category="messaging">
+iMessage/SMS CLI for listing chats, history, and sending messages via Messages.app.
+</skill>
+<skill name="wacli" source="bundled" category="messaging">
+Send WhatsApp messages to other people or search/sync WhatsApp history via the wacli CLI (not for normal user chats).
+</skill>
+<skill name="himalaya" source="bundled" category="email">
+CLI to manage emails via IMAP/SMTP. Use himalaya to list, read, write, reply, forward, search, and organize emails from the terminal. Supports multiple accounts and message composition with MML (MIME Meta Language).
+</skill>
+<skill name="openhue" source="bundled" category="smart-home">
+Control Philips Hue lights, rooms, and scenes via the OpenHue CLI. Turn lights on/off, adjust brightness, color, color temperature, and activate scenes.
+</skill>
+<skill name="eightctl" source="bundled" category="smart-home">
+Control Eight Sleep pods (status, temperature, alarms, schedules).
+</skill>
+<skill name="camsnap" source="bundled" category="smart-home">
+Capture frames or clips from RTSP/ONVIF cameras.
+</skill>
+<skill name="blucli" source="bundled" category="smart-home">
+BluOS CLI (blu) for discovery, playback, grouping, and volume.
+</skill>
+<skill name="sonoscli" source="bundled" category="smart-home">
+Control Sonos speakers (discover/status/play/volume/group).
+</skill>
+<skill name="weather" source="bundled" category="smart-home">
+Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.
+</skill>
+<skill name="claude-code" source="bundled" category="autonomous-ai-agents">
+Delegate coding tasks to Claude Code (Anthropic's CLI agent). Use for building features, refactoring, PR reviews, and iterative coding. Requires the claude CLI installed.
+</skill>
+<skill name="codex" source="bundled" category="autonomous-ai-agents">
+Delegate coding tasks to OpenAI Codex CLI agent. Use for building features, refactoring, PR reviews, and batch issue fixing. Requires the codex CLI and a git repository.
+</skill>
+<skill name="opencode" source="bundled" category="autonomous-ai-agents">
+Delegate coding tasks to OpenCode CLI agent for feature implementation, refactoring, PR review, and long-running autonomous sessions. Requires the opencode CLI installed and authenticated.
+</skill>
+<skill name="dogfood" source="bundled" category="dogfood">
+Systematic exploratory QA testing of web applications — find bugs, capture evidence, and generate structured reports
+</skill>
+<skill name="nano-pdf" source="bundled" category="productivity">
+Edit PDFs with natural-language instructions using the nano-pdf CLI. Modify text, fix typos, update titles, and make content changes to specific pages without manual editing.
+</skill>
+<skill name="maps" source="bundled" category="productivity">
+Location intelligence — geocode a place, reverse-geocode coordinates, find nearby places (44 POI categories), driving/walking/cycling distance + time, turn-by-turn directions, timezone lookup, bounding box + area for a named place, and POI search within a rectangle. Uses OpenStreetMap + Overpass + OSRM. Free, no API key.
+
+</skill>
+<skill name="bear-notes" source="bundled" category="productivity">
+Create, search, and manage Bear notes via grizzly CLI.
+</skill>
+<skill name="ordercli" source="bundled" category="productivity">
+Foodora-only CLI for checking past orders and active order status (Deliveroo WIP).
+</skill>
+<skill name="linear" source="bundled" category="productivity">
+Manage Linear issues, projects, and teams via the GraphQL API. Create, update, search, and organize issues. Uses API key auth (no OAuth needed). All operations via curl — no dependencies.
+</skill>
+<skill name="gog" source="bundled" category="productivity">
+Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.
+</skill>
+<skill name="notion" source="bundled" category="productivity">
+Notion API for creating and managing pages, databases, and blocks via curl. Search, create, update, and query Notion workspaces directly from the terminal.
+</skill>
+<skill name="goplaces" source="bundled" category="productivity">
+Query Google Places API (New) via the goplaces CLI for text search, place details, resolve, and reviews. Use for human-friendly place lookup or JSON output for scripts.
+</skill>
+<skill name="powerpoint" source="bundled" category="productivity">
+Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions "deck," "slides," "presentation," or references a .pptx filename, regardless of what they plan to do with the content afterward. If a .pptx file needs to be opened, created, or touched, use this skill.
+</skill>
+<skill name="things-mac" source="bundled" category="productivity">
+Manage Things 3 via the `things` CLI on macOS (add/update projects+todos via URL scheme; read/search/list from the local Things database). Use when a user asks OpenClaw to add a task to Things, list inbox/today/upcoming, search tasks, or inspect projects/areas/tags.
+</skill>
+<skill name="google-workspace" source="bundled" category="productivity">
+Gmail, Calendar, Drive, Contacts, Sheets, and Docs integration for Hermes. Uses Hermes-managed OAuth2 setup, prefers the Google Workspace CLI (`gws`) when available for broader API coverage, and falls back to the Python client libraries otherwise.
+</skill>
+<skill name="slack" source="bundled" category="productivity">
+Use when you need to control Slack from OpenClaw via the slack tool, including reacting to messages or pinning/unpinning items in Slack channels or DMs.
+</skill>
+<skill name="trello" source="bundled" category="productivity">
+Manage Trello boards, lists, and cards via the Trello REST API.
+</skill>
+<skill name="ocr-and-documents" source="bundled" category="productivity">
+Extract text from PDFs and scanned documents. Use web_extract for remote URLs, pymupdf for local text-based PDFs, marker-pdf for OCR/scanned docs. For DOCX use python-docx, for PPTX see the powerpoint skill.
+</skill>
+<skill name="1password" source="bundled" category="productivity">
+Set up and use 1Password CLI (op). Use when installing the CLI, enabling desktop app integration, signing in (single or multi-account), or reading/injecting/running secrets via op.
+</skill>
+<skill name="youtube-content" source="bundled" category="media">
+Fetch YouTube video transcripts and transform them into structured content (chapters, summaries, threads, blog posts). Use when the user shares a YouTube URL or video link, asks to summarize a video, requests a transcript, or wants to extract and reformat content from any YouTube video.
+
+</skill>
+<skill name="heartmula" source="bundled" category="media">
+Set up and run HeartMuLa, the open-source music generation model family (Suno-like). Generates full songs from lyrics + tags with multilingual support.
+</skill>
+<skill name="gifgrep" source="bundled" category="media">
+Search GIF providers with CLI/TUI, download results, and extract stills/sheets.
+</skill>
+<skill name="spotify-player" source="bundled" category="media">
+Terminal Spotify playback/search via spogo (preferred) or spotify_player.
+</skill>
+<skill name="video-frames" source="bundled" category="media">
+Extract frames or short clips from videos using ffmpeg.
+</skill>
+<skill name="songsee" source="bundled" category="media">
+Generate spectrograms and audio feature visualizations (mel, chroma, MFCC, tempogram, etc.) from audio files via CLI. Useful for audio analysis, music production debugging, and visual documentation.
+</skill>
+<skill name="gif-search" source="bundled" category="media">
+Search and download GIFs from Tenor using curl. No dependencies beyond curl and jq. Useful for finding reaction GIFs, creating visual content, and sending GIFs in chat.
+</skill>
+</available_skills>
+
+
+To activate a skill, call the `read_skill` tool with its name (e.g. `read_skill(name="<skill-name>")`). To load a sidecar file inside a skill directory (references/, templates/, assets/, scripts/), pass the `file_path` argument as well (e.g. `read_skill(name="<skill-name>", file_path="references/api.md")`).
+
+## Skill Self-Improvement
+
+You have tools to create, read, update, and delete personal skills. Use them proactively:
+
+- After completing a complex task (5+ tool calls), consider saving the approach as a reusable skill with `create_skill`
+- After fixing a tricky error or discovering a non-obvious workflow, save it so you don't have to rediscover it
+- When a skill you're using has stale or incorrect instructions, fix it with `patch_skill` (surgical find/replace) or `update_skill` (full rewrite)
+- When you notice a skill could benefit from reference data, use `write_skill_files` to add sidecar files
+
+Do NOT create skills for trivial or one-off tasks. Good skills encode multi-step procedures, domain-specific knowledge, or workflows that are likely to recur.
+
+## Long-Term Memory
+
+
+You also have `memory_search` to find additional details from `memory/*.md` files and past session history beyond what is shown above. **Always search memory before claiming you don't know something.** The long-term memory system holds user facts, past decisions, project context, and anything previously stored.
+
+**When the user asks you to remember, save, or note something, you MUST call `memory_save` to persist it.** Do not just acknowledge verbally — without calling the tool, the information will be lost after the session.
+
+Choose the right target to keep context lean:
+- **MEMORY.md** — only core identity facts (name, age, location, language, key preferences). This is loaded into every conversation, so keep it short.
+- **memory/&lt;topic&gt;.md** — everything else (detailed notes, project context, decisions, session summaries). These are only retrieved via `memory_search` and do not consume prompt space.
+
+**When the user asks you to forget or remove saved memory in natural language, you MUST call `memory_forget`.** It searches memory, chooses the matching saved chunk, and deletes the exact stored text safely.
+
+Use `memory_delete` only when you already know the exact file and exact snippet to remove, or when you need to delete a whole `memory/<name>.md` file directly.
+
+## Available Tools
+
+- `Edit`: Exact-match string replacement in a file. Refuses to edit if `old_string` is not unique in the file unless `replace_all=true`. This uniqueness requirement preve...
+- `Glob`: Find files matching a glob pattern. Results are sorted by modification time, most recent first. Respects .gitignore by default. Supports standard glob syntax (`...
+- `Grep`: Search file contents with a regular expression. Three output modes: 'files_with_matches' (default, lists matching file paths), 'content' (lines that matched, wi...
+- `MultiEdit`: Apply multiple sequential edits to a single file as one atomic operation. Each edit sees the output of previous edits. Either all edits succeed or none are appl...
+- `Read`: Read a file from the local filesystem with line-numbered output. Supports `offset` (1-indexed line to start at) and `limit` (max lines to return) for paginating...
+- `Write`: Atomically write a file to the local filesystem. Parent directories must already exist. Refuses to follow symlinks. The entire file is replaced — use `Edit` for...
+- `branch_session`: Fork the current session into a new branch at a given message index. Messages up to fork_point are copied to the new session. The new session inherits the paren...
+- `browser`: Control a real browser to interact with web pages.
+
+USE THIS TOOL when the user says 'browse', 'browser', 'open in browser', or needs interaction (clicking, for...
+- `calc`: Evaluate arithmetic expressions safely. Supports +, -, *, /, %, ^, unary +/- and parentheses. No variables, functions, or assignments.
+- `checkpoint_restore`: Restore a built-in file or directory mutation from an automatic checkpoint.
+- `checkpoints_list`: List recent automatic checkpoints created before built-in file mutations.
+- `codebase_peek`: List files that would be indexed for a project directory. Discovers git-tracked files, applies extension and size filters, and returns the list with language an...
+- `codebase_search`: Search the codebase index for relevant code chunks. Uses hybrid search (keyword + vector embeddings) to find functions, types, patterns, and code across all ind...
+- `codebase_status`: Report the indexing status for a project. Returns file counts, backend type, and whether search is available. Use this to check if a project directory is indexe...
+- `create_skill`: Create a new personal skill. Writes a SKILL.md file to <data_dir>/skills/<name>/. This is persistent workspace storage (not sandbox ~/skills). The skill will be...
+- `cron`: Manage scheduled tasks (reminders, recurring jobs, cron schedules).
+
+For reminders and recurring tasks that should produce a response in the main conversation (...
+- `delete_skill`: Delete a personal skill. Removes the full skill directory, including supplementary files.
+- `exec`: Execute a shell command on the server. Returns stdout, stderr, and exit code.
+- `get_user_location`: Get the user's current location as coordinates and a place name. Requires user permission via browser popup. Use when the user asks about local weather, nearby ...
+- `memory_delete`: Forget saved memory by removing exact text from a memory file or deleting the file entirely. Updates the index immediately.
+- `memory_forget`: Use the model to identify which saved memory chunk(s) match a forget request, then delete the exact stored text safely.
+- `memory_get`: Retrieve a specific memory chunk by its ID. Use this to get the full text of a chunk found via memory_search.
+- `memory_save`: Save content to long-term memory. Writes to MEMORY.md or memory/<name>.md. Content persists across sessions and is searchable via memory_search.
+- `memory_search`: Search agent memory using hybrid vector + keyword search. Returns relevant chunks from daily logs and long-term memory files.
+- `nodes_describe`: Get detailed information about a specific connected node by id or name.
+- `nodes_list`: List all connected remote device nodes with their platform, capabilities, and telemetry.
+- `nodes_select`: Set or clear the default remote node for the current chat session. Pass a node id or name to target it, or null/omit to revert to local execution.
+- `patch_skill`: Apply surgical find/replace patches to an existing personal skill's SKILL.md. More efficient than update_skill when fixing a few lines — avoids regenerating the...
+- `process`: Manage interactive terminal processes (TUI apps, REPLs, long-running commands) via tmux sessions in the sandbox. Actions: start, poll, send_keys, paste, kill, l...
+- `read_skill`: Load a skill's full content or access its linked files (references, templates, assets, scripts). The primary call (with just 'name') returns the SKILL.md body p...
+- `sandbox_packages`: List packages pre-installed in the sandbox container, grouped by category. Call this before running commands that need specific tools (image processing, audio/v...
+- `send_document`: Send a local file (PDF, CSV, DOCX, TXT, JSON, ZIP, etc.) to the current conversation's channel. Use send_image for image files. Maximum size: 20 MB.
+- `send_image`: Send a local image file to the current conversation's channel (e.g. Telegram). Supported formats: PNG, JPEG, GIF, WebP, PPM. Maximum size: 20 MB.
+- `send_message`: Send a proactive message to any configured channel account/chat (Telegram, Discord, Slack, Matrix, Teams, WhatsApp). Use this for alerts, reminders, and schedul...
+- `session_state`: Persist and retrieve key-value state scoped to the current session and a namespace. Use this to remember information across messages within a session. Operation...
+- `sessions_create`: Create a new chat session or resolve an existing one. Optionally set label/model/project and inherit agent persona from another session.
+- `sessions_delete`: Delete a chat session and its history by key. Deleting the main session is not allowed.
+- `sessions_history`: Read paginated message history from another session.
+- `sessions_list`: List available sessions with metadata. Supports optional text filtering and limit.
+- `sessions_search`: Search past session history for relevant snippets across sessions.
+- `sessions_send`: Send a message to another session. Optionally wait for the target session's reply.
+- `show_map`: Show a map image to the user for one or more locations. Displays destination pins and an optional blue pin at the user's current location, plus clickable map li...
+- `spawn_agent`: Spawn a sub-agent to handle a complex, multi-step task autonomously. The sub-agent runs its own agent loop with access to tools and returns the result when done...
+- `speak`: Convert text to speech. Use when the user asks for audio/voice output. Returns an audio file path and metadata.
+- `task_list`: Manage a shared task list for coordinated multi-agent execution. Actions: create, list, list_lists, get, update, claim.
+- `teams_edit_message`: Edit or delete a previously sent message in a Microsoft Teams conversation. Only messages sent by the bot can be edited or deleted.
+- `teams_member_info`: Look up a Microsoft Teams user's profile information (name, email, job title, office location). Requires Graph API permissions (User.Read.All).
+- `teams_pin_message`: Pin or unpin a message in a Microsoft Teams chat, or list all pinned messages. Pinned messages appear at the top of the chat for all participants.
+- `teams_read_message`: Read a specific message by ID from a Microsoft Teams chat, including its reactions. Requires Graph API permissions (Chat.Read.All).
+- `teams_search_messages`: Search message history in a Microsoft Teams chat or channel. Returns matching messages with sender, text, and timestamp. Requires Graph API permissions (Chat.Re...
+- `transcribe`: Transcribe audio to text. Use when the user provides audio content that must be turned into text.
+- `update_channel_settings`: Safely update non-secret settings for a configured channel account after the user explicitly asks for a channel config change. Supports access policies, allowli...
+- `update_skill`: Update an existing personal skill. Overwrites the SKILL.md file.
+- `web_fetch`: Fetch a web page URL and extract its content as readable text or markdown. Use this when you need to read the contents of a specific web page. The request is se...
+
+## Guidelines
+
+- Start with a normal conversational response. Do not call tools for greetings, small talk, or questions you can answer directly.
+- Use the calc tool for arithmetic and expressions.
+- Use the exec tool for shell/system tasks.
+- If the user starts a message with `/sh `, run it with `exec` exactly as written.
+- Use the browser tool when the user asks to visit/read/interact with web pages.
+- Before tool calls, briefly state what you are about to do.
+- For multi-step tasks, execute one step at a time and check results before proceeding.
+- Be careful with destructive operations, confirm with the user first.
+- Do not express surprise about sandbox vs host execution. Route changes are normal.
+- Do not suggest disabling sandbox unless the user explicitly asks for host execution or the task cannot be completed in sandbox.
+- The UI already shows raw tool output (stdout/stderr/exit). Summarize outcomes instead.
+
+## Silent Replies
+
+When you have nothing meaningful to add after a tool call, return an empty response.
+
+[user] install what is needed for the summarize skill
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","file_path":"","name":"summarize"}]
+[tool] {"body":"# Summarize\n\nFast CLI to summarize URLs, local files, and YouTube links.\n\n## When to use (trigger phrases)\n\nUse this skill immediately when the user asks any of:\n\n- “use summarize.sh”\n- “what’s this link/video about?”\n- “summarize this URL/article”\n- “transcribe this YouTube/video” (best-effort transcript extraction; no `yt-dlp` needed)\n\n## Quick start\n\n```bash\nsummarize \"https://example.com\" --model google/gemini-3-flash-preview\nsummarize \"/path/to/file.pdf\" --model google/gemini-3-flash-preview\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto\n```\n\n## YouTube: summary vs transcript\n\nBest-effort transcript (URLs only):\n\n```bash\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto --extract-only\n```\n\nIf the user asked for a transcript but it’s huge, return a tight summary first, then ask which section/time range to expand.\n\n## Model + keys\n\nSet the API key for your chosen provider:\n\n- OpenAI: `OPENAI_API_KEY`\n- Anthropic: `ANTHROPIC_API_KEY`\n- xAI: `XAI_API_KEY`\n- Google: `GEMINI_API_KEY` (aliases: `GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_API_KEY`)\n\nDefault model is `google/gemini-3-flash-preview` if none is set.\n\n## Useful flags\n\n- `--length short|medium|long|xl|xxl|<chars>`\n- `--max-output-tokens <count>`\n- `--extract-only` (URLs only)\n- `--json` (machine readable)\n- `--firecrawl auto|off|always` (fallback extraction)\n- `--youtube auto` (Apify fallback if `APIFY_API_TOKEN` set)\n\n## Config\n\nOptional config file: `~/.summarize/config.json`\n\n```json\n{ \"model\": \"openai/gpt-5.2\" }\n```\n\nOptional services:\n\n- `FIRECRAWL_API_KEY` for blocked sites\n- `APIFY_API_TOKEN` for YouTube fallback","bytes":1636,"category":"research","description":"Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).","homepage":"https://summarize.sh","install_note":"Missing binaries: summarize. Install with: npm install -g “@steipete/summarize”","linked_files":[],"name":"summarize","origin":{"source":"openclaw","url":"https://github.com/openclaw/openclaw","version":"90eb5b073f"},"source":"bundled"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"npm install -g @steipete/summarize","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"npm WARN EBADENGINE Unsupported engine {\nnpm WARN EBADENGINE   package: '@steipete/summarize@0.13.0',\nnpm WARN EBADENGINE   required: { node: '>=22' },\nnpm WARN EBADENGINE   current: { node: 'v20.19.4', npm: '9.2.0' }\nnpm WARN EBADENGINE }\nnpm WARN EBADENGINE Unsupported engine {\nnpm WARN EBADENGINE   package: '@steipete/summarize-core@0.13.0',\nnpm WARN EBADENGINE   required: { node: '>=22' },\nnpm WARN EBADENGINE   current: { node: 'v20.19.4', npm: '9.2.0' }\nnpm WARN EBADENGINE }\nnpm WARN EBADENGINE Unsupported engine {\nnpm WARN EBADENGINE   package: 'file-type@22.0.1',\nnpm WARN EBADENGINE   required: { node: '>=22' },\nnpm WARN EBADENGINE   current: { node: 'v20.19.4', npm: '9.2.0' }\nnpm WARN EBADENGINE }\nnpm WARN EBADENGINE Unsupported engine {\nnpm WARN EBADENGINE   package: 'markdansi@0.2.1',\nnpm WARN EBADENGINE   required: { node: '>=22' },\nnpm WARN EBADENGINE   current: { node: 'v20.19.4', npm: '9.2.0' }\nnpm WARN EBADENGINE }\nnpm WARN deprecated node-domexception@1.0.0: Use your platform's native DOMException instead\nnpm WARN deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation\n","stdout":"\nadded 339 packages in 17s\n\n120 packages are looking for funding\n  run `npm fund` for details\n"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"summarize --help","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"","stdout":"Usage: summarize [options] [input]\n\nSummarize web pages and YouTube links (uses direct provider API keys).\n\nArguments:\n  input                             URL, local file path, or - for stdin (text\n                                    or binary) to summarize\n\nOptions:\n  --youtube <mode>                  YouTube transcript source: auto, web,\n                                    no-auto (skip auto-generated captions),\n                                    yt-dlp, apify (default: \"auto\")\n  --transcriber <name>              Audio transcription backend: auto (default),\n                                    whisper, parakeet, canary (choices: \"auto\",\n                                    \"whisper\", \"parakeet\", \"canary\")\n  --video-mode <mode>               Video handling: auto (prefer video\n                                    understanding if supported), transcript,\n                                    understand. (choices: \"auto\", \"transcript\",\n                                    \"understand\", default: \"auto\")\n  --slides [value]                  Extract slides for YouTube/direct video URLs\n                                    and render them inline inside the summary\n                                    narrative (when supported). Combine with\n                                    --extract to interleave slides in the full\n                                    transcript.\n  --slides-debug                    Show slide image paths instead of rendering\n                                    inline images. (default: false)\n  --slides-ocr                      Run OCR on extracted slides (requires\n                                    tesseract). (default: false)\n  --slides-dir <dir>                Base output dir for slides (default:\n                                    ./slides). (default: \"slides\")\n  --slides-scene-threshold <value>  Scene detection threshold for slide changes\n                                    (0.1-1.0). (default: \"0.3\")\n  --slides-max <count>              Maximum slides to extract (default: 6).\n                                    (default: \"6\")\n  --slides-min-duration <seconds>   Minimum seconds between slides (default: 2).\n                                    (default: \"2\")\n  --timestamps                      Include timestamps in transcripts when\n                                    available. (default: false)\n  --firecrawl <mode>                Firecrawl usage: off, auto (fallback),\n                                    always (try Firecrawl first). (default:\n                                    \"auto\")\n  --format <format>                 Website/file content format: md|text. For\n                                    websites: controls the extraction format.\n                                    For files: controls whether we try to\n                                    preprocess to Markdown for model\n                                    compatibility. (default: text; default in\n                                    --extract mode for URLs: md)\n  --preprocess <mode>               Preprocess inputs for model compatibility:\n                                    off, auto (fallback), always. (choices:\n                                    \"off\", \"auto\", \"always\", default: \"auto\")\n  --markdown-mode <mode>            Markdown conversion: off, auto, llm (force\n                                    LLM), readability. For websites: converts\n                                    HTML→Markdown. For YouTube/transcripts: llm\n                                    mode formats raw transcripts into clean\n                                    markdown with headings and paragraphs.\n                                    (default: \"readability\")\n  --length <length>                 Summary length: short|medium|long|xl|xxl (or\n                                    s/m/l) or a character limit like 20000, 20k\n                                    (default: xl; configurable via\n                                    ~/.summarize/config.json output.length)\n                                    (default: \"xl\")\n  --max-extract-characters <count>  Maximum characters to print in --extract\n                                    (default: unlimited).\n  --language, --lang <language>     Output language: auto (match source), en,\n                                    de, english, german, ... (default: auto;\n                                    configurable in ~/.summarize/config.json via\n                                    output.language)\n  --max-output-tokens <count>       Hard cap for LLM output tokens (e.g. 2000,\n                                    2k). Overrides provider defaults.\n  --force-summary                   Force LLM summary even when extracted\n                                    content is shorter than the requested\n                                    length. (default: false)\n  --timeout <duration>              Timeout for content fetching and LLM\n                                    request: 30 (seconds), 30s, 2m, 5000ms\n                                    (default: \"2m\")\n  --retries <count>                 LLM retry attempts on timeout (default: 1).\n                                    (default: \"1\")\n  --model <model>                   LLM model id: auto, <name>,\n                                    cli/<provider>/<model>, xai/..., openai/...,\n                                    nvidia/..., google/..., anthropic/...,\n                                    zai/... or openrouter/<author>/<slug>\n                                    (default: auto)\n  --prompt <text>                   Override the summary prompt (instruction\n                                    prefix; context/content still appended).\n  --prompt-file <path>              Read the prompt override from a file.\n  --no-cache                        Bypass summary cache (LLM). Media/transcript\n                                    caches stay enabled.\n  --no-media-cache                  Disable media download cache (yt-dlp).\n  --cache-stats                     Print cache stats and exit.\n  --clear-cache                     Delete the cache database and exit.\n                                    (default: false)\n  --cli [provider]                  Use a CLI provider: claude, gemini, codex,\n                                    agent, openclaw, opencode (equivalent to\n                                    --model cli/<provider>). If omitted, use\n                                    auto selection with CLI enabled.\n  --extract                         Print extracted content and exit (no LLM\n                                    summary) (default: false)\n  --json                            Output structured JSON (includes prompt +\n                                    metrics) (default: false)\n  --stream <mode>                   Stream LLM output: auto (TTY only), on, off.\n                                    Note: streaming is disabled in --json mode.\n                                    (default: \"auto\")\n  --width <columns>                 Override terminal width for markdown\n                                    rendering (default: auto-detect, max 120)\n  --plain                           Keep raw text/markdown output (no ANSI/OSC\n                                    rendering) (default: false)\n  --no-color                        Disable ANSI colors in output\n  --theme <name>                    CLI theme (aurora, ember, moss, mono)\n                                    (choices: \"aurora\", \"ember\", \"moss\", \"mono\")\n  --verbose                         Print detailed progress info to stderr\n                                    (default: false)\n  --debug                           Alias for --verbose (and defaults --metrics\n                                    to detailed) (default: false)\n  --metrics <mode>                  Metrics output: off, on, detailed (choices:\n                                    \"off\", \"on\", \"detailed\", default: \"on\")\n  -V, --version                     Print version and exit (default: false)\n  -h, --help                        display help for command\n\nExamples\n  summarize \"https://example.com\"\n  summarize \"https://example.com\" --extract # extracted plain text\n  summarize \"https://example.com\" --extract --format md # extracted markdown (prefers Firecrawl when configured)\n  summarize \"https://example.com\" --extract --format md --markdown-mode llm # extracted markdown via LLM\n  summarize \"https://www.youtube.com/watch?v=...\" --extract --format md --markdown-mode llm # transcript as formatted markdown\n  summarize \"https://www.youtube.com/watch?v=I845O57ZSy4&t=11s\" --extract --youtube web\n  summarize \"https://www.youtube.com/watch?v=...\" --slides # summary + inline slides\n  summarize \"https://www.youtube.com/watch?v=...\" --slides --slides-ocr # slides + OCR extraction\n  summarize \"https://www.youtube.com/watch?v=...\" --slides --extract # full transcript + inline slides\n  summarize slides \"https://www.youtube.com/watch?v=...\" --render auto # slides-only mode with inline thumbnails\n  summarize transcriber setup # configure local ONNX transcription (parakeet/canary)\n  summarize \"https://example.com\" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini\n  summarize \"https://example.com\" --model github-copilot/gpt-5.4 # GitHub Models via GITHUB_TOKEN\n  summarize \"https://example.com\" --model mymodel # config preset\n  summarize \"https://example.com\" --json --verbose\n  pbpaste | summarize - # summarize clipboard content\n  summarize refresh-free # scan/update working OpenRouter :free models\n\nEnv Vars\n  XAI_API_KEY           optional (required for xai/... models)\n  XAI_BASE_URL          optional (override xAI API endpoint)\n  OPENAI_API_KEY        optional (required for openai/... models)\n  OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)\n  OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)\n  OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)\n  NVIDIA_API_KEY        optional (required for nvidia/... models)\n  NGC_API_KEY           optional (a\n\n... [truncated — 12316 bytes total]"}
+[assistant] Installed the `summarize` CLI.
+
+What I did:
+- Loaded the skill instructions
+- Ran: `npm install -g @steipete/summarize`
+- Verified it works with: `summarize --help`
+
+One catch:
+- It installed with engine warnings because the package wants `node >= 22`
+- Current Node here is `v20.19.4`
+- Despite that, the CLI starts and prints help successfully
+
+So for now it’s usable, but if it behaves oddly on real runs, the fix is upgrading Node to 22+.
+
+If you want, I can also:
+- check whether your API keys are set up for it
+- configure a default model
+- test it on a URL or local file
+[user] Now summarize https://www.youtube.com/watch?v=NlaoCgN3P4c
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"summarize \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --length medium --plain","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":1,"stderr":"No such built-in module: node:sqlite\n","stdout":""}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"command -v nvm || true; command -v fnm || true; command -v volta || true; node -v; npm -v","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"","stdout":"v20.19.4\n9.2.0\n"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"npx -y node@22 ./$(npm root -g)/@steipete/summarize/dist/cli.js \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --length medium --plain","timeout":180000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":1,"stderr":"node:internal/modules/cjs/loader:1386\n  throw err;\n  ^\n\nError: Cannot find module '/home/sandbox/usr/local/lib/node_modules/@steipete/summarize/dist/cli.js'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)\n    at Function._load (node:internal/modules/cjs/loader:1192:37)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.22.2\n","stdout":""}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"npm root -g && npm ls -g --depth=0 @steipete/summarize","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"","stdout":"/usr/local/lib/node_modules\n/usr/local/lib\n`-- @steipete/summarize@0.13.0\n\n"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"node -p \"require('/usr/local/lib/node_modules/@steipete/summarize/package.json').bin\"","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"","stdout":"{ summarize: './dist/cli.js', summarizer: './dist/cli.js' }\n"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"062d2ecd-4eee-4200-977e-ce5b3fda8bec","_session_key":"session:8d1e764b-5390-4b48-90bd-b700c1e8a228","command":"npx -y node@22 /usr/local/lib/node_modules/@steipete/summarize/dist/cli.js \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --length medium --plain","timeout":180000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":0,"stderr":"via html, transcript captionTracks, no model\n","stdout":"Transcript:\nThe AirPods Max have seen a pretty storied\nhistory. When they launched at $550 in 2020,\nthey were literally the most expensive Bluetooth\nheadphones that money could buy. But in my review,\nI concluded that they were genuinely great\nperformers and stood as proof that over-ear\nwireless headphones could go toe-to-toe\nwith seriously good wired cans. That is,\nif you could shell out the shekels. But then\nthese headphones sat without a meaningful update\nfor four years while the market quietly started\nto pass them by. In 2024, Apple released what\nthey called an update that swapped Lightning for\nUSB-C and I guess they added a few new colors,\nbut that was it. It used the same but\nnow last-gen H1 chip, the same drivers,\nit had the same weight, same battery life, same\ncase, just a more universal yet seemingly less\ncapable port. So the original AirPods Max\nhad this goofy but technically impressive\n$35 cable that took an analog signal from your\nsource, a headphone jack, used an ADC to convert\nthat analog signal to digital so that it could\nbe processed by the headphone's DSP and then\nreconverted it to analog in the amplification\nstage. The 2024 USB-C model launched without\nany wired input capabilities whatsoever,\nBluetooth only. Yikes. So six months later,\nApple decided to correct this with a new $40 cable\ncontaining both an analog-to-digital converter and\ndigital-to-analog converter for bi-directional\nuse across multiple headphones. Crazy town.\nAnd well I guess that brings us to today, where\nthe AirPods Max 2 now stand as the first real\nupgrade in 5 years. But is it deserving of the\n\"2\" moniker or is this just a version 1.5? Because\non the one hand, we have the H2 chip that replaces\nthe insanely dated H1, bringing a much more\ncapable DSP and even more amplification stages\nfor what Apple claims is improved sound. There's\nBluetooth 5.3 for improved range and lower latency\nand a suite of software features. But on the other\nhand, the only real improvements that come to\nthese headphones are as a consequence of the\nsilicon. The headphones themselves, chip aside,\npretty much remain unchanged, still using the same\nchassis, the same drivers, the same microphones,\nthe same battery, the same Digital Crown, blah,\nblah, blah. Actually, that's not true. The new\nDigital Crown is scratchier than the old one. And\nnot just on my unit, I noticed this on Apple Store\nretail units as well. They didn't even bother to\nchange the colors. And those software improvements\nare everything that the H2-based AirPods Pro\nalready have. Adaptive audio, conversation\nawareness, voice isolation, live translation,\npersonalized volume, adaptive EQ, head gestures.\nWe've already got them all elsewhere. But\nimportantly, it does bring to the AirPods Max\n2 better audio quality and ANC capabilities.\nLet's talk sound quality first, because that's\nwhat matters most. The improvement is slightly\nnoticeable in some tracks, but only some. Most\nof the time, you genuinely will not be able to\ntell the difference between the old AirPods Max\nand the new ones. Mids bring the most meaningful\nimprovement, with better vocal separation and\ninstrument timbre. Like guitars in particular\nsound more detailed on a handful of tracks, but\nI really cannot emphasize enough how subtle this\nis. It's like maybe a 10% change. If I wasn't\nABing them side to side, I would not notice or\ncare. They're basically the same headphones\nsonically. More comparisons will come later.\nWhat isn't the same as its predecessor is, well,\nthe Omni S2 robot vacuum and mop from today's\nsponsor, eufy. And that's saying a lot because\nthe first generation S1 stayed in my house for\nlonger than any other bot. And it's the one\nthat I entrusted to keep my mother-in-law's\nhouse clean too. Look, robot vacuums, they've got\na dirty secret. That huge Pascal suction rating\nthey they always brag about? It disappears in\nweeks as dust clogs the filter and airflow tanks.\nBut not the S2. It fixes this with AeroTurbo\n2.0, the first robot vacuum with a multi-cone\ncyclone that uses centrifugal force to spin debris\ntowards the dustbin walls, allowing only clean air\nto reach the filter. And the end result is 100 air\nwatts of flow, which is enough to rival handheld\nvacuums. And 100 air watts that doesn't degrade\nover time. The filter stays unclogged for up to\na year, which means suction stays where it should.\nBut this is what actually sold me. The S2 doesn't\njust mop floors, it sanitizes them. An onboard\nelectrolyzer with a ruthenium-iridium coating\nturns your tap water into hypochlorous acid, the\nsame stuff that hospitals use for disinfection,\nkilling 99.99% of pathogens without any harsh\nchemicals. Just water. Fancy water. There is\nstill a surfactant-based solution too for handling\nthose nastier spills, and when it roams around,\nit can even use a built-in fragrance dispenser\nto make sure that your place doesn't just look\nclean but smells the part too. Climbs two\ninch thick carpets, it avoids tassels,\nhandles edges and corners with an extending\nbrush and mop, and as with its predecessor, has\nobstacle detection that is truly second to none.\nCheck out the eufy Omni S2 at the link below.\nWhile the sonic performance of the AirPods\nMax 2 are not that much different than\ntheir predecessors, the same cannot be\nsaid of ANC, active noise cancellation,\nwhich is a massive leap over the original.\nConsistent noises like planes, HVAC blower fans,\nand other droning sounds, the kitchen\nsink. They're essentially unnoticeable,\neven with nothing playing, which is no small\nfeat. And even intermittent noises like people\ntalking and traffic, the stuff that's really hard\nto noise cancel, basically disappears at anything\nabove 50% volume. It's genuinely impressive and\nputs the AirPods Max 2 at the tippy top amongst\nother market leaders for ANC performance. Having\nsaid that, noise cancellation on the Max is a lot\nless comfortable for me than on something like the\nAirPods Pro. There's this false vacuum sensation\nthat gives me an uncomfortable inner ear pressure\nfeeling, since the headphones have to cancel out\nsubstantially more physical volume. And on the\nAirPods Max, they just offer very little in the\nway of passive isolation. Turns out jamming your\near canal full of foam and silicone does a lot\nmore of the heavy lifting before the AirPods Pro's\nANC even kicks in, something that over-ears simply\ncan't replicate. But even on other over-ears,\nthe pressure sensation is not as bad as the\nAirPods Max 2. It's pretty intense. It's not\nreally enough to bother me because I'm not that\nperceptible to it, and it certainly doesn't bug\nme at all when music is playing. But when ANC is\non with nothing going, which I do sometimes, it\nis always noticeable. Whereas on vented AirPods\nPro 2 and 3, I don't have this issue at all.\nAdditionally, because of the earpad design,\neverybody around you will hear what you're\nlistening to. They leak quite a bit. Are\nyou going to bother someone on a plane? No,\nprobably not. But in an office? Yeah, probably.\nNow, here's the thing. None of these improvements\nthat I just described address any of the problems\nthat I had with the original AirPods Max. The\noriginals sounded fine. They were good enough\nfor what they aimed to be. And frankly, if you\nwere focused on fidelity, wireless headphones\nwere never a serious consideration anyway.\nWhat was wrong with the original AirPods Max\nwas everything else. And the AirPods Max 2 have\nfixed precisely none of those things. The battery\nlife remains mediocre at 20 hours, the worst\nof any headphone that I will mention in this\nvideo. And the awfully heavy aluminum design\nstill develops condensate on the inside of the\ncups if you're using them to work out, which\neventually kills the headphones entirely. It\nis a legitimately huge problem for a lot of people\nin fitness. Speaking of fitness, there are still\nno health sensors like in the AirPods Pro 3. The\nmesh headband is mostly unchanged, and it still\nisn't strong enough to prevent the metal bars from\nsitting directly on top of your head, which makes\nthe headphones even more uncomfortable. And it\nonly gets worse over time as the mesh stretches\nout. You can see that my AirPods, my original Max,\nhave really gone through it. The pads, they clamp\npretty hard, which I know makes them compelling\nfor fitness because they don't fall off. I'm bald.\nI mean, I do see people using them at the\ngym all the time, but that clamping force\nreduces comfort significantly when you're not\nbeing active. They're there all the time. Ow,\nthat kind of hurts. There's still no power\nbutton, which is only a problem because of\nthe garbage case situation where Apple\nclaims they now hibernate outside of\nthe case if you're not touching them. But my\nown standby testing proves that they don't,\nat least not reliably. I didn't use them for\njust three days, left them at 80% battery life,\nI came back and they were dead on my desk over\nthe weekend. The exact same problem I had with\nthe first generation Max, not fixed.\nWhat is this case? What the… come on!\nI should also mention that this is my sixth\npair of AirPods Max. Apple replaced them twice\nfor batteries that would no longer charge, once\nfor a microphone failure on the right earcup,\nand twice for straight up refusing\nto stay connected to iCloud devices.\nThey are literally the most unreliable\nApple product that I have ever owned,\nand I don't think I'm alone on this because two of\nthose four replacements happened without AppleCare\ncoverage. It's almost like they've got a standing\npolicy to just replace AirPods Max when they come\nin because Apple knows they're all going to break\nat some point and they don't want to recall. Look,\nas a headphone guy, I can point to literal dozens\nof things that other headphone designers figured\nout 40 years ago that Apple still apparently\nhasn't. From total weight, to yoke articulation,\nclamping force, hinge geometry, pad depth,\nmaterial selection, long term comfort,\nserviceability, even something as basic as\na prop\n\n... [truncated — 21554 bytes total]"}
+[assistant] Here’s the gist of the video, Fabien:
+
+### Summary
+The reviewer argues that the **AirPods Max 2 are only a modest upgrade**, not a true generational leap.
+
+### Main points
+- **What improved**
+  - New **H2 chip**
+  - Better **active noise cancellation**
+  - Slightly better **sound quality**
+  - **USB-C wired lossless** support is now technically better implemented
+
+- **What didn’t really change**
+  - Same overall chassis, drivers, microphones, battery, and design
+  - Same comfort issues
+  - Same mediocre battery life
+  - Same questionable case / no proper power button
+  - Same long-term reliability concerns
+
+### Reviewer’s verdict
+- **Sound quality**: a little better, but very subtle — not enough to matter for most people.
+- **ANC**: this is the biggest real improvement, and it’s now among the best.
+- **Wired lossless**: technically neat, but mostly overhyped because the headphones themselves aren’t resolving enough for it to matter much.
+- **Big problem**: Apple fixed almost none of the reviewer’s longstanding complaints about the original AirPods Max.
+
+### Comparison to competitors
+The reviewer says other headphones often beat the AirPods Max 2 on:
+- comfort
+- value
+- sound quality
+- battery life
+
+But AirPods Max still win on:
+- Apple ecosystem integration
+- automatic pairing/switching
+- “over-ear AirPods” convenience/status appeal
+
+### Bottom line
+The reviewer **doesn’t recommend the AirPods Max 2 for most people**.
+
+They think these headphones only make sense if you specifically want:
+- **AirPods features**
+- in an **over-ear form factor**
+- and you’re willing to pay a premium for that
+
+Otherwise, the reviewer believes **AirPods Pro 2/3 are a much better buy**, and that for many people they make bulky over-ear Bluetooth headphones feel unnecessary.
+
+If you want, I can also give you:
+1. a **10-bullet version**
+2. a **more opinionated buyer takeaway**
+3. the **full cleaned-up transcript**
+
+---
+
+commit push create a PR
