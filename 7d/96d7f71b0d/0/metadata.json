@@ -1,0 +1,84 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7d96d7f71b0d",
+  "session_id": "bf5eb675-6cdf-4713-a144-0d50d6646e8b",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T10:10:09.903475Z",
+  "branch": "adorable-protocol",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner/tests/basic.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "85ce4652b16d",
+  "checkpoint_transcript_start": 625,
+  "transcript_lines_at_start": 625,
+  "token_usage": {
+    "input_tokens": 165,
+    "cache_creation_tokens": 85899,
+    "cache_read_tokens": 25140280,
+    "output_tokens": 41938,
+    "api_call_count": 159
+  },
+  "summary": {
+    "intent": "Implement Gemini thought_signature round-tripping via a metadata field on ToolCall (#375) and strengthen schema normalization to handle typeless required properties for Google AI Studio (#793).",
+    "outcome": "Both features were fully implemented with unit tests, all 4964 tests passing, clippy clean, and a PR (#795) created and merged with main. A file-size regression in basic.rs was caught by local-validate.sh and fixed.",
+    "learnings": {
+      "repo": [
+        "File size limit is 1500 lines enforced by ./scripts/check-file-size.sh; crates/agents/src/runner/tests/basic.rs and crates/agents/src/model.rs are not in the allowlist.",
+        "Workspace lint config denies both clippy::unwrap_used and clippy::expect_used; tests must use unwrap_or_else(|| panic!(...)) pattern instead.",
+        "json_schema_ast canonicalization aggressively normalizes schemas: description-only or format-only properties are reduced to boolean `true`, so EnsurePropertyTypeTransform must run after canonicalization and handle the boolean-true case.",
+        "The openai_compat test suite lives in crates/providers/src/openai_compat/tests.rs, not inline or in a tests/ subdirectory.",
+        "local-validate.sh runs fmt, biome, tsc, zizmor, i18n parity, install-names, install-docs, and file-size checks in parallel; tsc requires npm install typescript first.",
+        "The transform pipeline order matters: EnsurePropertyTypeTransform must precede PruneOrphanedRequiredTransform so promoted properties survive pruning.",
+        "moltis-skills crate had a pre-existing clippy error in crates/skills/src/parse.rs that blocked clippy on dependent crates."
+      ],
+      "code": [
+        {
+          "path": "crates/providers/src/openai_compat/schema_normalization.rs",
+          "finding": "EnsurePropertyTypeTransform must distinguish between bare boolean `true` schemas injected by canonicalization for orphaned required entries (should still be pruned) vs. object schemas with meaningful metadata missing only `type` (should be promoted to type:string). Only promote when the Value is an Object with keys."
+        },
+        {
+          "path": "crates/agents/src/model.rs",
+          "line": 1489,
+          "end_line": 1499,
+          "finding": "Single-element vec![...] used with .iter() triggers clippy::useless_vec; use slice literal [...]  instead."
+        },
+        {
+          "path": "crates/providers/src/openai_compat/tests.rs",
+          "line": 1025,
+          "end_line": 1029,
+          "finding": "Inserting new test code at an edit boundary split a multi-line doc comment, leaving a dangling doc comment that triggers clippy::empty_line_after_doc_comments."
+        }
+      ],
+      "workflow": [
+        "Run clippy on individual affected crates (cargo clippy -p crate-name) when a pre-existing error in a dependency blocks --all-targets.",
+        "When consolidating tests to meet line limits, merging positive+negative cases into one test function saves lines without losing coverage.",
+        "cargo fmt --all applies formatting in place; run it before committing rather than just checking.",
+        "local-validate.sh is the authoritative pre-push gate; running it catches file-size and tsc issues that clippy/tests miss."
+      ]
+    },
+    "friction": [
+      "json_schema_ast canonicalization strips description/format-only schemas to boolean true before custom transforms run, requiring multiple test rewrites to find realistic test cases that survive the pipeline.",
+      "Workspace lint denies both unwrap and expect, but the pattern to use (unwrap_or_else(|| panic!())) is not documented; had to reverse-engineer from existing test code.",
+      "Clippy on affected crates was blocked by a pre-existing unrelated error in moltis-skills/src/parse.rs, requiring fixing it first.",
+      "cargo test filter syntax doesn't support pipe (|) for multiple test names; each test group requires a separate invocation.",
+      "Inserting code at edit boundaries in large test files split existing doc comments, causing an obscure clippy diagnostic.",
+      "basic.rs ended up at exactly 1501 lines after adding metadata: None fields — one line over the limit — requiring a second commit just to trim one blank line."
+    ],
+    "open_items": [
+      "E2E tests for metadata round-tripping (tool-call-metadata.spec.js) and schema validation (schema-validation.spec.js) were intentionally deferred due to mock provider infrastructure complexity.",
+      "tsc check fails in local-validate.sh because typescript is not installed in the local npm environment; needs `npm install typescript` in the web UI directory.",
+      "The EnsurePropertyTypeTransform infers type:string as a fallback, which may not always be semantically correct — a more sophisticated inference based on property name or surrounding context could improve accuracy."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T10:09:38.288621Z",
+    "agent_lines": 0,
+    "human_added": 269,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 269,
+    "agent_percentage": 0
+  }
+}

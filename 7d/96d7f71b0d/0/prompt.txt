@@ -1,0 +1,289 @@
+Implement the following plan:
+
+# Fix Gemini thought_signature round-tripping (#375) and schema validation (#793)
+
+## Context
+
+**#375**: Gemini 3.x models return `thought_signature` on each tool call in their OpenAI-compat
+API responses. When Moltis replays tool calls in subsequent turns, this field must be present or
+Gemini rejects with HTTP 400. Currently `ToolCall` only carries `id`, `name`, `arguments` -- the
+signature is silently dropped at parse time. This affects both direct Gemini API and OpenRouter routing.
+
+**#793**: When OpenRouter routes to Google AI Studio (not Vertex), tool schemas fail validation
+because `required` arrays reference properties that Google AI Studio considers undefined. The
+existing `PruneOrphanedRequiredTransform` (added for #747) doesn't catch all edge cases -- likely
+properties with type-only or description-only schemas that AI Studio treats as undefined.
+
+These interact: users can't work around #375 via OpenRouter because #793 blocks that path.
+
+## Approach: provider-metadata passthrough on ToolCall
+
+Add an opaque `metadata` field to `ToolCall` that preserves any provider-specific fields (like
+`thought_signature`) through the full round-trip: API response -> typed struct -> persistence ->
+deserialization -> next API request.
+
+Use an allowlist of known metadata keys to avoid bloating session storage. Start with
+`["thought_signature"]`; extensible for future provider-specific fields.
+
+## Steps
+
+### 1. Add `metadata` to core types
+
+**`crates/agents/src/model.rs`** -- `ToolCall` struct (line 610):
+```rust
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
+    /// Provider-specific opaque metadata to round-trip (e.g. Gemini thought_signature).
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
+}
+```
+Add `metadata: None` to all ~80 construction sites. Compiler-driven: every site will fail to compile until updated.
+
+**`crates/agents/src/model.rs`** -- `StreamEvent::ToolCallStart` (line 447):
+```rust
+ToolCallStart {
+    id: String,
+    name: String,
+    index: usize,
+    metadata: Option<serde_json::Map<String, serde_json::Value>>,
+},
+```
+Update ~39 match sites across 29 files to destructure or ignore the new field.
+
+**`crates/sessions/src/message.rs`** -- `PersistedToolCall` (line 176):
+```rust
+pub struct PersistedToolCall {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub call_type: String,
+    pub function: PersistedFunction,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
+}
+```
+`serde(default)` ensures backward compat with existing stored sessions.
+
+### 2. Extract metadata from Gemini API responses
+
+**`crates/providers/src/openai_compat/provider.rs`**:
+
+Add helper (near `parse_tool_calls`, line 263):
+```rust
+const TOOL_CALL_METADATA_KEYS: &[&str] = &["thought_signature"];
+
+fn extract_tool_call_metadata(tc: &serde_json::Value) -> Option<serde_json::Map<String, serde_json::Value>> {
+    let obj = tc.as_object()?;
+    let meta: serde_json::Map<_, _> = TOOL_CALL_METADATA_KEYS.iter()
+        .filter_map(|&k| obj.get(k).map(|v| (k.to_string(), v.clone())))
+        .collect();
+    if meta.is_empty() { None } else { Some(meta) }
+}
+```
+
+**Non-streaming** (`parse_tool_calls`, line 263): call `extract_tool_call_metadata(tc)` and set on `ToolCall`.
+
+**Streaming** (`process_openai_sse_line`, ~line 670): extract metadata from the first SSE chunk of
+each tool call (where `id` and `function.name` appear). Add `tool_call_metadata: HashMap<usize, Option<Map>>>`
+to `StreamingToolState`. Emit in `ToolCallStart`.
+
+### 3. Serialize metadata back to API requests
+
+**`crates/agents/src/model.rs`** -- `to_openai_value()` (line 200):
+When building `tool_calls` JSON array, merge metadata fields into each tool call object:
+```rust
+if let Some(ref meta) = tc.metadata {
+    if let Some(obj) = tc_val.as_object_mut() {
+        for (k, v) in meta { obj.insert(k.clone(), v.clone()); }
+    }
+}
+```
+
+### 4. Deserialize metadata from persisted JSON
+
+**`crates/agents/src/model.rs`** -- `values_to_chat_messages()` (line 361):
+When parsing tool_calls from stored JSON, call `extract_tool_call_metadata(tc)` to
+recover metadata that was persisted alongside standard fields.
+
+### 5. Update persistence layer
+
+**`crates/chat/src/service/types.rs`** -- `build_persisted_tool_call()` (line 112):
+Add `metadata` parameter, pass through to `PersistedToolCall`.
+
+**`build_tool_call_assistant_message()` (line 129)**: propagate metadata.
+
+### 6. Strengthen schema normalization for #793
+
+**`crates/providers/src/openai_compat/schema_normalization.rs`** -- `PruneOrphanedRequiredTransform`:
+
+Tighten the "defined property" check. Currently treats any non-empty, non-boolean schema as defined.
+Add a `has_usable_type` check -- a property must have `type`, `enum`, `anyOf`, `oneOf`, `allOf`, or
+`$ref` to be considered defined:
+```rust
+fn has_usable_type(v: &serde_json::Value) -> bool {
+    let Some(obj) = v.as_object() else { return false };
+    ["type", "enum", "anyOf", "oneOf", "allOf", "$ref"]
+        .iter().any(|k| obj.contains_key(*k))
+}
+```
+
+Also add a post-normalization `EnsurePropertyTypeTransform` that infers `"type": "string"` for
+properties in `required` that have a description but no type info. This is safer than pruning the
+property because it preserves the parameter name for the LLM.
+
+### 7. Tests
+
+#### Unit tests (Rust)
+
+- **ToolCall metadata round-trip** (`model.rs`): serialize via `to_openai_value()`, verify
+  `thought_signature` on tool_call JSON; deserialize via `values_to_chat_messages()`, verify
+  metadata preserved.
+- **PersistedToolCall backward compat** (`message.rs`): deserialize without `metadata` -> `None`;
+  serialize with `metadata: None` -> field absent; serialize with metadata -> field present.
+- **Streaming metadata extraction** (`openai_compat/tests`): simulate SSE chunk with
+  `thought_signature`, verify `ToolCallStart` carries it.
+- **Schema normalization** (`schema_normalization.rs`): property without type in `required` gets
+  pruned or type-inferred; nested `items.required` handled.
+
+#### Integration tests
+
+- **Update `gemini_integration.rs:multi_turn_tool_use`**: remove the `thought_signature`-expected-
+  failure path. Multi-turn tool use should now succeed.
+
+#### E2E tests (Playwright)
+
+- **New spec `crates/web/ui/e2e/specs/tool-call-metadata.spec.js`**: exercise multi-turn tool call
+  via the web UI with a mock/fixture provider that returns `thought_signature`. Verify the
+  conversation continues past the tool call without errors.
+- **New spec `crates/web/ui/e2e/specs/schema-validation.spec.js`**: verify tool schemas sent to the
+  API pass Google AI Studio's stricter validation (mock the schema endpoint, assert `required`
+  entries match defined properties).
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `crates/agents/src/model.rs` | `ToolCall` struct, `StreamEvent`, `to_openai_value()`, `values_to_chat_messages()` |
+| `crates/providers/src/openai_compat/provider.rs` | `parse_tool_calls()`, `process_openai_sse_line()`, `StreamingToolState` |
+| `crates/providers/src/openai_compat/schema_normalization.rs` | Strengthen `PruneOrphanedRequiredTransform`, add type inference |
+| `crates/sessions/src/message.rs` | `PersistedToolCall` metadata field |
+| `crates/chat/src/service/types.rs` | `build_persisted_tool_call()`, `build_tool_call_assistant_message()` |
+| `crates/agents/src/runner/streaming.rs` | Propagate metadata from `ToolCallStart` to `ToolCall` |
+| ~80 files constructing `ToolCall { ... }` | Add `metadata: None` |
+| ~29 files matching on `ToolCallStart` | Add `metadata` field or `..` |
+| `crates/providers/tests/gemini_integration.rs` | Update multi-turn test to expect success |
+| `crates/web/ui/e2e/specs/tool-call-metadata.spec.js` | New e2e test |
+| `crates/web/ui/e2e/specs/schema-validation.spec.js` | New e2e test |
+
+## Commit plan
+
+1. `feat(agents): add metadata field to ToolCall and StreamEvent for provider round-tripping`
+2. `feat(providers): extract and replay Gemini thought_signature in tool calls`
+3. `fix(providers): strengthen schema required-pruning for Google AI Studio (#793)`
+4. `test: add e2e tests for tool call metadata round-trip and schema validation`
+
+## Verification
+
+1. `cargo build` -- all 80+ sites compile with `metadata: None`
+2. `just test` -- all existing tests pass
+3. `cargo test --test gemini_integration -- --ignored multi_turn` (with `GEMINI_API_KEY`) -- multi-turn succeeds
+4. `cd crates/web/ui && npx playwright test e2e/specs/tool-call-metadata.spec.js`
+5. `cd crates/web/ui && npx playwright test e2e/specs/schema-validation.spec.js`
+6. `just lint` / `just format-check` -- clean
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-adorable-protocol/234fffa1-9204-44ac-a6fe-8c073dacd052.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+merge main to this branch, commit and push
+
+---
+
+~/.s/w/m/adorable-protocol adorable-protocol ❯ ./scripts/local-validate.sh
+Detected macOS without nvcc; using Darwin-native validation commands (metal for provider/gateway, no Linux CUDA path).
+CI still covers the Linux/CUDA all-features path. Override with LOCAL_VALIDATE_* if you need a different split.
+Validating PR #795 (8a3f983dab3335293d55ffc889349e54ea6d9d38) in moltis-org/moltis
+Publishing commit statuses to: moltis-org/moltis
+Current CI workflow: https://github.com/moltis-org/moltis/actions/runs/24660672074
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-66f1d7eaf7716d3c
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-72550f1c873bd5d4
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-88d62219ecb6f677
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-978c70736a9844b2
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-b5f36ec0250abfa8
+Removing cached llama build dir: target/debug/build/llama-cpp-sys-2-ec8009d4b719ab43
+cargo +nightly-2025-11-30 fmt --all -- --check
+Checked 241 files in 103ms. No fixes applied.
+i18n parity OK: 3 locales, 18 namespaces.
+⠹Checking .deb filename pattern...
+  ok: .deb filename: no revision suffix (matches cargo-deb output)
+Checking .rpm filename pattern...
+  ok: .rpm filename: has -1 revision (matches cargo-generate-rpm output)
+Checking .pkg.tar.zst (Arch) filename pattern...
+  ok: .pkg.tar.zst filename: has -1 revision (matches release workflow)
+Checking AppImage filename pattern...
+  ok: AppImage filename: matches release workflow pattern
+Checking binary tarball filename pattern...
+  ok: binary tarball: matches release workflow pattern
+Checking release_tag() logic...
+  ok: release_tag('20260327.05') = '20260327.05' (date-based, bare)
+  ok: release_tag('0.1.3') = 'v0.1.3' (semver, v-prefixed)
+Checking architecture mappings...
+  ok: deb arch: x86_64 → amd64
+  ok: deb arch: aarch64 → arm64
+Cross-validating against release.yml...
+  ok: release.yml: no --deb-revision flag (consistent with install.sh)
+  ok: release.yml: uses --deb-version for .deb naming
+  ok: release.yml: AppImage naming matches install.sh
+Checking install.sh sync...
+  ok: install.sh and website/install.sh are identical
+
+All 15 install package name checks passed
+⠼installation docs avoid versionless GitHub asset URLs
+⠇[local/i18n] passed in 2s
+⠏🌈 zizmor v1.22.0
+[local/biome] passed in 1s
+ INFO audit: zizmor: 🌈 completed ./.github/actions/sign-artifacts/action.yml
+[local/install-names] passed in 2s
+
+
+                This is not the tsc command you are looking for
+
+
+To get access to the TypeScript compiler, tsc, from the command line either:
+
+- Use npm install typescript to first add TypeScript to your project before using npx
+- Use yarn to avoid accidentally running code from un-installed packages
+[local/install-docs] passed in 2s
+[local/tsc] failed in 3s
+FAIL: crates/agents/src/runner/tests/basic.rs (1501 lines > 1500)
+
+1 file(s) exceed 1500 lines.
+Split them into smaller modules or add to the allowlist in ./scripts/check-file-size.sh.
+[local/fmt] passed in 3s
+[local/fmt] total 4s
+[local/biome] total 2s
+[local/tsc] total 3s
+[local/i18n] total 2s
+[local/install-names] total 3s
+[local/install-docs] total 3s
+[local/file-size] failed in 3s
+[local/file-size] total 4s
+One or more parallel local checks failed.
+~/.s/w/m/adorable-protocol adorable-protocol ❯  INFO audit: zizmor: 🌈 completed ./.github/workflows/ci.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/codspeed.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/docs.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/e2e.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/homebrew.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/provider-integration.yml
+ INFO audit: zizmor: 🌈 completed ./.github/workflows/release.yml
+No findings to report. Good job! (19 ignored, 52 suppressed)
+[local/zizmor] passed in 9s
+
+~/.s/w/m/adorable-protocol adorable-protocol ❯
+~/.s/w/m/adorable-protocol adorable-protocol ❯

@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "7d96d7f71b0d",
+  "strategy": "manual-commit",
+  "branch": "adorable-protocol",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/runner/tests/basic.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7d/96d7f71b0d/0/metadata.json",
+      "transcript": "/7d/96d7f71b0d/0/full.jsonl",
+      "context": "/7d/96d7f71b0d/0/context.md",
+      "content_hash": "/7d/96d7f71b0d/0/content_hash.txt",
+      "prompt": "/7d/96d7f71b0d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 165,
+    "cache_creation_tokens": 85899,
+    "cache_read_tokens": 25140280,
+    "output_tokens": 41938,
+    "api_call_count": 159
+  }
+}
