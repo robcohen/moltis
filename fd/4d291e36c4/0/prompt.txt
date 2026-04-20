@@ -1,0 +1,92 @@
+Implement the following plan:
+
+# Fix #796: Sandbox image not exported to Podman store after BuildKit build
+
+## Context
+
+**Issue:** [#796](https://github.com/moltis-org/moltis/issues/796)
+**Environment:** Podman 5.4.2, Debian 13, `backend = "auto"`
+
+When Podman delegates `podman build` to BuildKit (via a `buildx_buildkit_default` container),
+the build exits 0 but the image lands in BuildKit's internal cache — not in the Podman store.
+Subsequent `podman image inspect` / `podman run` fail with "image not found".
+
+The code at `docker.rs:build_image` only checks the exit code, never verifies the image
+actually exists in the local store after building.
+
+## Approach
+
+**Post-build verification + export retry** in `DockerSandbox::build_image()`.
+
+1. After `podman build` succeeds, verify the image is in the store via `sandbox_image_exists()`
+2. If missing (BuildKit scenario), re-run the build with `--output type=docker,dest=<tmpfile>`
+   and pipe to `podman load -i <tmpfile>` to force the image into the Podman store
+3. BuildKit's layer cache makes the re-build essentially free (same Dockerfile = cache hit)
+4. Normal Podman+buildah flows are unaffected — the verify check passes immediately
+
+Why this over adding `--load` to the initial build: Podman's `build` command doesn't support
+`--load` (that's Docker buildx–only). The `--output type=docker,dest=<file>` + `podman load`
+pattern is portable across all Podman 4.x+ versions.
+
+## Files to modify
+
+### `crates/tools/src/sandbox/docker.rs` — core fix
+
+**1. Restructure `build_image` (lines 405-471):**
+- Move temp dir cleanup from line 447 to AFTER post-build verification
+- After successful build + `kind == BackendKind::Podman`: call `sandbox_image_exists()`
+- If missing, call new helper `export_buildkit_image_to_store()`
+
+**2. Add `export_buildkit_image_to_store()` method (~30 lines):**
+```
+async fn export_buildkit_image_to_store(&self, tag: &str, dockerfile_path: &Path, context_dir: &Path) -> Result<()>
+```
+- Create a temp file: `<tmp>/moltis-sandbox-export-<uuid>.tar`
+- Run `podman build --output type=docker,dest=<tmpfile> -f <dockerfile> <context_dir>`
+- Run `podman load -i <tmpfile>`
+- Clean up temp file
+- Final `sandbox_image_exists()` check — error if still missing
+
+**3. Add `find_buildkit_container()` method (~10 lines) — fallback discovery:**
+```
+async fn find_buildkit_container(&self) -> Option<String>
+```
+- `podman ps --filter name=buildx_buildkit_ --format {{.Names}}`
+- Used for a second fallback: `podman exec <container> buildctl ... --output type=docker,name=<tag> | podman load`
+
+### `crates/tools/src/sandbox/tests/core.rs` — unit tests
+
+- `test_podman_build_verifies_image_in_store`: verify that `BackendKind::Podman` is
+  correctly assigned for the Podman constructor, confirming the verification branch activates
+
+### `crates/tools/src/sandbox/tests/docker_router.rs` — E2E regression test
+
+- `test_podman_build_image_exists_in_store`: gated by `MOLTIS_SANDBOX_RUNTIME_E2E` + Podman
+  availability. Full `build_image` cycle → assert `sandbox_image_exists("podman", &tag)`.
+  Cleans up image afterwards.
+
+## Verification
+
+```bash
+# Unit tests (always run)
+cargo test -p moltis-tools test_podman_build
+
+# E2E on a Linux host with Podman (reproduces the original bug)
+MOLTIS_SANDBOX_RUNTIME_E2E=1 cargo test -p moltis-tools test_podman_build_image_exists
+
+# Full gate
+cargo +nightly-2025-11-30 fmt --all -- --check
+just lint
+just test
+```
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-coffee-citrus/778cb627-baf1-4dd6-9aab-5c6955cf8f39.jsonl
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve PR comments

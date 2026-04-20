@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "fd4d291e36c4",
+  "session_id": "c05d8a86-3d97-4f26-8ce8-07d3f3674473",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T21:00:24.181231Z",
+  "branch": "coffee-citrus",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/docker.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "89710e81a54f",
+  "checkpoint_transcript_start": 217,
+  "transcript_lines_at_start": 217,
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 11254,
+    "cache_read_tokens": 1323161,
+    "output_tokens": 3471,
+    "api_call_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T21:00:22.023771Z",
+    "agent_lines": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 14,
+    "agent_percentage": 100
+  }
+}
