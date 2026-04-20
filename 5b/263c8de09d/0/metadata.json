@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5b263c8de09d",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T14:51:49.599829Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/skills/src/prompt_gen.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a834a86ca260",
+  "token_usage": {
+    "input_tokens": 300,
+    "cache_creation_tokens": 475487,
+    "cache_read_tokens": 52678937,
+    "output_tokens": 91823,
+    "api_call_count": 264
+  },
+  "summary": {
+    "intent": "Add bundled default skills to Moltis by copying vetted skills from Hermes Agent and OpenClaw, embedding them in the binary, and surfacing them in the web UI with category filtering.",
+    "outcome": "101 bundled skills (69 from Hermes, 32 from OpenClaw) embedded via include_dir!, with category metadata, origin tracking, requires: frontmatter, Hermes reference cleanup, a composite discoverer with priority ordering, web UI category filter pills, 15 automated tests, and a char-budget format fallback for system prompt generation.",
+    "learnings": {
+      "repo": [
+        "Skills use a SKILL.md frontmatter format with fields: name, description, origin, requires (bins/any_bins/install), platforms. Moltis-native fields only — no metadata/dependencies/version/author from Hermes.",
+        "Skill discovery has priority order: Project \u003e Personal \u003e Registry \u003e Plugin \u003e Bundled. User-created skills override bundled by name.",
+        "Skills crate feature-gates bundled skills behind 'bundled-skills' feature (default-on in CLI and gateway).",
+        "CompositeSkillDiscoverer merges FS + bundled sources with name deduplication.",
+        "Dev mode reads bundled skills from filesystem for instant iteration; release mode serves from include_dir! embedded binary.",
+        "Hermes and OpenClaw both use name+description index in system prompt (~1500-2500 tokens for 70-100 skills), then on-demand full content via a read_skill tool — same pattern Moltis already uses.",
+        "OpenClaw adds a char budget with compact fallback (drop descriptions, keep names) when over limit.",
+        "Directory names must match SKILL.md frontmatter 'name' field — mismatch causes read_skill() to silently fail."
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore wraps include_dir! with dev-mode filesystem fallback; discovery is recursive to handle mlops sub-categories (3+ levels deep)."
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "Added CompositeSkillDiscoverer that composes FsSkillDiscoverer + BundledSkillStore with deduplication. watcher.rs had an exhaustive match on SkillSource that required a Bundled no-op arm."
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "generate_skills_prompt now accepts max_chars budget with compact fallback: drops descriptions and keeps only names when over budget."
+        },
+        {
+          "path": "crates/skills/src/types.rs",
+          "finding": "SkillMetadata gained: SkillSource::Bundled variant, SkillOrigin struct (source, url, commit, copied_at), category field derived from asset directory path."
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool gains with_bundled() constructor and read_bundled() function that serves content from memory for bundled skills instead of hitting the filesystem."
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "Web UI skill listing uses CompositeSkillDiscoverer. Had a lint error: Arc was already imported but new code used std::sync::Arc:: fully-qualified path."
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "finding": "Added category filter pills above enabled skills table and category badges per row. Category field added to Skill type."
+        },
+        {
+          "path": "crates/web/src/assets/css/components.css",
+          "finding": "Added CSS for .skill-category-filter, .skill-category-pill, .skill-category-badge classes."
+        }
+      ],
+      "workflow": [
+        "Python script injection of YAML frontmatter is fragile with sed — sed truncated files; a Python script with proper frontmatter parsing was needed.",
+        "When copying external skill repos, run a name/directory mismatch check before assuming discoverability — 6 skills had mismatches (e.g., directory 'trl-fine-tuning' vs frontmatter name 'fine-tuning-with-trl').",
+        "Tests are valuable during bulk copy operations: the bundled skill tests immediately caught the 6 directory/name mismatches that would have silently failed at runtime.",
+        "Node modules aren't installed in worktrees by default — need 'npm install' before TypeScript type-checking or Vite builds.",
+        "Disk space can be exhausted running full cargo test in worktrees with large dependencies (llama-cpp); use cargo check + targeted test runs instead."
+      ]
+    },
+    "friction": [
+      "sed-based YAML frontmatter injection truncated skill files; required re-copying from Hermes and switching to a Python script.",
+      "Two exhaustive matches on SkillSource (in discover.rs and watcher.rs) caused compile errors after adding the Bundled variant.",
+      "Arc lint error in services.rs: new code used fully-qualified std::sync::Arc::new() when Arc was already imported in scope.",
+      "Background bash tasks hung silently when comparing openclaw vs bundled skills — required switching to direct execution.",
+      "Node modules not present in worktree required manual npm install before frontend work could proceed.",
+      "Disk exhaustion prevented running full cargo test suite in worktree (llama-cpp compilation fills disk).",
+      "The initial audit of Hermes skill bodies for dependencies was too shallow and missed most skills, requiring a second pass."
+    ],
+    "open_items": [
+      "Some skills still reference '~/.hermes/' paths or 'Hermes Integration' sections that weren't caught by the bulk cleanup regex — a follow-up manual review pass was noted but not completed.",
+      "OpenClaw-specific skills (clawflow, clawhub, node-connect, healthcheck, canvas, voice-call, session-logs, model-usage) were explicitly excluded — could revisit if Moltis adds equivalent capabilities.",
+      "Extension skills from OpenClaw (Feishu, QQBot, ACP) were excluded as platform-specific — could be added if Moltis gains those integrations.",
+      "Char budget compact fallback added to prompt_gen but no configuration surface exists yet — budget is hardcoded, could be exposed as a config option.",
+      "Large sidecar reference files (unsloth/references/llms-full.md at 16.8k lines, powerpoint XSD schemas ~15k lines) significantly inflate binary size — noted but left in as the source repo was vouched for.",
+      "Category field is only extracted from directory path for bundled skills; user-created FS skills don't yet have category support."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T14:51:09.974896Z",
+    "agent_lines": 0,
+    "human_added": 9807,
+    "human_modified": 84,
+    "human_removed": 0,
+    "total_committed": 9807,
+    "agent_percentage": 0
+  }
+}
