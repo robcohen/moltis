@@ -1,0 +1,124 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b88fcdf9a46a",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T21:00:33.030914Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/pages/SkillsPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1ca1491b81f3",
+  "token_usage": {
+    "input_tokens": 597,
+    "cache_creation_tokens": 1695234,
+    "cache_read_tokens": 153779936,
+    "output_tokens": 144739,
+    "api_call_count": 507
+  },
+  "summary": {
+    "intent": "Bundle 100+ curated skills from Hermes Agent and OpenClaw into the Moltis binary by default so agents have rich out-of-the-box capabilities without manual installation.",
+    "outcome": "Successfully implemented a BundledSkillStore using include_dir! embedding, copied and cleaned 101 skills from Hermes Agent (69) and OpenClaw (32), added category metadata and web UI category filter with search, fixed the system prompt builder to include bundled skills, and shipped PR #797 with multiple rounds of PR review resolution.",
+    "learnings": {
+      "repo": [
+        "The system prompt skills section is built in crates/chat/src/prompt.rs (discover_skills_if_enabled), NOT in gateway post_state — this is the critical path that was missing bundled skills initially",
+        "Moltis skill discovery has 4 sources (Project \u003e Personal \u003e Registry \u003e Plugin); Bundled was added as 5th with lowest priority so user skills always override",
+        "skill_tools.rs was refactored into a skill_tools/ module directory in main between branches, causing a merge conflict that required re-applying changes to read_ops.rs",
+        "Feature flag bundled-skills must be explicitly forwarded through every crate in the chain: skills → tools → gateway → chat → web → cli",
+        "Directory name of skill assets must exactly match the frontmatter name field — 6 mismatches caused silent read failures discovered only by tests",
+        "YAML bare @ character (e.g., @anthropic-ai/claude-code in install bins) is invalid and causes parse failures; must be quoted",
+        "The /api/skills web endpoint was creating its own FsSkillDiscoverer independently of the gateway composite discoverer, so bundled skills appeared in the agent prompt but not the web UI",
+        "Auto-install via requirements.rs runs on the gateway host process, not inside the sandbox where exec runs — fundamentally wrong environment for installing agent CLIs",
+        "Biome formatter version differs between local dev and CI; running local biome may not fix CI failures, requiring manual application of the diff shown in CI output",
+        "godmode (red-teaming/jailbreak) skill was bundled by default and flagged by Greptile as a P1 security issue — removed from bundled assets",
+        "The CompositeSkillDiscoverer deduplicates by name so user Personal/Project skills silently override bundled skills with the same name"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "line": 1,
+          "end_line": 300,
+          "finding": "BundledSkillStore with include_dir! embedding and dev-mode filesystem fallback; both FS and embedded discovery must be recursive to handle mlops/training/axolotl nested category structure"
+        },
+        {
+          "path": "crates/chat/src/prompt.rs",
+          "line": 14,
+          "end_line": 50,
+          "finding": "discover_skills_if_enabled is the real entry point for system prompt skill injection; was using plain FsSkillDiscoverer, needed CompositeSkillDiscoverer — unused import warning when SkillDiscoverer is imported at top level but used inside cfg blocks"
+        },
+        {
+          "path": "crates/tools/src/skill_tools/read_ops.rs",
+          "line": 1,
+          "end_line": 200,
+          "finding": "ReadSkillTool execute method: empty string file_path must be treated as null/absent; install_note should be injected into response JSON after skill body is loaded; auto-install should generate commands for agent to run via exec rather than running on gateway host"
+        },
+        {
+          "path": "crates/skills/src/requirements.rs",
+          "line": 1,
+          "end_line": 100,
+          "finding": "run_install changed to generate install command strings instead of executing them — gateway host != sandbox container, so installs must be run by the agent via exec tool"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "skill_detail handler needs a bundled branch alongside personal/project — without it, clicking bundled skills in web UI silently does nothing"
+        },
+        {
+          "path": "crates/skills/src/assets/research/summarize/SKILL.md",
+          "line": 1,
+          "end_line": 15,
+          "finding": "npm scoped package @steipete/summarize must be quoted in YAML; the EINVALIDPACKAGENAME error was a red herring — real issue was gateway host vs sandbox environment mismatch"
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "line": 915,
+          "end_line": 1065,
+          "finding": "Biome requires multi-line formatting for arrow functions with bodies in JSX props (onClick, onInput, onClose, onReload) — single-line forms like onClick={() =\u003e { x = y; }} are rejected"
+        }
+      ],
+      "workflow": [
+        "When porting skills between agent frameworks, run a name/directory mismatch check early — find dirs where dirname != frontmatter name, as read lookups use dirname",
+        "Bulk YAML injection via sed is unreliable for frontmatter; Python with a proper YAML parser is safer for modifying frontmatter across 100+ files",
+        "Skills from other repos can be copied wholesale if you add an origin: frontmatter block tracking source, url, and commit — this satisfies auditing requirements",
+        "The tests for bundled skills caught real bugs (6 directory mismatches, YAML parse failures) before they reached production — property-style tests that read every skill are worth the compile time",
+        "When resolving merge conflicts where a file was refactored into a module directory, git checkout --theirs the directory then re-apply changes manually rather than trying to resolve the conflict inline",
+        "Greptile PR reviews flag bundled executable content (scripts/) as a security concern — be prepared to justify or remove red-teaming skills from default bundles"
+      ]
+    },
+    "friction": [
+      "Auto-install fundamentally cannot work as implemented: gateway runs npm on host, but agent uses exec in sandbox container — two different environments with different PATH and packages",
+      "The system prompt skills injection code path (chat/src/prompt.rs) is completely separate from the web UI skills listing (gateway/src/services.rs) and ReadSkillTool (tools/) — three places all needing the same CompositeSkillDiscoverer change, easy to miss one",
+      "npm --ignore-scripts flag broke scoped package installs (@steipete/summarize) — caused confusing EINVALIDPACKAGENAME errors that masked the real environment mismatch issue",
+      "6 skills had directory names that didn't match their frontmatter name fields, causing silent read failures — only discovered by adding comprehensive tests",
+      "Biome version mismatch between worktree and CI means local fmt passes but CI fails; had to manually apply the exact diff shown in CI output rather than relying on biome --write",
+      "YAML bare @ character caused silent parse failures for 5 skills (claude-code, codex, blogwatcher, xurl, songsee) with cryptic error messages about YAML tokens",
+      "The mlops category has 3-level deep nesting (mlops/training/axolotl/) that required recursive discovery — the initial implementation only handled 2 levels",
+      "skill_tools.rs → skill_tools/ module refactor in main created a complex merge conflict that required manual re-application of all bundled skill changes to read_ops.rs",
+      "include_dir! compiles all 160k lines of skill assets into the binary at compile time — significantly increases incremental compile times during development",
+      "The summarize skill's CLI (@steipete/summarize) is not published to npm under that package name, so auto-install always fails regardless of environment"
+    ],
+    "open_items": [
+      "Auto-install needs architectural rethinking: either run installs via the exec tool in sandbox, or use a pre-flight check that tells the agent to run the install command itself before proceeding",
+      "Ineligible skills (requires: bins not found) still appear in the system prompt without annotation — should add eligible=false attribute to \u003cskill\u003e tags so agents know before trying",
+      "The plan skill still references .hermes/plans/ directory which doesn't exist in Moltis — needs updating to use Moltis workspace conventions",
+      "google-workspace skill has both Hermes OAuth flow instructions and gws CLI references — needs a single Moltis-native version similar to the webhook-subscriptions rewrite",
+      "obliteratus skill (LLM refusal removal) is bundled by default — security/policy review needed on whether this should be included or require explicit user opt-in",
+      "No user mechanism to disable individual bundled skills — only all-or-nothing via the bundled-skills feature flag",
+      "The 160k+ lines of sidecar content (LaTeX templates, XML schemas, Python scripts) from Hermes have not been security-audited beyond source provenance — formal review deferred",
+      "Web UI skills page has no fuzzy search, no sorting options, and the category filter doesn't persist across page navigations",
+      "The summarize skill's homepage (summarize.sh) and npm package name need verification — the CLI may be published under a different name or require different installation"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T20:59:18.357451Z",
+    "agent_lines": 0,
+    "human_added": 18,
+    "human_modified": 6,
+    "human_removed": 0,
+    "total_committed": 18,
+    "agent_percentage": 0
+  }
+}
