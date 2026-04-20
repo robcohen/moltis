@@ -1,0 +1,108 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2397eeb1a609",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T17:06:14.173601Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/cli/Cargo.toml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2a482352571d",
+  "token_usage": {
+    "input_tokens": 373,
+    "cache_creation_tokens": 519994,
+    "cache_read_tokens": 73023533,
+    "output_tokens": 105277,
+    "api_call_count": 324
+  },
+  "summary": {
+    "intent": "Add 100+ default bundled skills to Moltis by copying vetted skills from Hermes Agent and OpenClaw, with category UI, format fallback, and proper metadata.",
+    "outcome": "101 bundled skills embedded in the binary via include_dir!, with category metadata, web UI category filter, system prompt format fallback, origin tracking, requires: frontmatter, and all PR review issues resolved.",
+    "learnings": {
+      "repo": [
+        "Moltis uses include_dir! for embedding static assets at compile time — same pattern for web UI HTML/CSS and now skills",
+        "SkillSource enum in crates/skills/src/types.rs drives priority: Project \u003e Personal \u003e Registry \u003e Plugin \u003e Bundled",
+        "Skill discovery is composed via SkillDiscoverer trait in crates/skills/src/discover.rs — new sources plug in cleanly",
+        "Web UI /api/skills endpoint in crates/web/src/api.rs creates its own FsSkillDiscoverer independently from gateway — bundled source must be wired separately",
+        "Skills system already had requires: frontmatter with bins/any_bins/install fields — Hermes/OpenClaw skills needed to be mapped to this format",
+        "SkillSource exhaustive match also exists in crates/skills/src/watcher.rs — must add Bundled arm (no-op) when adding new variant",
+        "Directory name must match SKILL.md frontmatter name field — read_skill() searches by directory name, causing silent failures when they diverge",
+        "gateway and web crates need bundled-skills feature forwarded from cli/Cargo.toml separately"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "line": 1,
+          "end_line": 300,
+          "finding": "BundledSkillStore with include_dir! embedding, dev-mode filesystem fallback, recursive directory traversal for nested categories like mlops/training/axolotl"
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "line": 1,
+          "end_line": 100,
+          "finding": "CompositeSkillDiscoverer merges FS + bundled results with name deduplication using seen.insert() — must deduplicate within bundled set too, not just across sources"
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "line": 1,
+          "end_line": 150,
+          "finding": "Three-tier format fallback: full (name+desc+attrs) → compact (self-closing, no desc) → truncated (binary search prefix). Header text changes to signal format tier."
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "line": 1,
+          "end_line": 200,
+          "finding": "read_bundled() must call normalize_relative_skill_file_path() before passing to store — same normalization as FS path to prevent traversal in dev mode"
+        },
+        {
+          "path": "crates/web/src/api.rs",
+          "line": 1,
+          "end_line": 50,
+          "finding": "api_skills_handler creates its own FsSkillDiscoverer with only Personal+Project — must be updated to CompositeSkillDiscoverer for bundled skills to appear in web UI"
+        },
+        {
+          "path": "crates/skills/src/assets/creative/p5js/templates/viewer.html",
+          "line": 1,
+          "end_line": 10,
+          "finding": "CDN script tag needed SRI integrity hash — CodeQL flagged missing integrity attribute"
+        }
+      ],
+      "workflow": [
+        "Python script with sed-like string manipulation is more reliable than shell sed for multi-line YAML frontmatter injection",
+        "Cargo check is sufficient to validate feature flag wiring across crates without running full test suite",
+        "Greptile automated review caught real issues (godmode skill bundled by default, path traversal) — worth waiting for before merging",
+        "Directory/name mismatches in vendored skills are caught by a test that calls read_skill() on every discovered skill name — add this test when ingesting external skill sets",
+        "When copying skills from external repos, run cleanup in this order: (1) copy raw, (2) inject origin metadata, (3) clean frontmatter, (4) clean body text refs",
+        "GraphQL mutations via gh api work for resolving PR review threads programmatically — use pullRequestReviewThread resolver with id from listReviews query"
+      ]
+    },
+    "friction": [
+      "Shell sed truncated SKILL.md files during origin metadata injection — had to re-copy and use Python instead",
+      "Background bash tasks hung silently, requiring manual re-runs of comparison and polling commands",
+      "Disk space exhausted on worktree during gateway test run (llama-cpp compilation) — couldn't run full integration tests",
+      "include_dir! recursive discovery required updating both FS and embedded code paths separately — easy to miss one",
+      "Six skills had directory/name mismatches (e.g., trl-fine-tuning/ vs name: fine-tuning-with-trl) causing silent read failures — only caught by tests",
+      "CLI, gateway, and web crates each need bundled-skills feature forwarded independently — no single place to wire it"
+    ],
+    "open_items": [
+      "Hermes-specific body text remains in godmode/SKILL.md (intentionally kept as Nous Hermes model references)",
+      "GitHub skills still reference ~/.hermes/.env token lookup patterns in some edge cases",
+      "No compact fallback threshold configured — default 30KB budget is generous, may need tuning as skill count grows beyond ~400",
+      "OpenClaw extensions (Feishu, QQBot, ACP integrations) not ported — could be useful for users with those platforms",
+      "Vendored Python sidecar scripts still reference Hermes paths in some skills — mechanical cleanup deferred",
+      "No UI to show origin/provenance of bundled skills in web UI — category filter added but source attribution not surfaced"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T17:05:40.885699Z",
+    "agent_lines": 0,
+    "human_added": 17,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 17,
+    "agent_percentage": 0
+  }
+}
