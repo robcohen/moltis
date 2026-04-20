@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1bccd27bfa70",
+  "strategy": "manual-commit",
+  "branch": "green-grasshopper",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/helpers.ts",
+    "crates/web/ui/src/ws/shared.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/1b/ccd27bfa70/0/metadata.json",
+      "transcript": "/1b/ccd27bfa70/0/full.jsonl",
+      "context": "/1b/ccd27bfa70/0/context.md",
+      "content_hash": "/1b/ccd27bfa70/0/content_hash.txt",
+      "prompt": "/1b/ccd27bfa70/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 98,
+    "cache_creation_tokens": 128762,
+    "cache_read_tokens": 8532965,
+    "output_tokens": 26454,
+    "api_call_count": 90
+  }
+}

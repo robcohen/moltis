@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1bccd27bfa70",
+  "session_id": "b61e9a18-bd9c-44f6-8c68-e566b9587b23",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T19:33:43.387289Z",
+  "branch": "green-grasshopper",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/helpers.ts",
+    "crates/web/ui/src/ws/shared.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a28dcbff7661",
+  "token_usage": {
+    "input_tokens": 98,
+    "cache_creation_tokens": 128762,
+    "cache_read_tokens": 8532965,
+    "output_tokens": 26454,
+    "api_call_count": 90
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T19:33:41.184855Z",
+    "agent_lines": 25,
+    "human_added": 1398,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1423,
+    "agent_percentage": 1.7568517217146873
+  }
+}
