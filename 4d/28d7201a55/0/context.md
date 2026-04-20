@@ -1,0 +1,37 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+https://github.com/moltis-org/moltis/issues/810 used to work, not anymore. Look at recent changes and add a test to ensure this never fails again
+
+### Prompt 2
+
+<task-notification>
+<task-id>bb458ehem</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-functional-shame/f8228535-8121-40f9-82ee-745151a5c580/tasks/bb458ehem.output</output-file>
+<status>completed</status>
+<summary>Background command "Run all tests" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-work...
+
+### Prompt 3
+
+commit push create a PR
+
+### Prompt 4
+
+Instead of :
+
+        // Fireworks Fire Pass router models for Kimi route to Moonshot,
+        // which rejects strict-mode schemas (type arrays, forced
+        // additionalProperties). Issue #810.
+        if self.is_fireworks_kimi_router() {
+            return false;
+        }
+        true
+
+Is it better to have that as a struct config boolean for each provider/model if possible?
+
