@@ -1,0 +1,111 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a05c8cbc21d6",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T21:52:51.886549Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/tools/src/skill_tools/read_ops.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2935c6648737",
+  "token_usage": {
+    "input_tokens": 654,
+    "cache_creation_tokens": 1710552,
+    "cache_read_tokens": 174738645,
+    "output_tokens": 150632,
+    "api_call_count": 546
+  },
+  "summary": {
+    "intent": "Add 100+ default bundled skills to Moltis by embedding them in the binary, ported from Hermes Agent and OpenClaw repositories, with category metadata, web UI browsing, and auto-install for missing CLI dependencies.",
+    "outcome": "Successfully implemented the full bundled skills pipeline: BundledSkillStore with include_dir! embedding, CompositeSkillDiscoverer, category metadata, prompt format fallback, web UI with category filter/search/inline detail view, 100 skills from Hermes+OpenClaw with origin tracking, and skill CLI auto-install hints. PR #797 created and reviewed.",
+    "learnings": {
+      "repo": [
+        "Moltis uses include_dir! for binary embedding, same pattern as web UI assets in crates/web/src/assets/",
+        "Skill discovery has 4 sources (project/personal/registry/plugin); CompositeSkillDiscoverer adds Bundled as lowest priority",
+        "The REAL system prompt skill injection entry point is discover_skills_if_enabled() in crates/chat/src/prompt.rs, NOT in gateway — the gateway FsSkillDiscoverer wiring is for the web UI API only",
+        "Directory name must exactly match the frontmatter 'name' field for read_skill lookup to work; 6 skills had silent failures due to this mismatch",
+        "YAML unquoted values cannot start with '@'; scoped npm packages like @anthropic-ai/claude-code must be quoted",
+        "skill_tools.rs was refactored into skill_tools/ module directory between early and late session work, requiring conflict resolution on main merge",
+        "Biome formatter enforces strict indentation for arrow function bodies inside JSX — nested callbacks need one extra tab per nesting level",
+        "Clippy in this repo has -D clippy::expect-used, -D clippy::collapsible-if, -D clippy::unnecessary-map-or, -D clippy::manual-div-ceil all set as errors",
+        "check-file-size.sh enforces 1500-line limit and needs explicit exclusions for vendored/third-party directories (.moltis/ and assets/)",
+        "style.css conflicts during merges should be resolved by regenerating from Tailwind, not manual merge",
+        "Auto-install in ReadSkillTool runs on the gateway host process, but exec tool runs in the sandbox container — these are different environments"
+      ],
+      "code": [
+        {
+          "path": "crates/chat/src/prompt.rs",
+          "line": 14,
+          "end_line": 14,
+          "finding": "The unused import warning revealed that both cfg branches had local use statements — the top-level SkillDiscoverer import was redundant"
+        },
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "line": 388,
+          "end_line": 388,
+          "finding": "map_or(true, String::is_empty) should be is_none_or(String::is_empty) per clippy::unnecessary_map_or"
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "line": 58,
+          "end_line": 58,
+          "finding": "(lo + hi + 1) / 2 must be written as (lo + hi).div_ceil(2) per clippy::manual_div_ceil"
+        },
+        {
+          "path": "crates/tools/src/skill_tools/read_ops.rs",
+          "line": 144,
+          "end_line": 150,
+          "finding": "Nested if with if-let must be collapsed to single if with \u0026\u0026 let per clippy::collapsible_if"
+        },
+        {
+          "path": "crates/skills/src/requirements.rs",
+          "finding": "npm install with --ignore-scripts breaks scoped packages (@scope/pkg); removed the flag. Also: install runs on gateway host, not in sandbox where the agent executes"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "skill_detail handler had no branch for SkillSource::Bundled, causing click-to-view to silently fail for all bundled skills"
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "finding": "Bundled skills were showing Disable button which shouldn't be interactive — need source check before rendering action buttons"
+        }
+      ],
+      "workflow": [
+        "Greptile automatically reviews PRs and leaves P1/P2 comments; run 'Fix and resolve PR comments' pattern after each push",
+        "local-validate.sh runs biome, fmt, tsc, zizmor, file-size, lint in parallel — all must pass before CI is clean",
+        "When merging main and a file was refactored into a directory, git shows it as deleted+new; accept theirs then re-apply changes manually",
+        "Skills from third-party repos need origin: frontmatter with source/url/version fields for provenance tracking",
+        "SKILL.md directory name must match frontmatter name field — tests can catch this at build time"
+      ]
+    },
+    "friction": [
+      "Six consecutive rounds of Clippy errors across different lint rules (manual_div_ceil, unnecessary_map_or, collapsible_if, expect_used, unused_import) — each required a separate fix+push cycle",
+      "Biome indentation kept failing 3 times with off-by-one tab errors that weren't caught by running biome locally (version mismatch between local and CI biome)",
+      "Auto-install silently ran on gateway host instead of sandbox, causing npm EINVALIDPACKAGENAME errors and installing to the wrong environment",
+      "The bundled skills weren't appearing in the agent's system prompt for an entire session because chat/src/prompt.rs was missed — only gateway wiring was updated initially",
+      "read_skill(file_path='') returned an error requiring a retry with null on every first call; LLMs consistently pass empty string for optional fields",
+      "YAML @ character caused parse failures in 5 skills that were only caught at runtime via WARN logs, not at build time",
+      "style.css conflict during merge was large (full generated Tailwind file) and couldn't be auto-resolved",
+      "skill_tools.rs → skill_tools/ module refactor on main required manually re-applying ~150 lines of changes after accepting their version"
+    ],
+    "open_items": [
+      "Two skills still reference Hermes-specific paths: 'plan' skill references .hermes/plans/ directory, 'google-workspace' skill references Hermes-managed OAuth2 setup",
+      "Auto-install should eventually run in the sandbox environment rather than the gateway host — currently only provides install hint text as workaround",
+      "Skills with missing binaries (eligible=false) could be annotated in the system prompt with eligible='false' attribute so agents know before attempting to use them",
+      "summarize skill install still failing with EINVALIDPACKAGENAME for @steipete/summarize — needs investigation of exact npm package name",
+      "No build-time validation that SKILL.md directory names match frontmatter name fields — currently only caught by tests or runtime WARN logs"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T21:51:55.266063Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 10,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
