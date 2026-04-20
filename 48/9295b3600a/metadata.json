@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "489295b3600a",
+  "strategy": "manual-commit",
+  "branch": "honeysuckle-sycamore",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/agents/src/prompt/tests.rs",
+    "crates/config/src/schema/memory.rs",
+    "crates/config/src/schema/runtime.rs",
+    "crates/config/src/validate/tests/memory.rs",
+    "crates/web/ui/e2e/specs/settings-memory.spec.js"
+  ],
+  "sessions": [
+    {
+      "metadata": "/48/9295b3600a/0/metadata.json",
+      "transcript": "/48/9295b3600a/0/full.jsonl",
+      "context": "/48/9295b3600a/0/context.md",
+      "content_hash": "/48/9295b3600a/0/content_hash.txt",
+      "prompt": "/48/9295b3600a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 21910,
+    "cache_read_tokens": 13613307,
+    "output_tokens": 9087,
+    "api_call_count": 32
+  }
+}

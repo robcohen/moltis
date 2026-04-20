@@ -1,0 +1,74 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "489295b3600a",
+  "session_id": "753f66c3-a063-4f29-bce3-ef80ab8825e7",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T15:03:20.497459Z",
+  "branch": "honeysuckle-sycamore",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/validate/tests/memory.rs",
+    "crates/agents/src/prompt/tests.rs",
+    "crates/web/ui/e2e/specs/settings-memory.spec.js",
+    "crates/config/src/schema/memory.rs",
+    "crates/config/src/schema/runtime.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c53012a8676c",
+  "checkpoint_transcript_start": 2675,
+  "transcript_lines_at_start": 2675,
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 21910,
+    "cache_read_tokens": 13613307,
+    "output_tokens": 9087,
+    "api_call_count": 32
+  },
+  "summary": {
+    "intent": "Add unit tests and e2e tests to prevent regressions for a feature adding memory/skill self-improvement config fields and session summary logic.",
+    "outcome": "Added 3 new Rust unit tests, 2 prompt builder tests, and a Playwright e2e spec. Also fixed a pre-existing bug where `#[derive(Default)]` produced wrong defaults for bool fields that had `#[serde(default = \"default_true\")]`, bringing the total to 247 passing tests.",
+    "learnings": {
+      "repo": [
+        "Config structs use `#[serde(default)]` at the struct level combined with per-field `#[serde(default = \"default_true\")]`, but when the entire TOML section is absent, serde falls back to `Default::default()` (from `#[derive(Default)]`), which sets bools to `false` — overriding the per-field defaults.",
+        "The fix pattern is to remove `#[derive(Default)]` and implement `Default` manually with the correct values for affected structs (`MemoryEmbeddingConfig`, `SkillsConfig`).",
+        "E2E tests for settings pages follow a pattern using RPC mocks defined in helpers.js; new settings pages need corresponding mock entries.",
+        "Config validation tests live in `crates/config/src/validate/tests/memory.rs`; prompt builder tests in `crates/agents/src/prompt/tests.rs`."
+      ],
+      "code": [
+        {
+          "path": "crates/config/src/schema/memory.rs",
+          "finding": "`MemoryEmbeddingConfig` had `#[derive(Default)]` + `#[serde(default = \"default_true\")]` on bool fields. When the config section is absent from TOML, `Default::default()` is used, setting bools to false instead of true. Fixed by implementing `Default` manually."
+        },
+        {
+          "path": "crates/config/src/schema/runtime.rs",
+          "finding": "`SkillsConfig` had the same `#[derive(Default)]` / `#[serde(default = \"default_true\")]` mismatch for `enable_self_improvement` and `enabled`. Fixed by implementing `Default` manually."
+        },
+        {
+          "path": "crates/web/ui/e2e/specs/settings-memory.spec.js",
+          "finding": "New e2e spec created for Settings \u003e Memory page, covering render of the Agent Self-Improvement section and RPC round-trip persistence of new config fields."
+        }
+      ],
+      "workflow": [
+        "Running `toml::from_str(\"\")` in tests is the correct way to exercise config defaults for a fully absent TOML section — it surfaces the `Default` vs serde-default discrepancy.",
+        "When a Default derivation conflict is found in one struct, audit sibling structs in the same crate for the same pattern."
+      ]
+    },
+    "friction": [
+      "The `#[derive(Default)]` + `#[serde(default = \"default_true\")]` combination is a silent footgun — tests initially failed with unexpected `false` values before the root cause was identified.",
+      "Had to trace serde's struct-level vs field-level default resolution rules to understand why `toml::from_str(\"\")` didn't honour per-field defaults."
+    ],
+    "open_items": [
+      "The e2e spec for Settings \u003e Memory was written but not yet executed in CI — Playwright test run was not shown in the transcript.",
+      "The same `#[derive(Default)]` footgun may exist in other config structs with `#[serde(default = \"default_true\")]` fields — a broader audit was not performed."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T15:02:58.044406Z",
+    "agent_lines": 226,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 226,
+    "agent_percentage": 100
+  }
+}
