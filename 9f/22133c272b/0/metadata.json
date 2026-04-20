@@ -1,0 +1,72 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9f22133c272b",
+  "session_id": "cd0467a2-2b9e-4a30-b1f5-4595e017bf6c",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T16:56:43.945812Z",
+  "branch": "feat/github-header-links",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/github-stats.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b51e919643f3",
+  "checkpoint_transcript_start": 158,
+  "transcript_lines_at_start": 158,
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 9797,
+    "cache_read_tokens": 889504,
+    "output_tokens": 3574,
+    "api_call_count": 14
+  },
+  "summary": {
+    "intent": "Address two Greptile P2 code review comments on a PR adding GitHub header links, fixing API endpoint usage issues in github-stats.ts.",
+    "outcome": "Both Greptile comments were resolved: removed undocumented `state=open` param from discussions endpoint, replaced `/search/issues` with `/repos/{REPO}/issues` + Link header parsing for better rate limits. Changes passed lint, build, and type check, then were committed and pushed.",
+    "learnings": {
+      "repo": [
+        "GitHub discussions API does not support a `state=open` query parameter — it is undocumented and should be omitted.",
+        "Using `/search/issues` endpoint hits a 10 req/min rate limit; `/repos/{REPO}/issues?state=open\u0026per_page=1` with Link header parsing uses the more generous 60 req/min limit.",
+        "Greptile is integrated as a GitHub check run on PRs in this repo; it posts feedback as inline PR comments rather than in the review body."
+      ],
+      "code": [
+        {
+          "path": "crates/web/ui/src/github-stats.ts",
+          "line": 68,
+          "end_line": 68,
+          "finding": "`state=open` was passed as a query param to the GitHub discussions endpoint but is not a documented parameter — removed."
+        },
+        {
+          "path": "crates/web/ui/src/github-stats.ts",
+          "line": 58,
+          "end_line": 58,
+          "finding": "Issue count was fetched via `/search/issues` (10 req/min limit); replaced with `/repos/{REPO}/issues?state=open\u0026per_page=1` + Link header pagination parsing to match the 60 req/min REST API limit."
+        }
+      ],
+      "workflow": [
+        "Greptile check run results may show a comment count mismatch between the check summary ('1 comments added') and actual inline comments (2 found) — trust the inline comments.",
+        "The security hook flagged a browser `fetch()` call as a false positive; workaround was to retry the edit.",
+        "Greptile review body is often empty — inline PR comments are the actual feedback delivery mechanism.",
+        "Polling for Greptile check run completion can produce jq parse errors due to control characters in the response; use an alternate status-check approach."
+      ]
+    },
+    "friction": [
+      "Greptile check run response contained control characters that broke jq parsing, requiring a different approach to check status.",
+      "Security hook produced a false positive on a browser `fetch()` call, blocking an edit and requiring a retry.",
+      "Greptile check summary reported '1 comments added' but there were actually 2 inline comments, causing confusion."
+    ],
+    "open_items": [
+      "Greptile threads were to be resolved after the push — not confirmed complete in the transcript.",
+      "No explicit confidence score was found in the Greptile output; the location of this metric remains unclear."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T16:56:28.279609Z",
+    "agent_lines": 13,
+    "human_added": 9,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 22,
+    "agent_percentage": 59.09090909090909
+  }
+}
