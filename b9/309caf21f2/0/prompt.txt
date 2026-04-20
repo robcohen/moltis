@@ -1,0 +1,32 @@
+In the web ui, the top allows creating an issue, add the ones for discussions with a link to https://github.com/moltis-org/moltis/discussions and add icons for issues and discussions with the same icons as github.
+
+---
+
+Is github API open so the frontend could fetch the amount of discussion and include it, like the github tabs,
+
+---
+
+Same with issues count. Maybe you can fetch both in one call, at most once per hour and cache it in localcache
+
+---
+
+Don't hide the badge, just hide the number when GH returns errors.
+
+---
+
+<task-notification>
+<task-id>bwcfaz6u0</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bwcfaz6u0.output</output-file>
+<status>completed</status>
+<summary>Background command "Check moltis-web compiles" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso-tmp-molt-moltis/8e238d3a-d6e3-417a-b657-3c9d913d34bd/tasks/bwcfaz6u0.output
+
+---
+
+commit change and push
+
+---
+
+commit anyway

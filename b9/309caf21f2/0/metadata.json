@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "b9309caf21f2",
+  "session_id": "2a7f9e04-d110-431e-bc20-13dda871d6a6",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T17:13:40.463317Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/web/src/assets/style.css"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "81ba2d48cd44",
+  "checkpoint_transcript_start": 359,
+  "transcript_lines_at_start": 359,
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 4395,
+    "cache_read_tokens": 683443,
+    "output_tokens": 1198,
+    "api_call_count": 10
+  },
+  "summary": {
+    "intent": "Create a PR for GitHub header links feature and clean up any leftover changes on main.",
+    "outcome": "PR #806 created at https://github.com/moltis-org/moltis/pull/806 for feat/github-header-links; a Tailwind rebuild artifact (style.css) was committed and pushed to main.",
+    "learnings": {
+      "repo": [
+        "The Tailwind build script outputs to css/style.css, but there is a legacy style.css path at crates/web/src/assets/style.css that can receive stale regeneration artifacts.",
+        "moltis-web is a Cargo workspace package checkable with `cargo check -p moltis-web`."
+      ],
+      "code": [
+        {
+          "path": "crates/web/src/assets/style.css",
+          "finding": "Legacy Tailwind output path; receives stray utility classes (e.g. .text-[.7rem]) when the build runs, separate from the canonical css/style.css output."
+        }
+      ],
+      "workflow": [
+        "Background cargo check tasks can be dispatched during PR creation and verified after the fact.",
+        "git worktree can be used to inspect a feature branch without switching: `git worktree add ../moltis-gh-links feat/github-header-links`."
+      ]
+    },
+    "friction": [
+      "Tailwind build output path mismatch caused a stray style.css diff on main, requiring a manual decision on whether to commit or discard it."
+    ],
+    "open_items": [
+      "The dual Tailwind output paths (css/style.css vs crates/web/src/assets/style.css) should be reconciled to prevent future stray artifacts on main."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T17:13:23.848379Z",
+    "agent_lines": 0,
+    "human_added": 7440,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 7440,
+    "agent_percentage": 0
+  }
+}
