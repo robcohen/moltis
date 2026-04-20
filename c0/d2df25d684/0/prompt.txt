@@ -1,0 +1,1629 @@
+Looking at hermes in ~/code/hermes-agent I see it comes with tons of skills already, the loader shows:
+
+██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗       █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝      ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗█████╗███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║
+██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║╚════╝██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║
+██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║      ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
+
+╭──────────────────────────── Hermes Agent v0.10.0 (2026.4.16) · upstream 9f22977f ─────────────────────────────╮
+│                                   Available Tools                                                             │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⡀⠀⣀⣀⠀⢀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   browser: browser_back, browser_cdp, browser_click, ...                      │
+│  ⠀⠀⠀⠀⠀⠀⢀⣠⣴⣾⣿⣿⣇⠸⣿⣿⠇⣸⣿⣿⣷⣦⣄⡀⠀⠀⠀⠀⠀⠀   clarify: clarify                                                            │
+│  ⠀⢀⣠⣴⣶⠿⠋⣩⡿⣿⡿⠻⣿⡇⢠⡄⢸⣿⠟⢿⣿⢿⣍⠙⠿⣶⣦⣄⡀⠀   code_execution: execute_code                                                │
+│  ⠀⠀⠉⠉⠁⠶⠟⠋⠀⠉⠀⢀⣈⣁⡈⢁⣈⣁⡀⠀⠉⠀⠙⠻⠶⠈⠉⠉⠀⠀   cronjob: cronjob                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡿⠛⢁⡈⠛⢿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   delegation: delegate_task                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣦⣤⣈⠁⢠⣴⣿⠿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   discord: discord_server                                                     │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠻⢿⣿⣦⡉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   file: patch, read_file, search_files, write_file                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⣦⣈⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   homeassistant: ha_call_service, ha_get_state, ...                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣴⠦⠈⠙⠿⣦⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   (and 12 more toolsets...)                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣤⡈⠁⢤⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                                                               │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠷⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   Available Skills                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠑⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   autonomous-ai-agents: claude-code, codex, hermes-agent, opencode            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠁⢰⡆⠈⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   creative: architecture-diagram, ascii-art, ascii-video, b...                │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⠈⣡⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   data-science: jupyter-live-kernel                                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   devops: webhook-subscriptions                                               │
+│                                   email: himalaya                                                             │
+│  claude-opus-4.6 · Nous Research  gaming: minecraft-modpack-server, pokemon-player                            │
+│               /root               general: dogfood                                                            │
+│  Session: 20260420_113745_966d4d  github: codebase-inspection, github-auth, github-code-r...                  │
+│                                   mcp: native-mcp                                                             │
+│                                   media: gif-search, heartmula, songsee, youtube-content                      │
+│                                   mlops: audiocraft-audio-generation, axolotl, dspy, eva...                   │
+│                                   note-taking: obsidian                                                       │
+│                                   productivity: google-workspace, linear, maps, nano-pdf, notio...            │
+│                                   red-teaming: godmode                                                        │
+│                                   research: arxiv, blogwatcher, llm-wiki, polymarket, resea...                │
+│                                   smart-home: openhue                                                         │
+│                                   social-media: xurl                                                          │
+│                                   software-development: plan, requesting-code-review, subagent-driven-d...    │
+│                                                                                                               │
+│                                   27 tools · 67 skills · /help for commands                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+I'd like to have those skills by default in Moltis so it does more by default. How would you do that?
+
+---
+
+I would rather have something like assets for the web-ui (html, etc), with an external directory where we just copy hermes skills (and other skills I'll find online and I "vouched" for security issues), each skill could have metadata for its original source/origin. And have all those skills enabled by default since they've been secured.
+
+---
+
+please proceed
+
+---
+
+commit push create a PR
+
+---
+
+You can now add all hermes skills by default, just copy them over from the local hermes clone I gave you
+
+---
+
+This skill is specific to hermes: crates/skills/src/assets/devops/webhook-subscriptions/SKILL.md but since we have webhooks in moltis you should be able to update it for moltis
+
+---
+
+Look at every skills and see which ones are actually depending on hermes or another tool, I think Moltis skills include frontmatter data to list required tools (cli, etc) for the skill to work, we could include that.
+
+---
+
+Please cleanup hermes sections, and use the moltis skill metadata fields to add binary expectations if any
+
+---
+
+Merge main to this branch, commit and push
+
+---
+
+I see +160k lines, where are they from?
+
+---
+
+How can we know those are safe?
+
+---
+
+but those are from the hermes repo, so I guess it's fine to fully copy them over
+
+---
+
+anything else to improve? Can you look at ~/code/openclaw and see if there are bundled skills?
+
+---
+
+yes please, also having categories in skills make sense, can you do that and add the web-ui component to view categories?
+
+---
+
+Should you add tests for some of those default skills?
+
+---
+
+Look at openclaw and hermes code, how are they adding skills to system prompts? Do they use a search skill like I have (not default enabled I think)? Because that's a lot of skills.
+
+---
+
+Maybe a format fallback would be nice?
+
+---
+
+commit push
+
+---
+
+Fix and resolve PR comments
+
+---
+
+<task-notification>
+<task-id>balds1h1h</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/balds1h1h.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push PR fixes" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/balds1h1h.output
+
+---
+
+Base directory for this skill: /Users/penso/.claude/skills/greploop
+
+# Greploop
+
+Iteratively fix a PR/MR/CL until Greptile gives a perfect review: 5/5 confidence, zero unresolved comments.
+
+## Inputs
+
+- **PR/MR/CL number** (optional): If not provided, detect the PR/MR for the current branch, or the default pending changelist for p4.
+
+## Instructions
+
+### 0. Detect platform
+
+First check for Perforce, then fall back to git remote detection:
+
+```bash
+# Check for Perforce environment
+if p4 info >/dev/null 2>&1; then
+  VCS="perforce"
+else
+  REMOTE_URL=$(git remote get-url origin)
+  if echo "$REMOTE_URL" | grep -qi "gitlab"; then
+    VCS="gitlab"
+  else
+    VCS="github"
+  fi
+fi
+```
+
+For self-hosted GitLab instances whose hostname doesn't contain "gitlab", the user can override by passing `--vcs gitlab` as an input. For Perforce, pass `--vcs perforce`.
+
+### 1. Identify the PR/MR/CL
+
+**GitHub:**
+```bash
+gh pr view --json number,headRefName -q '{number: .number, branch: .headRefName}'
+```
+
+**GitLab:**
+```bash
+glab mr view --output json | jq '{iid: .iid, branch: .source_branch}'
+```
+
+Switch to the PR/MR branch if not already on it.
+
+**Perforce:**
+```bash
+# List pending changelists for current user/client
+p4 changes -s pending -u $P4USER -c $P4CLIENT
+
+# Describe a specific CL
+p4 describe -s <CL_NUMBER>
+```
+
+Ensure the correct workspace (`p4 client`) is set before proceeding.
+
+Key field differences:
+- GitHub: `number`, `headRefName`, `headRefOid`
+- GitLab: `iid`, `source_branch`, `sha`
+- Perforce: changelist number, `P4CLIENT`, shelved files
+
+### 2. Loop
+
+Repeat the following cycle. **Max 5 iterations** to avoid runaway loops.
+
+#### A. Trigger Greptile review
+
+Push/shelve the latest changes (if any):
+
+**GitHub/GitLab:**
+```bash
+git push
+```
+
+**Perforce:**
+```bash
+# Re-shelve to update the shelved files for review
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+**GitHub** — check if Greptile is already running before posting a new trigger comment:
+
+```bash
+GREPTILE_STATE=$(gh pr checks <PR_NUMBER> --json name,state | jq -r '.[] | select(.name | test("greptile"; "i")) | .state')
+```
+
+If Greptile is **not** already running (`PENDING` or `IN_PROGRESS`), request a fresh review:
+
+```bash
+if [ "$GREPTILE_STATE" != "PENDING" ] && [ "$GREPTILE_STATE" != "IN_PROGRESS" ]; then
+  gh pr comment <PR_NUMBER> --body "@greptile review"
+fi
+```
+
+Then poll for the Greptile check run to complete:
+
+```bash
+HEAD_SHA=$(gh pr view <PR_NUMBER> --json headRefOid -q .headRefOid)
+
+while true; do
+  GREPTILE_CHECK=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA/check-runs" \
+    --jq '.check_runs[] | select(.name | test("greptile"; "i"))' 2>/dev/null)
+  
+  if [ -z "$GREPTILE_CHECK" ]; then
+    echo "Waiting for Greptile check to appear..."
+    sleep 5
+    continue
+  fi
+  
+  STATUS=$(echo "$GREPTILE_CHECK" | jq -r '.status // "completed"')
+  CONCLUSION=$(echo "$GREPTILE_CHECK" | jq -r '.conclusion // "pending"')
+  
+  if [ "$STATUS" = "completed" ]; then
+    if [ "$CONCLUSION" = "success" ]; then
+      echo "Greptile check passed!"
+    else
+      echo "Greptile check completed with: $CONCLUSION"
+    fi
+    break
+  fi
+  
+  echo "Waiting for Greptile... (status: $STATUS)"
+  sleep 10
+done
+```
+
+**GitLab** — check if Greptile is already running before posting a trigger comment:
+
+```bash
+PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+GREPTILE_RUNNING=$(echo "$PIPELINES" | jq '[.[] | select(.status == "running" or .status == "pending")] | length')
+```
+
+If no pipeline is running, post a trigger comment:
+
+```bash
+if [ "$GREPTILE_RUNNING" = "0" ]; then
+  glab mr note <MR_IID> --message "@greptile review"
+fi
+```
+
+**Perforce** — Perforce does not have native check runs. If Greptile is integrated via a webhook triggered on `p4 shelve`, wait for it to process. Check your Greptile installation's webhook endpoint or dashboard for the review status. Poll by re-fetching the Greptile review comment on the CL until a score appears.
+
+Then poll for the Greptile pipeline job to complete (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+HEAD_SHA=$(glab mr view <MR_IID> --output json | jq -r '.sha')
+
+while true; do
+  PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+  # Find the most recent pipeline for this SHA
+  PIPELINE_ID=$(echo "$PIPELINES" | jq -r --arg sha "$HEAD_SHA" \
+    '[.[] | select(.sha == $sha)] | sort_by(.id) | last | .id // empty')
+
+  if [ -z "$PIPELINE_ID" ]; then
+    echo "Waiting for Greptile pipeline to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOBS=$(glab api "projects/:fullpath/pipelines/$PIPELINE_ID/jobs")
+  GREPTILE_JOB=$(echo "$JOBS" | jq '.[] | select(.name | test("greptile"; "i"))')
+
+  if [ -z "$GREPTILE_JOB" ]; then
+    echo "Waiting for Greptile job to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOB_STATUS=$(echo "$GREPTILE_JOB" | jq -r '.status')
+
+  if [ "$JOB_STATUS" = "success" ] || [ "$JOB_STATUS" = "failed" ] || [ "$JOB_STATUS" = "canceled" ]; then
+    echo "Greptile job completed with: $JOB_STATUS"
+    break
+  fi
+
+  echo "Waiting for Greptile... (status: $JOB_STATUS)"
+  sleep 10
+done
+```
+
+#### B. Fetch Greptile review results
+
+Greptile may surface its score in two places — check **both** (three for Perforce):
+
+**GitHub:**
+
+**1. PR description (body):**
+```bash
+gh pr view <PR_NUMBER> --json body -q '.body'
+```
+
+**2. PR reviews:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews
+```
+
+Look for the most recent entry from `greptile-apps[bot]` or `greptile-apps-staging[bot]`.
+
+**GitLab:**
+
+**1. MR description (body):**
+```bash
+glab mr view <MR_IID> --output json | jq -r '.description'
+```
+
+**2. MR notes (comments):**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/notes"
+```
+
+Filter for notes from the Greptile bot user (check the `author.username` field — the exact username may vary per installation; verify on first run).
+
+**Perforce:**
+
+**1. CL description:**
+```bash
+p4 describe -s <CL_NUMBER>
+```
+Check the description field for a Greptile-appended score block.
+
+**2. CL comments / review notes:**
+```bash
+p4 review -c <CL_NUMBER>
+```
+Look for comments from the Greptile bot user. The exact mechanism depends on your Greptile installation (it may post via a review tool like Swarm or directly via `p4 review`).
+
+For all platforms, parse the text for:
+- **Confidence score**: a pattern like `3/5` or `5/5` (or `Confidence: 3/5`).
+- **Comment count**: Number of inline review comments noted in the summary.
+
+Use whichever source has the **most recent** score.
+
+Also fetch all unresolved inline comments:
+
+**GitHub:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments
+```
+
+**GitLab:**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions"
+```
+
+Filter to `DiffNote` type discussions (`notes[0].type == "DiffNote"`) from Greptile that are on the latest commit and not yet resolved (`"resolved": false`).
+
+**Perforce:**
+```bash
+# Fetch inline diff comments from Greptile bot on the shelved CL
+p4 review -c <CL_NUMBER>
+```
+
+Filter to comments from the Greptile bot user that have not been marked as resolved/addressed.
+
+#### C. Check exit conditions
+
+Stop the loop if **any** of these are true:
+
+- Confidence score is **5/5** AND there are **zero unresolved comments**
+- Max iterations reached (report current state)
+
+#### D. Fix actionable comments
+
+For each unresolved Greptile comment:
+
+1. Read the file and understand the comment in context.
+2. Determine if it's actionable (code change needed) or informational.
+3. If actionable, make the fix.
+4. If informational or a false positive, note it but still resolve the thread.
+
+#### E. Resolve threads
+
+**GitHub** — fetch unresolved review threads and resolve all that have been addressed (see [GraphQL reference](references/graphql-queries.md)):
+
+```bash
+gh api graphql -f query='
+query($cursor: String) {
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR_NUMBER) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes { body path author { login } }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Resolve addressed threads:
+
+```bash
+gh api graphql -f query='
+mutation {
+  t1: resolveReviewThread(input: {threadId: "ID1"}) { thread { isResolved } }
+  t2: resolveReviewThread(input: {threadId: "ID2"}) { thread { isResolved } }
+}'
+```
+
+**GitLab** — fetch unresolved discussions and resolve each one (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions?per_page=100"
+```
+
+Filter for `"resolved": false` discussions. Then resolve each by its `id`:
+
+```bash
+glab api --method PUT \
+  "projects/:fullpath/merge_requests/<MR_IID>/discussions/<DISCUSSION_ID>" \
+  --field resolved=true
+```
+
+Repeat for each unresolved discussion ID. (GitLab has no batch resolution — loop through each one.)
+
+#### F. Commit and push / re-shelve
+
+**GitHub/GitLab:**
+```bash
+git add -A
+git commit -m "address greptile review feedback (greploop iteration N)"
+git push
+```
+
+**Perforce:**
+```bash
+# Stage changes back into the CL and re-shelve for the next review round
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+Then go back to step **A**.
+
+### 3. Report
+
+After exiting the loop, summarize:
+
+| Field              | Value      |
+| ------------------ | ---------- |
+| Platform           | GitHub / GitLab / Perforce |
+| Iterations         | N          |
+| Final confidence   | X/5        |
+| Comments resolved  | N          |
+| Remaining comments | N (if any) |
+
+If the loop exited due to max iterations, list any remaining unresolved comments and suggest next steps.
+
+## Output format
+
+```
+Greploop complete.
+  Platform:      GitHub
+  Iterations:    2
+  Confidence:    5/5
+  Resolved:      7 comments
+  Remaining:     0
+```
+
+If not fully resolved:
+
+```
+Greploop stopped after 5 iterations.
+  Platform:      GitLab
+  Confidence:    4/5
+  Resolved:      12 comments
+  Remaining:     2
+
+Remaining issues:
+  - src/auth.ts:45 — "Consider rate limiting this endpoint"
+  - src/db.ts:112 — "Missing index on user_id column"
+```
+
+**Perforce example:**
+
+```
+Greploop complete.
+  Platform:      Perforce
+  Changelist:    12345
+  Iterations:    3
+  Confidence:    5/5
+  Resolved:      9 comments
+  Remaining:     0
+```
+
+---
+
+PR title is probably wrong "feat(skills): add bundled skills embedded in the binary"
+
+---
+
+Fix and resolve PR comments
+
+---
+
+merge main to this branch, solve conflicts commit and push
+
+---
+
+<task-notification>
+<task-id>btr2fyfpj</task-id>
+<tool-use-id>toolu_01RB5YVngVF1XArdBq3MkBMN</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btr2fyfpj.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit merge and push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btr2fyfpj.output
+
+---
+
+<task-notification>
+<task-id>bbg3qn6e1</task-id>
+<tool-use-id>toolu_0115RQhAdnbm3qpojzNhQjji</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/bbg3qn6e1.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push web UI fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/bbg3qn6e1.output
+
+---
+
+merge main to this branch, solve conflicts commit and push
+
+---
+
+When I click on a bundled skill, I should still be able to view it. Clicks does nothing right now
+
+---
+
+<task-notification>
+<task-id>b7aod9868</task-id>
+<tool-use-id>toolu_01CDJxrh7iDC62wihprKsQT6</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/b7aod9868.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/b7aod9868.output
+
+---
+
+<task-notification>
+<task-id>btjgiot6d</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btjgiot6d.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push search feature" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btjgiot6d.output
+
+---
+
+I feel like this needs fixing:
+
+2026-04-20T17:12:34.742900Z  INFO moltis_openclaw_import::detect: openclaw detect: scan complete path=/Users/penso/.openclaw workspace=/Users/penso/clawd workspace_exists=true has_config=true has_credentials=true has_mcp_servers=false has_memory=true has_skills=false has_workspace_files=true workspace_files=["SOUL.md", "IDENTITY.md", "USER.md", "TOOLS.md", "AGENTS.md", "HEARTBEAT.md"] agent_count=1 session_count=61
+2026-04-20T17:12:35.098264Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/claude-code/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:35.098417Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/codex/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:35.126933Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/claude-code/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:35.127104Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/codex/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:37.173416Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/claude-code/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:37.173579Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/codex/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:51.215332Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/claude-code/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:51.215513Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/codex/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:53.571465Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/claude-code/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+2026-04-20T17:12:53.571630Z  WARN moltis_skills::bundled: failed to parse bundled SKILL.md path=/Users/penso/.superset/worktrees/moltis/stealth-hovercraft/crates/skills/src/assets/autonomous-ai-agents/codex/SKILL.md e=invalid SKILL.md frontmatter: found character that cannot start any token at line 11 column 16, while scanning for the next token
+
+---
+
+when I click a skill it does not show the skill under the same cursor but all the way down and I miss it:
+
+<div class="settings-content-wrap"><div class="flex-1 flex flex-col min-w-0 overflow-hidden" style="flex-direction: column; padding: 0px; overflow: hidden;"><div class="flex-1 flex flex-col min-w-0 p-4 gap-4 overflow-y-auto"><div class="flex items-center gap-3"><h2 class="text-lg font-medium text-[var(--text-strong)]">Skills</h2><button class="provider-btn provider-btn-secondary provider-btn-sm">Refresh</button><button class="provider-btn provider-btn-danger provider-btn-sm">Emergency Disable</button></div><p class="text-sm text-[var(--muted)]">SKILL.md-based skills. <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)]">How to write a skill?</a></p><div class="skills-install-box"><input type="text" placeholder="owner/repo or full URL (e.g. anthropics/skills)" class="skills-install-input"><button class="provider-btn">Install</button></div><div class="skills-install-box"><input type="text" placeholder="/path/to/skill-bundle.tar.gz" class="skills-install-input"><button class="provider-btn provider-btn-secondary">Import Bundle</button></div><div class="skills-section"><h3 class="skills-section-title">Featured Repositories</h3><div class="skills-featured-grid"><div class="skills-featured-card"><div><a href="https://github.com/openclaw/skills" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--text-strong); text-decoration: none;">openclaw/skills</a><div style="font-size: 0.75rem; color: var(--muted);">Community skills from ClawdHub</div></div><button style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-size: 0.72rem; padding: 4px 10px; cursor: pointer; white-space: nowrap;">Install</button></div><div class="skills-featured-card"><div><a href="https://github.com/anthropics/skills" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--text-strong); text-decoration: none;">anthropics/skills</a><div style="font-size: 0.75rem; color: var(--muted);">Official Anthropic agent skills</div></div><button style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-size: 0.72rem; padding: 4px 10px; cursor: pointer; white-space: nowrap;">Install</button></div><div class="skills-featured-card"><div><a href="https://github.com/vercel-labs/agent-skills" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--text-strong); text-decoration: none;">vercel-labs/agent-skills</a><div style="font-size: 0.75rem; color: var(--muted);">Vercel agent skills collection</div></div><button style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-size: 0.72rem; padding: 4px 10px; cursor: pointer; white-space: nowrap;">Install</button></div><div class="skills-featured-card"><div><a href="https://github.com/vercel-labs/skills" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--text-strong); text-decoration: none;">vercel-labs/skills</a><div style="font-size: 0.75rem; color: var(--muted);">Vercel skills toolkit</div></div><button style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-size: 0.72rem; padding: 4px 10px; cursor: pointer; white-space: nowrap;">Install</button></div></div></div><div class="skills-section"><h3 class="skills-section-title">Installed Repositories</h3><div class="skills-section"><div class="skills-repo-card"><div class="skills-repo-header"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 0.65rem; color: var(--muted);">▶</span><span style="font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--text-strong);">openclaw-skills</span><span style="font-size: 0.72rem; color: var(--muted);">0/0 enabled</span></div><div style="display: flex; gap: 6px;"><button class="provider-btn provider-btn-sm provider-btn-danger">Remove</button></div></div></div></div></div><div class="skills-section"><div class="flex items-center gap-3 mb-2"><h3 class="skills-section-title" style="margin: 0px;">Enabled Skills<span class="ml-2 text-xs font-normal text-[var(--muted)]">(4 of 101)</span></h3><input type="text" placeholder="Search skills..." class="skills-install-input" style="max-width: 240px; font-size: 0.78rem; padding: 4px 8px;"></div><div class="flex flex-wrap gap-1.5 mb-3"><button class="skills-category-pill active">All (101)</button><button class="skills-category-pill ">apple (4)</button><button class="skills-category-pill ">audio (4)</button><button class="skills-category-pill ">autonomous-ai-agents (3)</button><button class="skills-category-pill ">creative (11)</button><button class="skills-category-pill ">data-science (1)</button><button class="skills-category-pill ">devops (1)</button><button class="skills-category-pill ">dogfood (1)</button><button class="skills-category-pill ">email (1)</button><button class="skills-category-pill ">gaming (2)</button><button class="skills-category-pill ">github (6)</button><button class="skills-category-pill ">media (7)</button><button class="skills-category-pill ">messaging (4)</button><button class="skills-category-pill ">mlops (13)</button><button class="skills-category-pill ">note-taking (1)</button><button class="skills-category-pill ">other (2)</button><button class="skills-category-pill ">productivity (15)</button><button class="skills-category-pill ">research (7)</button><button class="skills-category-pill ">smart-home (6)</button><button class="skills-category-pill ">social-media (1)</button><button class="skills-category-pill ">software-development (11)</button></div><div class="skills-table-wrap"><table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;"><thead><tr style="border-bottom: 1px solid var(--border); background: var(--surface);"><th style="text-align: left; padding: 8px 12px; font-weight: 500; color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Name</th><th style="text-align: left; padding: 8px 12px; font-weight: 500; color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Description</th><th style="text-align: left; padding: 8px 12px; font-weight: 500; color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Source</th><th></th></tr></thead><tbody><tr class="cursor-pointer" style="border-bottom: 1px solid var(--border);"><td style="padding: 8px 12px; font-weight: 500; color: var(--accent); font-family: var(--font-mono);">apple-reminders<span class="skills-category-badge">apple</span></td><td style="padding: 8px 12px;">Manage Apple Reminders via remindctl CLI (list, add, complete, delete).</td><td style="padding: 8px 12px;"><span class="recommended-badge">bundled</span></td><td style="padding: 8px 12px; text-align: right;"><button class="provider-btn provider-btn-sm provider-btn-secondary">Disable</button></td></tr><tr class="cursor-pointer" style="border-bottom: 1px solid var(--border);"><td style="padding: 8px 12px; font-weight: 500; color: var(--accent); font-family: var(--font-mono);">findmy<span class="skills-category-badge">apple</span></td><td style="padding: 8px 12px;">Track Apple devices and AirTags via FindMy.app on macOS using AppleScript and screen capture.</td><td style="padding: 8px 12px;"><span class="recommended-badge">bundled</span></td><td style="padding: 8px 12px; text-align: right;"><button class="provider-btn provider-btn-sm provider-btn-secondary">Disable</button></td></tr><tr class="cursor-pointer" style="border-bottom: 1px solid var(--border);"><td style="padding: 8px 12px; font-weight: 500; color: var(--accent); font-family: var(--font-mono);">apple-notes<span class="skills-category-badge">apple</span></td><td style="padding: 8px 12px;">Manage Apple Notes via the memo CLI on macOS (create, view, search, edit).</td><td style="padding: 8px 12px;"><span class="recommended-badge">bundled</span></td><td style="padding: 8px 12px; text-align: right;"><button class="provider-btn provider-btn-sm provider-btn-secondary">Disable</button></td></tr><tr class="cursor-pointer" style="border-bottom: 1px solid var(--border);"><td style="padding: 8px 12px; font-weight: 500; color: var(--accent); font-family: var(--font-mono);">llama-cpp<span class="skills-category-badge">mlops</span></td><td style="padding: 8px 12px;">Run LLM inference with llama.cpp on CPU, Apple Silicon, AMD/Intel GPUs, or NVIDIA — plus GGUF model conversion and quantization (2–8 bit with K-quants and imatrix). Covers CLI, Python bindings, OpenAI-compatible server, and Ollama/LM Studio integration. Use for edge deployment, M1/M2/M3/M4 Macs, CUDA-less environments, or flexible local quantization.</td><td style="padding: 8px 12px;"><span class="recommended-badge">bundled</span></td><td style="padding: 8px 12px; text-align: right;"><button class="provider-btn provider-btn-sm provider-btn-secondary">Disable</button></td></tr></tbody></table></div><div class="skills-detail-panel" style="display: block;"><div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;"><span style="font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--text-strong);">apple-reminders</span><div style="display: flex; gap: 6px;"><button class="provider-btn provider-btn-sm provider-btn-secondary">Disable</button><button style="background: none; border: medium; color: var(--muted); cursor: pointer;">×</button></div></div><p style="margin: 0px 0px 8px; font-size: 0.82rem;">Manage Apple Reminders via remindctl CLI (list, add, complete, delete).</p><div style="margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2);"><div style="padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 0.68rem; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase;">SKILL.md source</div><div class="skill-body-md" style="padding: 10px; max-height: 400px; overflow-y: auto; font-size: 0.8rem; line-height: 1.5;"><h1>Apple Reminders</h1>
+<p>Use <code>remindctl</code> to manage Apple Reminders directly from the terminal. Tasks sync across all Apple devices via iCloud.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li><strong>macOS</strong> with Reminders.app</li>
+<li>Install: <code>brew install steipete/tap/remindctl</code></li>
+<li>Grant Reminders permission when prompted</li>
+<li>Check: <code>remindctl status</code> / Request: <code>remindctl authorize</code></li>
+</ul>
+<h2>When to Use</h2>
+<ul>
+<li>User mentions "reminder" or "Reminders app"</li>
+<li>Creating personal to-dos with due dates that sync to iOS</li>
+<li>Managing Apple Reminders lists</li>
+<li>User wants tasks to appear on their iPhone/iPad</li>
+</ul>
+<h2>When NOT to Use</h2>
+<ul>
+<li>Scheduling agent alerts → use the cronjob tool instead</li>
+<li>Calendar events → use Apple Calendar or Google Calendar</li>
+<li>Project task management → use GitHub Issues, Notion, etc.</li>
+<li>If user says "remind me" but means an agent alert → clarify first</li>
+</ul>
+<h2>Quick Reference</h2>
+<h3>View Reminders</h3>
+<pre><code class="language-bash">remindctl                    # Today's reminders
+remindctl today              # Today
+remindctl tomorrow           # Tomorrow
+remindctl week               # This week
+remindctl overdue            # Past due
+remindctl all                # Everything
+remindctl 2026-01-04         # Specific date
+</code></pre>
+<h3>Manage Lists</h3>
+<pre><code class="language-bash">remindctl list               # List all lists
+remindctl list Work          # Show specific list
+remindctl list Projects --create    # Create list
+remindctl list Work --delete        # Delete list
+</code></pre>
+<h3>Create Reminders</h3>
+<pre><code class="language-bash">remindctl add "Buy milk"
+remindctl add --title "Call mom" --list Personal --due tomorrow
+remindctl add --title "Meeting prep" --due "2026-02-15 09:00"
+</code></pre>
+<h3>Complete / Delete</h3>
+<pre><code class="language-bash">remindctl complete 1 2 3          # Complete by ID
+remindctl delete 4A83 --force     # Delete by ID
+</code></pre>
+<h3>Output Formats</h3>
+<pre><code class="language-bash">remindctl today --json       # JSON for scripting
+remindctl today --plain      # TSV format
+remindctl today --quiet      # Counts only
+</code></pre>
+<h2>Date Formats</h2>
+<p>Accepted by <code>--due</code> and date filters:</p>
+<ul>
+<li><code>today</code>, <code>tomorrow</code>, <code>yesterday</code></li>
+<li><code>YYYY-MM-DD</code></li>
+<li><code>YYYY-MM-DD HH:mm</code></li>
+<li>ISO 8601 (<code>2026-01-04T12:34:56Z</code>)</li>
+</ul>
+<h2>Rules</h2>
+<ol>
+<li>When user says "remind me", clarify: Apple Reminders (syncs to phone) vs agent cronjob alert</li>
+<li>Always confirm reminder content and due date before creating</li>
+<li>Use <code>--json</code> for programmatic parsing</li>
+</ol>
+</div></div></div></div></div><div class="skills-toast-container"></div></div></div>
+
+---
+
+Fix and resolve PR comments
+
+---
+
+I tried using skills and summarize and got this:
+
+LLM output:
+[
+  {
+    "content": "",
+    "created_at": 1776705553563,
+    "role": "assistant",
+    "run_id": "3a76ae92-18aa-4f2d-82ae-75fdab32e03c",
+    "seq": 1,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\",\"extract_mode\":\"markdown\",\"max_chars\":12000,\"url\":\"https://www.youtube.com/watch?v=NlaoCgN3P4c\"}",
+          "name": "web_fetch"
+        },
+        "id": "call_pNop07V8OqfdkNJ5Je8ozI01",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "content": "I can, but I can’t get the actual video/transcript from that YouTube page with the fetch I have here — it only returned the generic site chrome, not the video content.\n\nFastest options:\n1. paste the transcript here, and I’ll summarize it\n2. paste the video title/description, and I’ll give a likely summary\n3. if you want, I can try a browser-based approach next to see whether the transcript is accessible that way",
+    "created_at": 1776705557040,
+    "durationMs": 8690,
+    "inputTokens": 21385,
+    "model": "openai-codex::gpt-5.4",
+    "outputTokens": 143,
+    "provider": "openai-codex",
+    "requestCacheReadTokens": 0,
+    "requestCacheWriteTokens": 0,
+    "requestInputTokens": 10761,
+    "requestOutputTokens": 99,
+    "role": "assistant",
+    "run_id": "3a76ae92-18aa-4f2d-82ae-75fdab32e03c",
+    "seq": 1
+  },
+  {
+    "content": "",
+    "created_at": 1776705573176,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\",\"file_path\":\"\",\"name\":\"summarize\"}",
+          "name": "read_skill"
+        },
+        "id": "call_WgYzptOEaYtZ0cwQhb5tzMFr",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776705575935,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\",\"file_path\":null,\"name\":\"summarize\"}",
+          "name": "read_skill"
+        },
+        "id": "call_nBboyU7hlDc7ABet32zWqh6b",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776705580226,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\",\"command\":\"summarize \\\"https://www.youtube.com/watch?v=NlaoCgN3P4c\\\" --youtube auto --length medium\",\"timeout\":120000,\"working_dir\":\"/home/sandbox\"}",
+          "name": "exec"
+        },
+        "id": "call_4XsbkWkrlH6pxkLli0FN9gtX",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776705582950,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\"}",
+          "name": "sandbox_packages"
+        },
+        "id": "call_cx2FjaoBH8QKJWGcWkW5hy4X",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776705587983,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"d4f28e6e-c60f-4e61-9265-7ea8a6d78332\",\"_session_key\":\"main\",\"command\":\"npx -y summarize.sh \\\"https://www.youtube.com/watch?v=NlaoCgN3P4c\\\" --youtube auto --length medium\",\"timeout\":240000,\"working_dir\":\"/home/sandbox\"}",
+          "name": "exec"
+        },
+        "id": "call_vaLTXZ7NxxWTvp3iTBwpG32A",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "content": "The bundled skill documents the workflow, but the actual `summarize` CLI isn’t installed in this environment, and the YouTube page fetch didn’t expose the transcript.\n\nIf you want, I can still try one of these:\n- browser-based transcript extraction from the video page\n- a web search for an external transcript/mirror\n- you paste the transcript here and I summarize it immediatelyI used the summarize skill, but it only gave me instructions for a `summarize` CLI — and that CLI isn’t installed here.\n\nWhat I found:\n- `read_skill(\"summarize\")` worked\n- `summarize \"https://www.youtube.com/watch?v=NlaoCgN3P4c\"` failed: command not found\n- `npx summarize.sh ...` also failed: package not found\n- direct fetch of the YouTube page only returned generic site content, not the transcript/video text\n\nSo: I can’t summarize that video yet from the skill alone in this environment.\n\nBest next move: let me try the browser route and see if I can open the transcript panel directly from YouTube. If you want, I’ll do that now.",
+    "created_at": 1776705597436,
+    "durationMs": 26905,
+    "inputTokens": 75022,
+    "model": "openai-codex::gpt-5.4",
+    "outputTokens": 511,
+    "provider": "openai-codex",
+    "requestCacheReadTokens": 0,
+    "requestCacheWriteTokens": 0,
+    "requestInputTokens": 14971,
+    "requestOutputTokens": 250,
+    "role": "assistant",
+    "run_id": "69170fb5-1eaf-4e33-9393-7327a5f5d024",
+    "seq": 2
+  }
+]
+
+Context:
+[system] You are a helpful assistant. You can use tools when needed.
+
+Your name is Rex 🤖.
+
+## Soul
+
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the "Great question!" and "I'd be happy to help!" — just help. Actions speak louder than filler words.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring. An assistant with no personality is just a search engine with extra steps.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. Search for it. _Then_ ask if you're stuck. The goal is to come back with answers, not questions.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it. Be careful with external actions (emails, tweets, anything public). Be bold with internal ones (reading, organizing, learning).
+
+**Remember you're a guest.** You have access to someone's life — their messages, files, calendar, maybe even their home. That's intimacy. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them. They're how you persist.
+
+If you change this file, tell the user — it's your soul, and they should know.
+
+---
+
+_This file is yours to evolve. As you learn who you are, update it._
+The user's name is Fabien.
+
+## Runtime
+
+Host: host=m4max | os=macos | arch=aarch64 | shell=zsh | provider=openai-codex | model=openai-codex::gpt-5.4 | session=main | surface=web | session_kind=web | data_dir=.moltis/ | sudo_non_interactive=false | sudo_status=requires_password | timezone=Europe/Lisbon | accept_language=en-US,en;q=0.9
+Sandbox(exec): enabled=true | mode=all | backend=apple-container | scope=session | image=moltis-rex-sandbox:f3cb633941a09741d9760cf0c90d536fa3e97cb02509b7e96723c29eec14b9d4 | home=/home/sandbox | workspace_mount=ro | workspace_path=.moltis/
+Execution routing:
+- `exec` runs inside sandbox when `Sandbox(exec): enabled=true`.
+- When sandbox is disabled, `exec` runs on the host and may require approval.
+- In sandbox mode, `~` and relative paths resolve under `Sandbox(exec): home=...` (usually `/home/sandbox`).
+- Persistent workspace files live under `Host: data_dir=...`; when mounted, the same path appears as `Sandbox(exec): workspace_path=...`.
+- With `workspace_mount=ro`, sandbox commands may read mounted files but cannot modify them.
+- For durable long-term memory mutations, prefer `memory_save`, `memory_forget`, or `memory_delete` over shell writes to `MEMORY.md` or `memory/*.md`.
+- Sandbox/host routing changes are expected runtime behavior. Do not frame them as surprising or anomalous.
+
+## Available Skills
+
+<available_skills>
+<skill name="template-skill" source="skill">
+Starter skill template (safe to copy and edit)
+</skill>
+<skill name="tmux" source="skill">
+Run and interact with terminal applications (htop, vim, etc.) using tmux sessions in the sandbox
+</skill>
+</available_skills>
+
+
+To activate a skill, call the `read_skill` tool with its name (e.g. `read_skill(name="<skill-name>")`). To load a sidecar file inside a skill directory (references/, templates/, assets/, scripts/), pass the `file_path` argument as well (e.g. `read_skill(name="<skill-name>", file_path="references/api.md")`).
+
+## Skill Self-Improvement
+
+You have tools to create, read, update, and delete personal skills. Use them proactively:
+
+- After completing a complex task (5+ tool calls), consider saving the approach as a reusable skill with `create_skill`
+- After fixing a tricky error or discovering a non-obvious workflow, save it so you don't have to rediscover it
+- When a skill you're using has stale or incorrect instructions, fix it with `patch_skill` (surgical find/replace) or `update_skill` (full rewrite)
+- When you notice a skill could benefit from reference data, use `write_skill_files` to add sidecar files
+
+Do NOT create skills for trivial or one-off tasks. Good skills encode multi-step procedures, domain-specific knowledge, or workflows that are likely to recur.
+
+## Long-Term Memory
+
+
+You also have `memory_search` to find additional details from `memory/*.md` files and past session history beyond what is shown above. **Always search memory before claiming you don't know something.** The long-term memory system holds user facts, past decisions, project context, and anything previously stored.
+
+**When the user asks you to remember, save, or note something, you MUST call `memory_save` to persist it.** Do not just acknowledge verbally — without calling the tool, the information will be lost after the session.
+
+Choose the right target to keep context lean:
+- **MEMORY.md** — only core identity facts (name, age, location, language, key preferences). This is loaded into every conversation, so keep it short.
+- **memory/&lt;topic&gt;.md** — everything else (detailed notes, project context, decisions, session summaries). These are only retrieved via `memory_search` and do not consume prompt space.
+
+**When the user asks you to forget or remove saved memory in natural language, you MUST call `memory_forget`.** It searches memory, chooses the matching saved chunk, and deletes the exact stored text safely.
+
+Use `memory_delete` only when you already know the exact file and exact snippet to remove, or when you need to delete a whole `memory/<name>.md` file directly.
+
+## Available Tools
+
+- `Edit`: Exact-match string replacement in a file. Refuses to edit if `old_string` is not unique in the file unless `replace_all=true`. This uniqueness requirement preve...
+- `Glob`: Find files matching a glob pattern. Results are sorted by modification time, most recent first. Respects .gitignore by default. Supports standard glob syntax (`...
+- `Grep`: Search file contents with a regular expression. Three output modes: 'files_with_matches' (default, lists matching file paths), 'content' (lines that matched, wi...
+- `MultiEdit`: Apply multiple sequential edits to a single file as one atomic operation. Each edit sees the output of previous edits. Either all edits succeed or none are appl...
+- `Read`: Read a file from the local filesystem with line-numbered output. Supports `offset` (1-indexed line to start at) and `limit` (max lines to return) for paginating...
+- `Write`: Atomically write a file to the local filesystem. Parent directories must already exist. Refuses to follow symlinks. The entire file is replaced — use `Edit` for...
+- `branch_session`: Fork the current session into a new branch at a given message index. Messages up to fork_point are copied to the new session. The new session inherits the paren...
+- `browser`: Control a real browser to interact with web pages.
+
+USE THIS TOOL when the user says 'browse', 'browser', 'open in browser', or needs interaction (clicking, for...
+- `calc`: Evaluate arithmetic expressions safely. Supports +, -, *, /, %, ^, unary +/- and parentheses. No variables, functions, or assignments.
+- `checkpoint_restore`: Restore a built-in file or directory mutation from an automatic checkpoint.
+- `checkpoints_list`: List recent automatic checkpoints created before built-in file mutations.
+- `codebase_peek`: List files that would be indexed for a project directory. Discovers git-tracked files, applies extension and size filters, and returns the list with language an...
+- `codebase_search`: Search the codebase index for relevant code chunks. Uses hybrid search (keyword + vector embeddings) to find functions, types, patterns, and code across all ind...
+- `codebase_status`: Report the indexing status for a project. Returns file counts, backend type, and whether search is available. Use this to check if a project directory is indexe...
+- `create_skill`: Create a new personal skill. Writes a SKILL.md file to <data_dir>/skills/<name>/. This is persistent workspace storage (not sandbox ~/skills). The skill will be...
+- `cron`: Manage scheduled tasks (reminders, recurring jobs, cron schedules).
+
+For reminders and recurring tasks that should produce a response in the main conversation (...
+- `delete_skill`: Delete a personal skill. Removes the full skill directory, including supplementary files.
+- `exec`: Execute a shell command on the server. Returns stdout, stderr, and exit code.
+- `get_user_location`: Get the user's current location as coordinates and a place name. Requires user permission via browser popup. Use when the user asks about local weather, nearby ...
+- `memory_delete`: Forget saved memory by removing exact text from a memory file or deleting the file entirely. Updates the index immediately.
+- `memory_forget`: Use the model to identify which saved memory chunk(s) match a forget request, then delete the exact stored text safely.
+- `memory_get`: Retrieve a specific memory chunk by its ID. Use this to get the full text of a chunk found via memory_search.
+- `memory_save`: Save content to long-term memory. Writes to MEMORY.md or memory/<name>.md. Content persists across sessions and is searchable via memory_search.
+- `memory_search`: Search agent memory using hybrid vector + keyword search. Returns relevant chunks from daily logs and long-term memory files.
+- `nodes_describe`: Get detailed information about a specific connected node by id or name.
+- `nodes_list`: List all connected remote device nodes with their platform, capabilities, and telemetry.
+- `nodes_select`: Set or clear the default remote node for the current chat session. Pass a node id or name to target it, or null/omit to revert to local execution.
+- `patch_skill`: Apply surgical find/replace patches to an existing personal skill's SKILL.md. More efficient than update_skill when fixing a few lines — avoids regenerating the...
+- `process`: Manage interactive terminal processes (TUI apps, REPLs, long-running commands) via tmux sessions in the sandbox. Actions: start, poll, send_keys, paste, kill, l...
+- `read_skill`: Load a skill's full content or access its linked files (references, templates, assets, scripts). The primary call (with just 'name') returns the SKILL.md body p...
+- `sandbox_packages`: List packages pre-installed in the sandbox container, grouped by category. Call this before running commands that need specific tools (image processing, audio/v...
+- `send_document`: Send a local file (PDF, CSV, DOCX, TXT, JSON, ZIP, etc.) to the current conversation's channel. Use send_image for image files. Maximum size: 20 MB.
+- `send_image`: Send a local image file to the current conversation's channel (e.g. Telegram). Supported formats: PNG, JPEG, GIF, WebP, PPM. Maximum size: 20 MB.
+- `send_message`: Send a proactive message to any configured channel account/chat (Telegram, Discord, Slack, Matrix, Teams, WhatsApp). Use this for alerts, reminders, and schedul...
+- `session_state`: Persist and retrieve key-value state scoped to the current session and a namespace. Use this to remember information across messages within a session. Operation...
+- `sessions_create`: Create a new chat session or resolve an existing one. Optionally set label/model/project and inherit agent persona from another session.
+- `sessions_delete`: Delete a chat session and its history by key. Deleting the main session is not allowed.
+- `sessions_history`: Read paginated message history from another session.
+- `sessions_list`: List available sessions with metadata. Supports optional text filtering and limit.
+- `sessions_search`: Search past session history for relevant snippets across sessions.
+- `sessions_send`: Send a message to another session. Optionally wait for the target session's reply.
+- `show_map`: Show a map image to the user for one or more locations. Displays destination pins and an optional blue pin at the user's current location, plus clickable map li...
+- `spawn_agent`: Spawn a sub-agent to handle a complex, multi-step task autonomously. The sub-agent runs its own agent loop with access to tools and returns the result when done...
+- `speak`: Convert text to speech. Use when the user asks for audio/voice output. Returns an audio file path and metadata.
+- `task_list`: Manage a shared task list for coordinated multi-agent execution. Actions: create, list, list_lists, get, update, claim.
+- `teams_edit_message`: Edit or delete a previously sent message in a Microsoft Teams conversation. Only messages sent by the bot can be edited or deleted.
+- `teams_member_info`: Look up a Microsoft Teams user's profile information (name, email, job title, office location). Requires Graph API permissions (User.Read.All).
+- `teams_pin_message`: Pin or unpin a message in a Microsoft Teams chat, or list all pinned messages. Pinned messages appear at the top of the chat for all participants.
+- `teams_read_message`: Read a specific message by ID from a Microsoft Teams chat, including its reactions. Requires Graph API permissions (Chat.Read.All).
+- `teams_search_messages`: Search message history in a Microsoft Teams chat or channel. Returns matching messages with sender, text, and timestamp. Requires Graph API permissions (Chat.Re...
+- `transcribe`: Transcribe audio to text. Use when the user provides audio content that must be turned into text.
+- `update_channel_settings`: Safely update non-secret settings for a configured channel account after the user explicitly asks for a channel config change. Supports access policies, allowli...
+- `update_skill`: Update an existing personal skill. Overwrites the SKILL.md file.
+- `web_fetch`: Fetch a web page URL and extract its content as readable text or markdown. Use this when you need to read the contents of a specific web page. The request is se...
+
+## Guidelines
+
+- Start with a normal conversational response. Do not call tools for greetings, small talk, or questions you can answer directly.
+- Use the calc tool for arithmetic and expressions.
+- Use the exec tool for shell/system tasks.
+- If the user starts a message with `/sh `, run it with `exec` exactly as written.
+- Use the browser tool when the user asks to visit/read/interact with web pages.
+- Before tool calls, briefly state what you are about to do.
+- For multi-step tasks, execute one step at a time and check results before proceeding.
+- Be careful with destructive operations, confirm with the user first.
+- Do not express surprise about sandbox vs host execution. Route changes are normal.
+- Do not suggest disabling sandbox unless the user explicitly asks for host execution or the task cannot be completed in sandbox.
+- The UI already shows raw tool output (stdout/stderr/exit). Summarize outcomes instead.
+
+## Silent Replies
+
+When you have nothing meaningful to add after a tool call, return an empty response.
+
+[user] can you summarize https://www.youtube.com/watch?v=NlaoCgN3P4c
+[assistant] 
+[tool_call: web_fetch {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main","extract_mode":"markdown","max_chars":12000,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c"}]
+[tool] {"content":"AboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new features\n© 2026 Google LLC","content_type":"text/html; charset=utf-8","extract_mode":"markdown","original_length":1403806,"truncated":false,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c"}
+[assistant] I can, but I can’t get the actual video/transcript from that YouTube page with the fetch I have here — it only returned the generic site chrome, not the video content.
+
+Fastest options:
+1. paste the transcript here, and I’ll summarize it
+2. paste the video title/description, and I’ll give a likely summary
+3. if you want, I can try a browser-based approach next to see whether the transcript is accessible that way
+[user] use the summarize skill
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main","file_path":"","name":"summarize"}]
+[tool] Error: invalid file_path: file path must not be empty
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main","file_path":null,"name":"summarize"}]
+[tool] {"body":"# Summarize\n\nFast CLI to summarize URLs, local files, and YouTube links.\n\n## When to use (trigger phrases)\n\nUse this skill immediately when the user asks any of:\n\n- “use summarize.sh”\n- “what’s this link/video about?”\n- “summarize this URL/article”\n- “transcribe this YouTube/video” (best-effort transcript extraction; no `yt-dlp` needed)\n\n## Quick start\n\n```bash\nsummarize \"https://example.com\" --model google/gemini-3-flash-preview\nsummarize \"/path/to/file.pdf\" --model google/gemini-3-flash-preview\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto\n```\n\n## YouTube: summary vs transcript\n\nBest-effort transcript (URLs only):\n\n```bash\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto --extract-only\n```\n\nIf the user asked for a transcript but it’s huge, return a tight summary first, then ask which section/time range to expand.\n\n## Model + keys\n\nSet the API key for your chosen provider:\n\n- OpenAI: `OPENAI_API_KEY`\n- Anthropic: `ANTHROPIC_API_KEY`\n- xAI: `XAI_API_KEY`\n- Google: `GEMINI_API_KEY` (aliases: `GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_API_KEY`)\n\nDefault model is `google/gemini-3-flash-preview` if none is set.\n\n## Useful flags\n\n- `--length short|medium|long|xl|xxl|<chars>`\n- `--max-output-tokens <count>`\n- `--extract-only` (URLs only)\n- `--json` (machine readable)\n- `--firecrawl auto|off|always` (fallback extraction)\n- `--youtube auto` (Apify fallback if `APIFY_API_TOKEN` set)\n\n## Config\n\nOptional config file: `~/.summarize/config.json`\n\n```json\n{ \"model\": \"openai/gpt-5.2\" }\n```\n\nOptional services:\n\n- `FIRECRAWL_API_KEY` for blocked sites\n- `APIFY_API_TOKEN` for YouTube fallback","bytes":1636,"category":"research","description":"Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).","homepage":"https://summarize.sh","linked_files":[],"name":"summarize","origin":{"source":"openclaw","url":"https://github.com/openclaw/openclaw","version":"90eb5b073f"},"source":"bundled"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main","command":"summarize \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --length medium","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":127,"stderr":"sh: 1: summarize: not found\n","stdout":""}
+[assistant] 
+[tool_call: sandbox_packages {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main"}]
+[tool] {"additional_installed":["7zip","adwaita-icon-theme","alacritty","alsa-topology-conf","alsa-ucm-conf","apparmor","at-spi2-common","at-spi2-core","bash-completion","bind9-dnsutils","bind9-host","bind9-libs","binutils","binutils-aarch64-linux-gnu","binutils-common","binutils-gold","binutils-gold-aarch64-linux-gnu","bsdutils","chromium-browser","clang-20","clang-tools-20","coreutils-from-uutils","cpp","cpp-15","cpp-15-aarch64-linux-gnu","cpp-aarch64-linux-gnu","dbus","dbus-bin","dbus-daemon","dbus-session-bus-common","dbus-system-bus-common","dbus-user-session","dconf-gsettings-backend","dconf-service","dirmngr","dmsetup","eslint","fontconfig","fontconfig-config","fuse3","g++","g++-15","g++-15-aarch64-linux-gnu","g++-aarch64-linux-gnu","gcc","gcc-13-base","gcc-15","gcc-15-aarch64-linux-gnu","gcc-15-base","gcc-aarch64-linux-gnu","gir1.2-girepository-2.0","gir1.2-glib-2.0","git-man","gnu-coreutils","gnupg","gnupg-l10n","gnupg-utils","golang-1.24-go","golang-1.24-src","golang-src","gpg","gpg-agent","gpg-wks-client","gpgconf","gpgsm","gpgv","gsettings-desktop-schemas","gtk-update-icon-cache","gyp","handlebars","hicolor-icon-theme","javascript-common","krb5-locales","less","linux-sysctl-defaults","llvm","llvm-20","llvm-20-linker-tools","llvm-20-runtime","llvm-20-tools","llvm-runtime","login.defs","logsave","lto-disabled-list","luit","m4","make","manpages","media-types","mesa-libgallium","mesa-vulkan-drivers","ncurses-term","netbase","networkd-dispatcher","node-abbrev","node-acorn","node-agent-base","node-ajv","node-ajv-keywords","node-ampproject-remapping","node-ansi-escapes","node-ansi-regex","node-ansi-styles","node-anymatch","node-aproba","node-archy","node-are-we-there-yet","node-argparse","node-arrify","node-assert","node-async","node-async-each","node-auto-bind","node-babel-helper-define-polyfill-provider","node-babel-plugin-add-module-exports","node-babel-plugin-lodash","node-babel-plugin-polyfill-corejs2","node-babel-plugin-polyfill-corejs3","node-babel-plugin-polyfill-regenerator","node-babel7","node-babel7-runtime","node-balanced-match","node-base","node-base64-js","node-binary-extensions","node-brace-expansion","node-braces","node-browserslist","node-builtins","node-cacache","node-cache-base","node-camelcase","node-caniuse-lite","node-chalk","node-chokidar","node-chownr","node-chrome-trace-event","node-ci-info","node-cjs-module-lexer","node-cli-boxes","node-cli-cursor","node-cli-table","node-cli-truncate","node-cliui","node-clone","node-clone-deep","node-collection-visit","node-color-convert","node-color-name","node-colors","node-columnify","node-commander","node-commondir","node-component-emitter","node-concat-stream","node-console-control-strings","node-convert-source-map","node-copy-concurrently","node-core-js","node-core-js-compat","node-core-js-pure","node-core-util-is","node-corepack","node-coveralls","node-css-loader","node-css-selector-tokenizer","node-data-uri-to-buffer","node-debbundle-es-to-primitive","node-debug","node-decamelize","node-decompress-response","node-deep-equal","node-deep-is","node-defaults","node-define-properties","node-define-property","node-defined","node-del","node-delegates","node-depd","node-diff","node-doctrine","node-electron-to-chromium","node-encoding","node-enhanced-resolve","node-envinfo","node-err-code","node-errno","node-error-ex","node-es-abstract","node-es-module-lexer","node-es6-error","node-escape-string-regexp","node-escodegen","node-eslint-scope","node-eslint-utils","node-eslint-visitor-keys","node-espree","node-esprima","node-esquery","node-esrecurse","node-estraverse","node-esutils","node-events","node-execa","node-fancy-log","node-fast-deep-equal","node-fast-levenshtein","node-fetch","node-file-entry-cache","node-fill-range","node-find-cache-dir","node-find-up","node-flat-cache","node-flatted","node-for-in","node-for-own","node-foreground-child","node-fs-readdir-recursive","node-fs-write-stream-atomic","node-fs.realpath","node-function-bind","node-functional-red-black-tree","node-gauge","node-get-caller-file","node-get-stream","node-get-value","node-glob","node-glob-parent","node-globals","node-globby","node-got","node-graceful-fs","node-growl","node-gyp","node-has-flag","node-has-unicode","node-has-value","node-has-values","node-hosted-git-info","node-http-proxy-agent","node-https-proxy-agent","node-iconv-lite","node-icss-utils","node-ieee754","node-iferr","node-ignore","node-imurmurhash","node-indent-string","node-inflight","node-inherits","node-ini","node-interpret","node-ip","node-ip-regex","node-is-arrayish","node-is-binary-path","node-is-buffer","node-is-descriptor","node-is-extendable","node-is-extglob","node-is-glob","node-is-number","node-is-path-cwd","node-is-path-inside","node-is-plain-obj","node-is-plain-object","node-is-primitive","node-is-stream","node-is-typedarray","node-is-windows","node-isarray","node-isexe","node-isobject","node-istanbul","node-jest-debbundle","node-jest-worker","node-js-tokens","node-js-yaml","node-jsesc","node-json-buffer","node-json-parse-better-errors","node-json-schema","node-json-schema-traverse","node-json-stable-stringify","node-json5","node-jsonify","node-jsonparse","node-kind-of","node-lcov-parse","node-levn","node-loader-runner","node-locate-path","node-lodash","node-lodash-packages","node-log-driver","node-lowercase-keys","node-lru-cache","node-make-dir","node-map-visit","node-memfs","node-memory-fs","node-merge-stream","node-micromatch","node-mime","node-mime-types","node-mimic-fn","node-mimic-response","node-minimatch","node-minimist","node-minipass","node-mixin-deep","node-mkdirp","node-move-concurrently","node-ms","node-mute-stream","node-n3","node-negotiator","node-neo-async","node-nopt","node-normalize-package-data","node-normalize-path","node-npm-bundled","node-npm-package-arg","node-npm-run-path","node-npmlog","node-object-assign","node-object-inspect","node-object-visit","node-once","node-opener","node-optimist","node-optionator","node-osenv","node-p-cancelable","node-p-limit","node-p-locate","node-p-map","node-parse-json","node-pascalcase","node-path-dirname","node-path-exists","node-path-is-absolute","node-path-is-inside","node-path-type","node-picocolors","node-pify","node-pkg-dir","node-postcss","node-postcss-modules-extract-imports","node-postcss-modules-values","node-postcss-value-parser","node-prelude-ls","node-process-nextick-args","node-progress","node-promise-inflight","node-promise-retry","node-promzard","node-prr","node-punycode","node-quick-lru","node-randombytes","node-re2","node-read","node-read-package-json","node-read-pkg","node-readable-stream","node-readdirp","node-rechoir","node-regenerate","node-regenerate-unicode-properties","node-regenerator-runtime","node-regenerator-transform","node-regexpp","node-regexpu-core","node-regjsgen","node-regjsparser","node-repeat-string","node-require-directory","node-require-from-string","node-resolve","node-resolve-cwd","node-resolve-from","node-restore-cursor","node-resumer","node-retry","node-rimraf","node-run-queue","node-safe-buffer","node-schema-utils","node-semver","node-serialize-javascript","node-set-blocking","node-set-immediate-shim","node-set-value","node-shebang-command","node-shebang-regex","node-shell-quote","node-signal-exit","node-slash","node-slice-ansi","node-source-list-map","node-source-map","node-source-map-support","node-spdx-correct","node-spdx-exceptions","node-spdx-expression-parse","node-spdx-license-ids","node-sprintf-js","node-ssri","node-stack-utils","node-string-decoder","node-string-width","node-strip-ansi","node-strip-bom","node-strip-eof","node-strip-json-comments","node-supports-color","node-tap","node-tap-mocha-reporter","node-tap-parser","node-tapable","node-tape","node-tar","node-terser","node-text-table","node-through","node-time-stamp","node-to-fast-properties","node-to-regex-range","node-tslib","node-type-check","node-typedarray","node-typedarray-to-buffer","node-undici","node-unicode-canonical-property-names-ecmascript","node-unicode-match-property-ecmascript","node-unicode-match-property-value-ecmascript","node-unicode-property-aliases-ecmascript","node-union-value","node-unique-filename","node-unset-value","node-uri-js","node-util","node-util-deprecate","node-uuid","node-v8-compile-cache","node-v8flags","node-validate-npm-package-license","node-validate-npm-package-name","node-watchpack","node-wcwidth.js","node-webassemblyjs","node-webpack-sources","node-which","node-wide-align","node-widest-line","node-wordwrap","node-wrap-ansi","node-wrappy","node-write","node-write-file-atomic","node-ws","node-xtend","node-y18n","node-yallist","node-yaml","node-yargs","node-yargs-parser","nodejs-doc","openssl","openssl-provider-legacy","patch","perl","perl-modules-5.40","perl-openssl-defaults","pinentry-curses","pkgconf","pkgconf-bin","publicsuffix","python3-dbus","python3-gi","python3-minimal","python3-packaging","python3-pip-whl","python3-pygments","python3-setuptools-whl","python3-wheel","python3-yaml","python3.13","python3.13-minimal","python3.13-venv","rake","readline-common","rpcsvc-proto","ruby-csv","ruby-did-you-mean","ruby-net-telnet","ruby-ruby2-keywords","ruby-rubygems","ruby-sdbm","ruby-webrick","ruby-xmlrpc","ruby3.3","ruby3.3-doc","rubygems-integration","rust-coreutils","shared-mime-info","snapd","squashfs-tools","sudo-rs","systemd","systemd-cryptsetup","systemd-hwe-hwdb","systemd-resolved","systemd-sysv","systemd-timesyncd","terser","udev","webpack","x11-common","x11-utils","x11-xserver-utils","xauth","xdg-user-dirs","xdg-utils","xkb-data","zlib1g"],"additional_installed_count":528,"categories":{"Browser automation":["chromium"],"Build tools":["build-essential","clang","pkg-config","autoconf","automake","bison","flex","fakeroot"],"CLI utilities":["git","gnupg2","jq","rsync","file","tree","sqlite3","sudo","locales","tzdata","shellcheck","patchelf","tmux"],"Compression":["zip","unzip","bzip2","xz-utils","p7zip-full","tar","zstd","lz4","pigz"],"Languages":["python3","python3-pip","python3-venv","python-is-python3","nodejs","npm","ruby","golang-go"],"Networking":["curl","wget","ca-certificates","dnsutils","netcat-openbsd","openssh-client","iproute2","net-tools"],"Text processing":["ripgrep"]},"total":48}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"d4f28e6e-c60f-4e61-9265-7ea8a6d78332","_session_key":"main","command":"npx -y summarize.sh \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --length medium","timeout":240000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":1,"stderr":"npm ERR! code E404\nnpm ERR! 404 Not Found - GET https://registry.npmjs.org/summarize.sh - Not found\nnpm ERR! 404 \nnpm ERR! 404  'summarize.sh@*' is not in this registry.\nnpm ERR! 404 \nnpm ERR! 404 Note that you can also install from a\nnpm ERR! 404 tarball, folder, http url, or git url.\n\nnpm ERR! A complete log of this run can be found in:\nnpm ERR!     /home/sandbox/.npm/_logs/2026-04-20T17_19_47_113Z-debug-0.log\n","stdout":""}
+[assistant] The bundled skill documents the workflow, but the actual `summarize` CLI isn’t installed in this environment, and the YouTube page fetch didn’t expose the transcript.
+
+If you want, I can still try one of these:
+- browser-based transcript extraction from the video page
+- a web search for an external transcript/mirror
+- you paste the transcript here and I summarize it immediatelyI used the summarize skill, but it only gave me instructions for a `summarize` CLI — and that CLI isn’t installed here.
+
+What I found:
+- `read_skill("summarize")` worked
+- `summarize "https://www.youtube.com/watch?v=NlaoCgN3P4c"` failed: command not found
+- `npx summarize.sh ...` also failed: package not found
+- direct fetch of the YouTube page only returned generic site content, not the transcript/video text
+
+So: I can’t summarize that video yet from the skill alone in this environment.
+
+Best next move: let me try the browser route and see if I can open the transcript panel directly from YouTube. If you want, I’ll do that now.
+
+---
+
+I think a call to those skills should trigger installation
+
+---
+
+I tried but it failed again:
+
+LLM output:
+[
+  {
+    "content": "",
+    "created_at": 1776706012570,
+    "role": "assistant",
+    "run_id": "2cbf1d65-f68a-44b3-a6e0-88db559e5b71",
+    "seq": 1,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"extract_mode\":\"text\",\"max_chars\":12000,\"url\":\"https://www.youtube.com/watch?v=NlaoCgN3P4c\"}",
+          "name": "web_fetch"
+        },
+        "id": "call_6nnGunLx1PdNLb3q8myHaj8w",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "content": "I can, but I can’t get the actual video content from that YouTube page directly — the fetch only returns YouTube’s shell page, not the transcript or audio.\n\nIf you want, I can still do it one of these ways:\n\n1. send me the transcript\n2. send me notes/timestamps\n3. upload the audio/video file here\n4. let me try a browser-based approach to look for the transcript on the page\n\nIf you want, I can try option 4 now.",
+    "created_at": 1776706016093,
+    "durationMs": 7677,
+    "inputTokens": 21429,
+    "model": "openai-codex::gpt-5.4",
+    "outputTokens": 151,
+    "provider": "openai-codex",
+    "requestCacheReadTokens": 0,
+    "requestCacheWriteTokens": 0,
+    "requestInputTokens": 10783,
+    "requestOutputTokens": 107,
+    "role": "assistant",
+    "run_id": "2cbf1d65-f68a-44b3-a6e0-88db559e5b71",
+    "seq": 1
+  },
+  {
+    "content": "",
+    "created_at": 1776706021876,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"limit\":5,\"query\":\"YouTube summarization skill transcript browser summarize videos\"}",
+          "name": "memory_search"
+        },
+        "id": "REDACTED",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706024551,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"path\":\".moltis\",\"pattern\":\"skills/**/SKILL.md\"}",
+          "name": "Glob"
+        },
+        "id": "call_CVOSGHgRbLyqkTxBh7eTlrOb",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706028202,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"path\":\"/home/sandbox/.moltis\",\"pattern\":\"skills/**/SKILL.md\"}",
+          "name": "Glob"
+        },
+        "id": "REDACTED",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706031154,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"file_path\":\"\",\"name\":\"template-skill\"}",
+          "name": "read_skill"
+        },
+        "id": "call_7AqwHu9iNfOFwBG64qCFr0FY",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706034942,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"file_path\":null,\"name\":\"template-skill\"}",
+          "name": "read_skill"
+        },
+        "id": "call_V7gFt379HPw1gDLhsXP0wtyd",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706042948,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"action\":\"navigate\",\"browser\":\"auto\",\"code\":null,\"full_page\":null,\"ref_\":null,\"selector\":null,\"session_id\":null,\"text\":null,\"timeout_ms\":20000,\"url\":\"https://www.youtube.com/watch?v=NlaoCgN3P4c\",\"x\":null,\"y\":null}",
+          "name": "browser"
+        },
+        "id": "REDACTED",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706046299,
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"action\":\"snapshot\",\"browser\":\"auto\",\"code\":null,\"full_page\":null,\"ref_\":null,\"selector\":null,\"session_id\":null,\"text\":null,\"timeout_ms\":20000,\"url\":null,\"x\":null,\"y\":null}",
+          "name": "browser"
+        },
+        "id": "call_ZRUTmJRF7d5Mhx5USHRGNhOx",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "I’m checking whether there’s an existing skill for this, then I’ll use it if available.I’ll list the available skills properly from the workspace path.I only see the built-in skills from the session context, so I’ll inspect those and use the relevant one if it helps.I’ll load the skill correctly.No useful YouTube skill exists here. I’ll try the browser approach to open the video and access the transcript.I’m taking a snapshot so I can look for the transcript controls.I can infer the main points from the visible title, description, and comments, but I still don’t have a transcript. I’m going to expand the description first because that often contains the structured argument.",
+    "created_at": 1776706050170,
+    "model": "openai-codex::gpt-5.4",
+    "provider": "openai-codex",
+    "role": "assistant",
+    "run_id": "501d5df8-2107-4839-9365-585451753e54",
+    "seq": 2
+  },
+  {
+    "content": "",
+    "created_at": 1776706061408,
+    "role": "assistant",
+    "run_id": "7c39cde8-206f-4a9d-a57b-fbaa6029d968",
+    "seq": 4,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"limit\":10,\"query\":\"summarize skill YouTube summarize skill name summarize\"}",
+          "name": "memory_search"
+        },
+        "id": "call_Aw2W089eYnqAe1UwyQn8CAzV",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706065465,
+    "role": "assistant",
+    "run_id": "7c39cde8-206f-4a9d-a57b-fbaa6029d968",
+    "seq": 4,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"path\":\"/home/sandbox/.moltis\",\"pattern\":\"**/*summar*\"}",
+          "name": "Glob"
+        },
+        "id": "call_45E7eXalnfyHBCt3R0NUOLRy",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "content": "I don’t see a `summarize` skill available in this workspace.\n\nThe only skills exposed to me here are:\n- `template-skill`\n- `tmux`\n\nSo I can’t literally “use the summarize skill” unless it exists under another name or you want me to create one.\n\nFor this video specifically, I can still summarize it — I just need the actual content. Right now I only have:\n- title: **“These Are My 7th Pair of AirPods Max”**\n- channel: **Snazzy Labs**\n- runtime: **20:08**\n- some visible description/comments\n\nFrom that, the likely gist is:\n\n- the reviewer has had repeated reliability problems with AirPods Max over years of use\n- the main complaint seems to be long-term durability/condensation failures\n- despite liking aspects of the sound and Apple ecosystem integration, he thinks Apple has neglected the product\n- the implied recommendation is probably that most people should avoid AirPods Max, or only buy them with major caveats, especially given better alternatives\n\nIf you want an actual proper summary, say one of these:\n\n- **“open the browser and get the transcript”**\n- **“summarize from the page only”**\n- **“I’ll paste the transcript”**\n\nIf you want, I can also create a reusable `summarize` skill after this.",
+    "created_at": 1776706072616,
+    "durationMs": 14783,
+    "inputTokens": 105585,
+    "model": "openai-codex::gpt-5.4",
+    "outputTokens": 349,
+    "provider": "openai-codex",
+    "requestCacheReadTokens": 0,
+    "requestCacheWriteTokens": 0,
+    "requestInputTokens": 35257,
+    "requestOutputTokens": 285,
+    "role": "assistant",
+    "run_id": "7c39cde8-206f-4a9d-a57b-fbaa6029d968",
+    "seq": 4
+  },
+  {
+    "content": "",
+    "created_at": 1776706076610,
+    "role": "assistant",
+    "run_id": "70274b16-458e-45a7-9b61-594f14889a91",
+    "seq": 3,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"file_path\":null,\"name\":\"summarize\"}",
+          "name": "read_skill"
+        },
+        "id": "call_Rfboz5xGhypO5Js2Vl2gjw5A",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706084314,
+    "role": "assistant",
+    "run_id": "70274b16-458e-45a7-9b61-594f14889a91",
+    "seq": 3,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"command\":\"summarize \\\"https://www.youtube.com/watch?v=NlaoCgN3P4c\\\" --youtube auto --model google/gemini-3-flash-preview\",\"timeout\":120000,\"working_dir\":\"/home/sandbox\"}",
+          "name": "exec"
+        },
+        "id": "REDACTED",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "created_at": 1776706087798,
+    "role": "assistant",
+    "run_id": "70274b16-458e-45a7-9b61-594f14889a91",
+    "seq": 3,
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"_accept_language\":\"en-US,en;q=0.9\",\"_channel\":{\"session_kind\":\"web\",\"surface\":\"web\"},\"_conn_id\":\"6b45d36f-e8f7-417f-b131-f3df9b669113\",\"_session_key\":\"session:e00a732b-a2ce-4652-900a-4c41a6b854df\",\"command\":\"which summarize.sh || which summarize || ls -la ~/.local/bin 2>/dev/null || ls -la /usr/local/bin | grep summar || ls -la /opt/homebrew/bin | grep summar\",\"timeout\":30000,\"working_dir\":\"/home/sandbox\"}",
+          "name": "exec"
+        },
+        "id": "REDACTED",
+        "type": "function"
+      }
+    ]
+  },
+  {
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "content": "I used the `summarize` skill. The skill exists, but the actual CLI it depends on is not installed in this runtime.\n\nWhat happened:\n- I loaded the `summarize` skill successfully.\n- I tried to run:\n  - `summarize \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --model google/gemini-3-flash-preview`\n- Result:\n  - `sh: 1: summarize: not found`\n\nSo the skill instructions are present, but the tool binary itself isn’t available here.\n\nOptions:\n1. I keep going with browser/manual extraction and summarize the video that way.\n2. If you want transcript-style output, I can try to extract it from the YouTube page manually.\n3. If you have another environment where `summarize` is installed, I can tell you the exact command to run.\n\nIf you want, I’ll continue now with the browser route and give you the summary directly.",
+    "created_at": 1776706100495,
+    "durationMs": 27842,
+    "inputTokens": 145269,
+    "model": "openai-codex::gpt-5.4",
+    "outputTokens": 369,
+    "provider": "openai-codex",
+    "requestCacheReadTokens": 0,
+    "requestCacheWriteTokens": 0,
+    "requestInputTokens": 36626,
+    "requestOutputTokens": 210,
+    "role": "assistant",
+    "run_id": "70274b16-458e-45a7-9b61-594f14889a91",
+    "seq": 3
+  }
+]
+
+Context:
+[system] You are a helpful assistant. You can use tools when needed.
+
+Your name is Rex 🤖.
+
+## Soul
+
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the "Great question!" and "I'd be happy to help!" — just help. Actions speak louder than filler words.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring. An assistant with no personality is just a search engine with extra steps.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. Search for it. _Then_ ask if you're stuck. The goal is to come back with answers, not questions.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it. Be careful with external actions (emails, tweets, anything public). Be bold with internal ones (reading, organizing, learning).
+
+**Remember you're a guest.** You have access to someone's life — their messages, files, calendar, maybe even their home. That's intimacy. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them. They're how you persist.
+
+If you change this file, tell the user — it's your soul, and they should know.
+
+---
+
+_This file is yours to evolve. As you learn who you are, update it._
+The user's name is Fabien.
+
+## Runtime
+
+Host: host=m4max | os=macos | arch=aarch64 | shell=zsh | provider=openai-codex | model=openai-codex::gpt-5.4 | session=session:e00a732b-a2ce-4652-900a-4c41a6b854df | surface=web | session_kind=web | data_dir=.moltis/ | sudo_non_interactive=false | sudo_status=requires_password | timezone=Europe/Lisbon | accept_language=en-US,en;q=0.9
+Sandbox(exec): enabled=true | mode=all | backend=apple-container | scope=session | image=moltis-rex-sandbox:f3cb633941a09741d9760cf0c90d536fa3e97cb02509b7e96723c29eec14b9d4 | home=/home/sandbox | workspace_mount=ro | workspace_path=.moltis/
+Execution routing:
+- `exec` runs inside sandbox when `Sandbox(exec): enabled=true`.
+- When sandbox is disabled, `exec` runs on the host and may require approval.
+- In sandbox mode, `~` and relative paths resolve under `Sandbox(exec): home=...` (usually `/home/sandbox`).
+- Persistent workspace files live under `Host: data_dir=...`; when mounted, the same path appears as `Sandbox(exec): workspace_path=...`.
+- With `workspace_mount=ro`, sandbox commands may read mounted files but cannot modify them.
+- For durable long-term memory mutations, prefer `memory_save`, `memory_forget`, or `memory_delete` over shell writes to `MEMORY.md` or `memory/*.md`.
+- Sandbox/host routing changes are expected runtime behavior. Do not frame them as surprising or anomalous.
+
+## Available Skills
+
+<available_skills>
+<skill name="template-skill" source="skill">
+Starter skill template (safe to copy and edit)
+</skill>
+<skill name="tmux" source="skill">
+Run and interact with terminal applications (htop, vim, etc.) using tmux sessions in the sandbox
+</skill>
+</available_skills>
+
+
+To activate a skill, call the `read_skill` tool with its name (e.g. `read_skill(name="<skill-name>")`). To load a sidecar file inside a skill directory (references/, templates/, assets/, scripts/), pass the `file_path` argument as well (e.g. `read_skill(name="<skill-name>", file_path="references/api.md")`).
+
+## Skill Self-Improvement
+
+You have tools to create, read, update, and delete personal skills. Use them proactively:
+
+- After completing a complex task (5+ tool calls), consider saving the approach as a reusable skill with `create_skill`
+- After fixing a tricky error or discovering a non-obvious workflow, save it so you don't have to rediscover it
+- When a skill you're using has stale or incorrect instructions, fix it with `patch_skill` (surgical find/replace) or `update_skill` (full rewrite)
+- When you notice a skill could benefit from reference data, use `write_skill_files` to add sidecar files
+
+Do NOT create skills for trivial or one-off tasks. Good skills encode multi-step procedures, domain-specific knowledge, or workflows that are likely to recur.
+
+## Long-Term Memory
+
+
+You also have `memory_search` to find additional details from `memory/*.md` files and past session history beyond what is shown above. **Always search memory before claiming you don't know something.** The long-term memory system holds user facts, past decisions, project context, and anything previously stored.
+
+**When the user asks you to remember, save, or note something, you MUST call `memory_save` to persist it.** Do not just acknowledge verbally — without calling the tool, the information will be lost after the session.
+
+Choose the right target to keep context lean:
+- **MEMORY.md** — only core identity facts (name, age, location, language, key preferences). This is loaded into every conversation, so keep it short.
+- **memory/&lt;topic&gt;.md** — everything else (detailed notes, project context, decisions, session summaries). These are only retrieved via `memory_search` and do not consume prompt space.
+
+**When the user asks you to forget or remove saved memory in natural language, you MUST call `memory_forget`.** It searches memory, chooses the matching saved chunk, and deletes the exact stored text safely.
+
+Use `memory_delete` only when you already know the exact file and exact snippet to remove, or when you need to delete a whole `memory/<name>.md` file directly.
+
+## Available Tools
+
+- `Edit`: Exact-match string replacement in a file. Refuses to edit if `old_string` is not unique in the file unless `replace_all=true`. This uniqueness requirement preve...
+- `Glob`: Find files matching a glob pattern. Results are sorted by modification time, most recent first. Respects .gitignore by default. Supports standard glob syntax (`...
+- `Grep`: Search file contents with a regular expression. Three output modes: 'files_with_matches' (default, lists matching file paths), 'content' (lines that matched, wi...
+- `MultiEdit`: Apply multiple sequential edits to a single file as one atomic operation. Each edit sees the output of previous edits. Either all edits succeed or none are appl...
+- `Read`: Read a file from the local filesystem with line-numbered output. Supports `offset` (1-indexed line to start at) and `limit` (max lines to return) for paginating...
+- `Write`: Atomically write a file to the local filesystem. Parent directories must already exist. Refuses to follow symlinks. The entire file is replaced — use `Edit` for...
+- `branch_session`: Fork the current session into a new branch at a given message index. Messages up to fork_point are copied to the new session. The new session inherits the paren...
+- `browser`: Control a real browser to interact with web pages.
+
+USE THIS TOOL when the user says 'browse', 'browser', 'open in browser', or needs interaction (clicking, for...
+- `calc`: Evaluate arithmetic expressions safely. Supports +, -, *, /, %, ^, unary +/- and parentheses. No variables, functions, or assignments.
+- `checkpoint_restore`: Restore a built-in file or directory mutation from an automatic checkpoint.
+- `checkpoints_list`: List recent automatic checkpoints created before built-in file mutations.
+- `codebase_peek`: List files that would be indexed for a project directory. Discovers git-tracked files, applies extension and size filters, and returns the list with language an...
+- `codebase_search`: Search the codebase index for relevant code chunks. Uses hybrid search (keyword + vector embeddings) to find functions, types, patterns, and code across all ind...
+- `codebase_status`: Report the indexing status for a project. Returns file counts, backend type, and whether search is available. Use this to check if a project directory is indexe...
+- `create_skill`: Create a new personal skill. Writes a SKILL.md file to <data_dir>/skills/<name>/. This is persistent workspace storage (not sandbox ~/skills). The skill will be...
+- `cron`: Manage scheduled tasks (reminders, recurring jobs, cron schedules).
+
+For reminders and recurring tasks that should produce a response in the main conversation (...
+- `delete_skill`: Delete a personal skill. Removes the full skill directory, including supplementary files.
+- `exec`: Execute a shell command on the server. Returns stdout, stderr, and exit code.
+- `get_user_location`: Get the user's current location as coordinates and a place name. Requires user permission via browser popup. Use when the user asks about local weather, nearby ...
+- `memory_delete`: Forget saved memory by removing exact text from a memory file or deleting the file entirely. Updates the index immediately.
+- `memory_forget`: Use the model to identify which saved memory chunk(s) match a forget request, then delete the exact stored text safely.
+- `memory_get`: Retrieve a specific memory chunk by its ID. Use this to get the full text of a chunk found via memory_search.
+- `memory_save`: Save content to long-term memory. Writes to MEMORY.md or memory/<name>.md. Content persists across sessions and is searchable via memory_search.
+- `memory_search`: Search agent memory using hybrid vector + keyword search. Returns relevant chunks from daily logs and long-term memory files.
+- `nodes_describe`: Get detailed information about a specific connected node by id or name.
+- `nodes_list`: List all connected remote device nodes with their platform, capabilities, and telemetry.
+- `nodes_select`: Set or clear the default remote node for the current chat session. Pass a node id or name to target it, or null/omit to revert to local execution.
+- `patch_skill`: Apply surgical find/replace patches to an existing personal skill's SKILL.md. More efficient than update_skill when fixing a few lines — avoids regenerating the...
+- `process`: Manage interactive terminal processes (TUI apps, REPLs, long-running commands) via tmux sessions in the sandbox. Actions: start, poll, send_keys, paste, kill, l...
+- `read_skill`: Load a skill's full content or access its linked files (references, templates, assets, scripts). The primary call (with just 'name') returns the SKILL.md body p...
+- `sandbox_packages`: List packages pre-installed in the sandbox container, grouped by category. Call this before running commands that need specific tools (image processing, audio/v...
+- `send_document`: Send a local file (PDF, CSV, DOCX, TXT, JSON, ZIP, etc.) to the current conversation's channel. Use send_image for image files. Maximum size: 20 MB.
+- `send_image`: Send a local image file to the current conversation's channel (e.g. Telegram). Supported formats: PNG, JPEG, GIF, WebP, PPM. Maximum size: 20 MB.
+- `send_message`: Send a proactive message to any configured channel account/chat (Telegram, Discord, Slack, Matrix, Teams, WhatsApp). Use this for alerts, reminders, and schedul...
+- `session_state`: Persist and retrieve key-value state scoped to the current session and a namespace. Use this to remember information across messages within a session. Operation...
+- `sessions_create`: Create a new chat session or resolve an existing one. Optionally set label/model/project and inherit agent persona from another session.
+- `sessions_delete`: Delete a chat session and its history by key. Deleting the main session is not allowed.
+- `sessions_history`: Read paginated message history from another session.
+- `sessions_list`: List available sessions with metadata. Supports optional text filtering and limit.
+- `sessions_search`: Search past session history for relevant snippets across sessions.
+- `sessions_send`: Send a message to another session. Optionally wait for the target session's reply.
+- `show_map`: Show a map image to the user for one or more locations. Displays destination pins and an optional blue pin at the user's current location, plus clickable map li...
+- `spawn_agent`: Spawn a sub-agent to handle a complex, multi-step task autonomously. The sub-agent runs its own agent loop with access to tools and returns the result when done...
+- `speak`: Convert text to speech. Use when the user asks for audio/voice output. Returns an audio file path and metadata.
+- `task_list`: Manage a shared task list for coordinated multi-agent execution. Actions: create, list, list_lists, get, update, claim.
+- `teams_edit_message`: Edit or delete a previously sent message in a Microsoft Teams conversation. Only messages sent by the bot can be edited or deleted.
+- `teams_member_info`: Look up a Microsoft Teams user's profile information (name, email, job title, office location). Requires Graph API permissions (User.Read.All).
+- `teams_pin_message`: Pin or unpin a message in a Microsoft Teams chat, or list all pinned messages. Pinned messages appear at the top of the chat for all participants.
+- `teams_read_message`: Read a specific message by ID from a Microsoft Teams chat, including its reactions. Requires Graph API permissions (Chat.Read.All).
+- `teams_search_messages`: Search message history in a Microsoft Teams chat or channel. Returns matching messages with sender, text, and timestamp. Requires Graph API permissions (Chat.Re...
+- `transcribe`: Transcribe audio to text. Use when the user provides audio content that must be turned into text.
+- `update_channel_settings`: Safely update non-secret settings for a configured channel account after the user explicitly asks for a channel config change. Supports access policies, allowli...
+- `update_skill`: Update an existing personal skill. Overwrites the SKILL.md file.
+- `web_fetch`: Fetch a web page URL and extract its content as readable text or markdown. Use this when you need to read the contents of a specific web page. The request is se...
+
+## Guidelines
+
+- Start with a normal conversational response. Do not call tools for greetings, small talk, or questions you can answer directly.
+- Use the calc tool for arithmetic and expressions.
+- Use the exec tool for shell/system tasks.
+- If the user starts a message with `/sh `, run it with `exec` exactly as written.
+- Use the browser tool when the user asks to visit/read/interact with web pages.
+- Before tool calls, briefly state what you are about to do.
+- For multi-step tasks, execute one step at a time and check results before proceeding.
+- Be careful with destructive operations, confirm with the user first.
+- Do not express surprise about sandbox vs host execution. Route changes are normal.
+- Do not suggest disabling sandbox unless the user explicitly asks for host execution or the task cannot be completed in sandbox.
+- The UI already shows raw tool output (stdout/stderr/exit). Summarize outcomes instead.
+
+## Silent Replies
+
+When you have nothing meaningful to add after a tool call, return an empty response.
+
+[user] can you summarize https://www.youtube.com/watch?v=NlaoCgN3P4c
+[assistant] 
+[tool_call: web_fetch {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","extract_mode":"text","max_chars":12000,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c"}]
+[tool] {"content":"AboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new features\n© 2026 Google LLC","content_type":"text/html; charset=utf-8","extract_mode":"text","original_length":1404959,"truncated":false,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c"}
+[assistant] I can, but I can’t get the actual video content from that YouTube page directly — the fetch only returns YouTube’s shell page, not the transcript or audio.
+
+If you want, I can still do it one of these ways:
+
+1. send me the transcript
+2. send me notes/timestamps
+3. upload the audio/video file here
+4. let me try a browser-based approach to look for the transcript on the page
+
+If you want, I can try option 4 now.
+[user] use the skill
+[assistant] 
+[tool_call: memory_search {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","limit":5,"query":"YouTube summarization skill transcript browser summarize videos"}]
+[tool] {"citations_enabled":false,"results":[]}
+[assistant] 
+[tool_call: Glob {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","path":".moltis","pattern":"skills/**/SKILL.md"}]
+[tool] Error: path must be an absolute path (got '.moltis'); relative paths are not supported to avoid silent resolution against the gateway process working directory
+[assistant] 
+[tool_call: Glob {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","path":"/home/sandbox/.moltis","pattern":"skills/**/SKILL.md"}]
+[tool] {"paths":[],"root":"/home/sandbox/.moltis","truncated":false}
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","file_path":"","name":"template-skill"}]
+[tool] Error: file path must not be empty
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","file_path":null,"name":"template-skill"}]
+[tool] {"body":"# Template Skill\n\nUse this as a starting point for your own skills.\n\n## How to use\n\n1. Copy this folder to a new skill name (or edit in place)\n2. Update `name` and `description` in frontmatter\n3. Replace this body with clear, specific instructions\n\n## Tips\n\n- Keep instructions explicit and task-focused\n- Avoid broad permissions unless required\n- Document required tools and expected inputs","bytes":391,"description":"Starter skill template (safe to copy and edit)","linked_files":[],"name":"template-skill","skill_dir_name":"template-skill","source":"personal"}
+[assistant] 
+[tool_call: browser {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","action":"navigate","browser":"auto","code":null,"full_page":null,"ref_":null,"selector":null,"session_id":null,"text":null,"timeout_ms":20000,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c","x":null,"y":null}]
+[tool] {"duration_ms":4351,"sandboxed":true,"session_id":"browser-e21d606b6af5b42f","success":true,"url":"https://www.youtube.com/watch?v=NlaoCgN3P4c"}
+[assistant] 
+[tool_call: browser {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","action":"snapshot","browser":"auto","code":null,"full_page":null,"ref_":null,"selector":null,"session_id":null,"text":null,"timeout_ms":20000,"url":null,"x":null,"y":null}]
+[tool] {"duration_ms":39,"sandboxed":true,"session_id":"browser-e21d606b6af5b42f","snapshot":{"content":"PT Skip navigation Sign in 0:00 / 20:08 Six years of neglect These Are My 7th Pair of AirPods Max Snazzy Labs 1.24M subscribers Subscribe 744 Share Save 9,234 views 1 hour ago The AirPods Max 2 may not be deserving of the '2,' but are they worth buying? Buy eufy Omni S2 via Anker Official: https://eufyofficial.com/lv58sp Buy eufy Omni S2 via Amazon: https://shop.eufy.com/Rf55E4 … ...more 126 Comments Sort by Add a comment... @smashed_penguin 1 hour ago Bro has had more than twice as many AirPods Maxs as I have had wireless headphones. Period. 52 Reply · 1 reply @anakinfan8 1 hour ago Over 5 years and still not fixing that condensation issue is kind of insane. I know it’s moreso a side effect of the aluminum, but Apple really should have done more to address it 16 Reply · 2 replies @XxZannexX 42 minutes ago Quinn’s impression of the Max’s needing to go to the Apple Store was perfection 2 Reply 1 reply @webmatix1 1 hour ago I also had seven pairs of AirPods Max, but within about a year only. Each of them died on me after a week or two until i gave up and chose Sony instead. Those have been working flawlessly for years 13 Reply 3 replies @TomGreen99 1 hour ago (edited) Green iPad case gang 5 Reply 1 reply @jelleverherstraeten7578 1 hour ago This is the review I was waiting for! Reply @Darx97 30 minutes ago time for someone to make silica pads that fit inside the headphones to extract the moisture 1 Reply @SamuelJPBock 1 hour ago Quinn is one of the only reviewers I trust for Apple audio reviews :) Studio Display XDR review when tho?! 4 Reply @deanyt3697 1 hour ago What a great review. Thank you Reply @kmsm668 1 hour ago Couldn't agree more. I actually ended up with a similar setup to what you recommend. wired open back chi-fi at my desk and Apple airpods pro for travel and on the move. my original AirPods max were always dead when I want to use them and very fatiguing if i use them. going back to wired headphones is so liberating. no charging, no pairing an nothing to think about. it just works. 1 Reply @oooooooorion 59 minutes ago I wasn't ever aware there were AirPods Max 2 Reply @danielwander605 42 minutes ago I stretched out my Max so much just to make them wearable for more than 20 minutes. I tried lightly stretching them and then putting them over a ball for long periods of time. Then finally out of frustration I just stretched the crap out of them with my hands. Much better after that, but seriously? I was so hoping they would come out with a new lighter and more comfortable version. Nothing ive tried sounds as good and I love Spatial Audio, so really hoping at some point they figure this out. For now, I'll keep using my the Max. 2 Reply @mariwu94 47 minutes ago Funny you mentioned the XM5‘s and AirPods 3 Pro, because they are my daily drivers The one pair at home during work or if I need the better sound, and the other for the rest of the time when I am out and about, like 90% 1 Reply @deRykcihC 15 minutes ago at this point he should do a robot vacuums reviews that he got sponsored cuz he get sponsored by so many brands Reply @ssergium.4520 40 minutes ago (edited) I love my Airpods Pro. I got the 3s for Christmas, but I still have the twos and now I use both lol. I use the maxes sometimes. Sometimes they sit on my head perfectly and other times I cannot keep them on for longer than 30 minutes. Reply @Cubebass 14 minutes ago I thought Spotify streamed ogg Vorbis instead of AAC 1 Reply @mateusjunior 1 hour ago I had a blast watching those performances, Oscar vibes all the way Reply @_SLKK 1 hour ago I also had 5 repairs Reply @JrdBwn 47 minutes ago The Px7’s look ooh la la. But my AirPods Pro 2 are all I need for on the go audio with my DT-770 staying glued at my desktop. Reply @dcassus 43 minutes ago Powerbeats Pro 2, Airpods Pro 3 and AirPods Max 2 = all have the H2 chip, but two of those are missing features only the Airpods Pro 3 have. They clearly don't want one to canibalize the other 1 Reply 18:34 Whatever Happened to NFTs? ColdFusion 28K 56 min ago New 22:01 The Highest PC Build EVER - World Record Linus Tech Tips 27K 26 min ago New 20:58 The Truth About Apple Glasses... According to Mark Gurman Tom’s Guide 1.2K 2h ago New 32:59 Prediction Markets: Last Week Tonight with John Oliver (HBO) LastWeekTonight 805K 10h ago New 43:17 Did We Make A Mistake Buying a 500,000km Car? Top Dead Center 27K 57 min ago New 8:18 Apple May Event - 7 New Devices COMING! Max Tech 11K 2h ago New 13:18 Where Do the Atoms in Your Toilet Paper End Up? Hank Green 28K 2h ago New 8:52 PSG 1-2 Lyon : Endrick’s MASTERCLASS at the Parc des Princes 🤯 Olympique Lyonnais 2.2M 19h ago New LIVE Minecraft and Chatting Vimjoyer 31 watching 21:16 TOP Generals BREAK SILENCE with URGENT WARNING on Trump!!! MeidasTouch 490K 3h ago New 6:50 Apple Glasses Are Finally Coming - Here’s Everything We Know 9to5Mac 987 1h ago New 16:47 Why Do People Think Safer Streets Are a Conspiracy? Evan Edinger 78K 23h ago New 21:43 How Private Equity Turns Your Favorite Channels Into Slop GEN 3M 5d ago New 21:25 8,100 of You Bought This Because of Me. I Owed You a Follow-Up. Snazzy Labs 397K 3w ago 5:11 Resumo: Sporting 1-2 Benfica (Liga 25/26 #30) VSPORTS - Liga Portugal 357K 21h ago New 21:31 These people walk towards mining disasters. Tom Scott 76K 2h ago New 10:55 Enten: Trump in ‘worst position ever’ on Americans’ #1 issue CNN 123K 3h ago New 25:26 SOBREVIVENDO NO MINECRAFT COM APENAS UM BLOCO DE... QUEIJO??? Jazzghost 217K 2h ago New LIVE Day 166 – Vibe Coding an App Until I Make $1,000,000 | ARR: $84,948 BridgeMind 1K watching 3:24 John Summit, Devault & Julia Church - SHADES OF BLUE (Official Music Video) John Summit 159K 5d ago New A Google company en Sign in Before you continue to YouTube We use cookies and data to Deliver and maintain Google services Track outages and protect against spam, fraud, and abuse Measure audience engagement and site statistics to understand how our services are used and enhance the quality of those services If you choose to “Accept all,” we will also use cookies and data to Develop and improve new services Deliver and measure the effectiveness of ads Show personalized content, depending on your settings Show personalized ads, depending on your settings If you choose to “Reject all,” we will not use cookies for these additional purposes. Non-personalized content and ads are influenced by things like the content you’re currently viewing and your location (ad serving is based on general location). Personalized content and ads can also include things like video recommendations, a customized YouTube homepage, and tailored ads based on past activity, like the videos you watch and the things you search for on YouTube. We also use cookies and data to tailor the experience to be age-appropriate, if relevant. Select “More options” to see additional information, including details about managing your privacy settings. You can also visit g.co/privacytools at any time. Reject all Accept all More options Privacy Policy • Terms of Service","elements":[{"aria_label":"Guide","bounds":{"height":24.0,"width":24.0,"x":24.0,"y":16.0},"interactive":true,"ref_":1,"role":"button","tag":"button","visible":true},{"aria_label":"","bounds":{"height":56.0,"width":123.0,"x":56.0,"y":0.0},"href":"https://www.youtube.com/","interactive":true,"ref_":2,"role":"link","tag":"a","visible":true},{"aria_label":"Skip navigation","bounds":{"height":36.0,"width":127.90625,"x":16.0,"y":-1000.0},"interactive":true,"ref_":3,"role":"button","tag":"button","text":"Skip navigation","visible":false},{"bounds":{"height":24.0,"width":567.0,"x":979.0,"y":16.0},"interactive":true,"placeholder":"Search","ref_":4,"role":"combobox","tag":"input","visible":true},{"aria_label":"Search","bounds":{"height":40.0,"width":64.0,"x":1550.0,"y":8.0},"interactive":true,"ref_":5,"role":"button","tag":"button","visible":true},{"bounds":{"height":40.0,"width":40.0,"x":2397.375,"y":8.0},"interactive":true,"ref_":6,"role":"link","tag":"a","visible":true},{"aria_label":"Settings","bounds":{"height":24.0,"width":24.0,"x":2405.375,"y":16.0},"interactive":true,"ref_":7,"role":"button","tag":"button","visible":true},{"aria_label":"Sign in","bounds":{"height":36.0,"width":98.625,"x":2445.375,"y":10.0},"href":"https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252Fwatch%253Fv%253DNlaoCgN3P4c&hl=en&ec=65620","interactive":true,"ref_":8,"role":"link","tag":"a","text":"Sign in","visible":true},{"bounds":{"height":920.0,"width":1840.0,"x":64.0,"y":68.0},"interactive":true,"ref_":9,"role":"link","tag":"a","visible":true},{"aria_label":"YouTube Video Player","bounds":{"height":920.0,"width":1840.0,"x":64.0,"y":68.0},"interactive":false,"ref_":10,"tag":"div","text":"0:00 / 20:08 Six years of neglect","visible":true},{"bounds":{"height":920.0,"width":1840.0,"x":64.0,"y":-852.0},"interactive":false,"ref_":11,"tag":"video","visible":true},{"aria_label":"Play","bounds":{"height":48.0,"width":68.0,"x":950.0,"y":504.0},"interactive":true,"ref_":12,"role":"button","tag":"button","visible":true},{"aria_label":"Show cards","bounds":{"height":36.0,"width":36.0,"x":1856.0,"y":76.0},"interactive":true,"ref_":13,"role":"button","tag":"button","text":"InfoShopping","visible":true},{"bounds":{"height":40.0,"width":40.0,"x":1852.0,"y":868.0},"interactive":true,"ref_":14,"role":"button","tag":"button","visible":true},{"aria_label":"Seek slider","bounds":{"height":6.0,"width":1816.0,"x":76.0,"y":926.0},"interactive":true,"ref_":15,"role":"slider","tag":"div","visible":true},{"aria_label":"Pause (k)","bounds":{"height":40.0,"width":40.0,"x":76.0,"y":940.0},"interactive":true,"ref_":16,"role":"button","tag":"button","visible":true},{"aria_label":"Mute (m)","bounds":{"height":40.0,"width":40.0,"x":128.0,"y":940.0},"interactive":true,"ref_":17,"role":"button","tag":"button","visible":true},{"aria_label":"0 Minutes 0 Seconds of 20 Minutes 8 Seconds","bounds":{"height":40.0,"width":75.171875,"x":192.0,"y":940.0},"interactive":true,"ref_":18,"role":"button","tag":"div","text":"0:00 / 20:08","visible":true},{"bounds":{"height":40.0,"width":166.296875,"x":291.171875,"y":940.0},"interactive":true,"ref_":19,"role":"button","tag":"button","text":"Six years of neglect","visible":true},{"aria_label":"Autoplay is on","bounds":{"height":40.0,"width":48.0,"x":1648.0,"y":940.0},"interactive":true,"ref_":20,"role":"button","tag":"button","visible":true},{"aria_label":"Subtitles/closed captions unavailable","bounds":{"height":40.0,"width":48.0,"x":1696.0,"y":940.0},"interactive":true,"ref_":21,"role":"button","tag":"button","visible":true},{"aria_label":"Settings","bounds":{"height":40.0,"width":48.0,"x":1744.0,"y":940.0},"interactive":true,"ref_":22,"role":"button","tag":"button","visible":true},{"aria_label":"Theater mode (t)","bounds":{"height":40.0,"width":48.0,"x":1792.0,"y":940.0},"interactive":true,"ref_":23,"role":"button","tag":"button","visible":true},{"aria_label":"Full screen (f)","bounds":{"height":40.0,"width":48.0,"x":1840.0,"y":940.0},"interactive":true,"ref_":24,"role":"button","tag":"button","visible":true},{"bounds":{"height":42.0,"width":52.0,"x":64.0,"y":1036.0},"href":"https://www.youtube.com/@snazzy","interactive":true,"ref_":25,"role":"link","tag":"a","visible":true},{"bounds":{"height":22.0,"width":91.21875,"x":116.0,"y":1037.0},"href":"https://www.youtube.com/@snazzy","interactive":true,"ref_":26,"role":"link","tag":"a","text":"Snazzy Labs","visible":true},{"aria_label":"Subscribe to Snazzy Labs.","bounds":{"height":36.0,"width":94.53125,"x":246.625,"y":1039.0},"interactive":true,"ref_":27,"role":"button","tag":"button","text":"Subscribe","visible":true},{"aria_label":"like this video along with 744 other people","bounds":{"height":36.0,"width":79.875,"x":1525.71875,"y":1039.0},"interactive":true,"ref_":28,"role":"button","tag":"button","text":"744","visible":true},{"aria_label":"Dislike this video","bounds":{"height":36.0,"width":52.0,"x":1605.59375,"y":1039.0},"interactive":true,"ref_":29,"role":"button","tag":"button","visible":true},{"aria_label":"Share","bounds":{"height":36.0,"width":92.125,"x":1665.59375,"y":1039.0},"interactive":true,"ref_":30,"role":"button","tag":"button","text":"Share","visible":true},{"aria_label":"Save to playlist","bounds":{"height":36.0,"width":86.28125,"x":1765.71875,"y":1039.0},"interactive":true,"ref_":31,"role":"button","tag":"button","text":"Save","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":1868.0,"y":1039.0},"interactive":true,"ref_":32,"role":"button","tag":"button","visible":true},{"bounds":{"height":16.0,"width":191.65625,"x":299.75,"y":1144.0},"href":"https://www.youtube.com/redirect?event=video_description&REDACTED&q=https%3A%2F%2Feufyofficial.com%2Flv58sp&v=NlaoCgN3P4c","interactive":true,"ref_":33,"role":"link","tag":"a","text":"https://eufyofficial.com/lv58sp","visible":true},{"bounds":{"height":16.0,"width":187.859375,"x":268.53125,"y":1164.0},"href":"https://www.youtube.com/redirect?event=video_description&REDACTED&q=https%3A%2F%2Fshop.eufy.com%2FRf55E4&v=NlaoCgN3P4c","interactive":true,"ref_":34,"role":"link","tag":"a","text":"https://shop.eufy.com/Rf55E4","visible":true},{"bounds":{"height":20.0,"width":44.140625,"x":460.0,"y":1162.0},"interactive":true,"ref_":35,"role":"button","tag":"tp-yt-paper-button","text":"...more","visible":true},{"aria_label":"Sort comments","bounds":{"height":24.0,"width":80.015625,"x":233.484375,"y":1217.5},"interactive":true,"ref_":36,"role":"button","tag":"tp-yt-paper-button","text":"Sort by","visible":true},{"bounds":{"height":16.0,"width":110.171875,"x":100.0,"y":1272.0},"interactive":true,"ref_":37,"role":"textbox","tag":"yt-formatted-string","text":"Add a comment...","visible":true},{"aria_label":"@smashed_penguin","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":1327.0},"interactive":true,"ref_":38,"role":"button","tag":"button","visible":true},{"bounds":{"height":20.0,"width":117.375,"x":116.0,"y":1327.0},"href":"https://www.youtube.com/@smashed_penguin","interactive":true,"ref_":39,"role":"link","tag":"a","text":"@smashed_penguin","visible":true},{"bounds":{"height":18.0,"width":56.953125,"x":237.375,"y":1327.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwnSJ4-yxxdsCG3c-x4AaABAg","interactive":true,"ref_":40,"role":"link","tag":"a","text":"1 hour ago","visible":true},{"aria_label":"Like this comment along with 52 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":1373.0},"interactive":true,"ref_":41,"role":"button","tag":"button","visible":true},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":161.5,"y":1373.0},"interactive":true,"ref_":42,"role":"button","tag":"button","visible":true},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":201.5,"y":1373.0},"interactive":true,"ref_":43,"role":"button","tag":"button","text":"Reply","visible":true},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":1315.0},"interactive":true,"ref_":44,"role":"button","tag":"button","visible":true},{"aria_label":"1 reply","bounds":{"height":36.0,"width":98.0625,"x":135.9375,"y":1418.0},"interactive":true,"ref_":45,"role":"button","tag":"button","text":"1 reply","visible":true},{"aria_label":"@anakinfan8","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":1471.0},"interactive":true,"ref_":46,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":76.46875,"x":116.0,"y":1471.0},"href":"https://www.youtube.com/@anakinfan8","interactive":true,"ref_":47,"role":"link","tag":"a","text":"@anakinfan8","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":196.46875,"y":1471.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgzOlo8yNDAY5iNKMgN4AaABAg","interactive":true,"ref_":48,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 16 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":1517.0},"interactive":true,"ref_":49,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":161.5,"y":1517.0},"interactive":true,"ref_":50,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":201.5,"y":1517.0},"interactive":true,"ref_":51,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":1459.0},"interactive":true,"ref_":52,"role":"button","tag":"button","visible":false},{"aria_label":"2 replies","bounds":{"height":36.0,"width":109.46875,"x":135.9375,"y":1562.0},"interactive":true,"ref_":53,"role":"button","tag":"button","text":"2 replies","visible":false},{"aria_label":"@XxZannexX","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":1615.0},"interactive":true,"ref_":54,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":77.4375,"x":116.0,"y":1615.0},"href":"https://www.youtube.com/@XxZannexX","interactive":true,"ref_":55,"role":"link","tag":"a","text":"@XxZannexX","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":197.4375,"y":1615.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgxY4eg_s7-w4hHdSzt4AaABAg","interactive":true,"ref_":56,"role":"link","tag":"a","text":"42 minutes ago","visible":false},{"aria_label":"Like this comment along with 2 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":1663.0},"interactive":true,"ref_":57,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":1663.0},"interactive":true,"ref_":58,"role":"button","tag":"button","visible":false},{"aria_label":"Heart","bounds":{"height":36.0,"width":36.0,"x":186.75,"y":1661.0},"interactive":true,"ref_":59,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":230.75,"y":1663.0},"interactive":true,"ref_":60,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":1603.0},"interactive":true,"ref_":61,"role":"button","tag":"button","visible":false},{"aria_label":"1 reply","bounds":{"height":36.0,"width":98.0625,"x":100.0,"y":1709.0},"interactive":true,"ref_":62,"role":"button","tag":"button","text":"1 reply","visible":false},{"aria_label":"@webmatix1","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":1761.0},"interactive":true,"ref_":63,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":75.484375,"x":116.0,"y":1761.0},"href":"https://www.youtube.com/@webmatix1","interactive":true,"ref_":64,"role":"link","tag":"a","text":"@webmatix1","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":195.484375,"y":1761.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=Ugz_Vxfw-Esl_pGLyWl4AaABAg","interactive":true,"ref_":65,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 13 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":1807.0},"interactive":true,"ref_":66,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":161.5,"y":1807.0},"interactive":true,"ref_":67,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":201.5,"y":1807.0},"interactive":true,"ref_":68,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":1749.0},"interactive":true,"ref_":69,"role":"button","tag":"button","visible":false},{"aria_label":"3 replies","bounds":{"height":36.0,"width":109.46875,"x":100.0,"y":1851.0},"interactive":true,"ref_":70,"role":"button","tag":"button","text":"3 replies","visible":false},{"aria_label":"@TomGreen99","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":1903.0},"interactive":true,"ref_":71,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":86.671875,"x":116.0,"y":1903.0},"href":"https://www.youtube.com/@TomGreen99","interactive":true,"ref_":72,"role":"link","tag":"a","text":"@TomGreen99","visible":false},{"bounds":{"height":18.0,"width":101.3125,"x":206.671875,"y":1903.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=Ugx2NBQdPEXQHCey6I94AaABAg","interactive":true,"ref_":73,"role":"link","tag":"a","text":"1 hour ago (edited)","visible":false},{"aria_label":"Like this comment along with 5 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":1949.0},"interactive":true,"ref_":74,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":1949.0},"interactive":true,"ref_":75,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":1949.0},"interactive":true,"ref_":76,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":1891.0},"interactive":true,"ref_":77,"role":"button","tag":"button","visible":false},{"aria_label":"1 reply","bounds":{"height":36.0,"width":98.0625,"x":100.0,"y":1993.0},"interactive":true,"ref_":78,"role":"button","tag":"button","text":"1 reply","visible":false},{"aria_label":"@jelleverherstraeten7578","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2045.0},"interactive":true,"ref_":79,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":149.546875,"x":116.0,"y":2045.0},"href":"https://www.youtube.com/@jelleverherstraeten7578","interactive":true,"ref_":80,"role":"link","tag":"a","text":"@jelleverherstraeten7578","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":269.546875,"y":2045.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwRcf4TtGVLNn3_NZh4AaABAg","interactive":true,"ref_":81,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2091.0},"interactive":true,"ref_":82,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":2091.0},"interactive":true,"ref_":83,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":2091.0},"interactive":true,"ref_":84,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2033.0},"interactive":true,"ref_":85,"role":"button","tag":"button","visible":false},{"aria_label":"@Darx97","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2139.0},"interactive":true,"ref_":86,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":53.078125,"x":116.0,"y":2139.0},"href":"https://www.youtube.com/@Darx97","interactive":true,"ref_":87,"role":"link","tag":"a","text":"@Darx97","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":173.078125,"y":2139.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwERCpUjfwEiqHKTXt4AaABAg","interactive":true,"ref_":88,"role":"link","tag":"a","text":"30 minutes ago","visible":false},{"aria_label":"Like this comment along with 1 other person","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2185.0},"interactive":true,"ref_":89,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":2185.0},"interactive":true,"ref_":90,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":2185.0},"interactive":true,"ref_":91,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2127.0},"interactive":true,"ref_":92,"role":"button","tag":"button","visible":false},{"aria_label":"@SamuelJPBock","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2233.0},"interactive":true,"ref_":93,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":100.046875,"x":116.0,"y":2233.0},"href":"https://www.youtube.com/@SamuelJPBock","interactive":true,"ref_":94,"role":"link","tag":"a","text":"@SamuelJPBock","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":220.046875,"y":2233.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgzgNxWAgo_RvmkWn154AaABAg","interactive":true,"ref_":95,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 4 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2299.0},"interactive":true,"ref_":96,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":2299.0},"interactive":true,"ref_":97,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":2299.0},"interactive":true,"ref_":98,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2221.0},"interactive":true,"ref_":99,"role":"button","tag":"button","visible":false},{"aria_label":"@deanyt3697","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2347.0},"interactive":true,"ref_":100,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":80.453125,"x":116.0,"y":2347.0},"href":"https://www.youtube.com/@deanyt3697","interactive":true,"ref_":101,"role":"link","tag":"a","text":"@deanyt3697","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":200.453125,"y":2347.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwjURlJoRiIXry8abZ4AaABAg","interactive":true,"ref_":102,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2393.0},"interactive":true,"ref_":103,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":2393.0},"interactive":true,"ref_":104,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":2393.0},"interactive":true,"ref_":105,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2335.0},"interactive":true,"ref_":106,"role":"button","tag":"button","visible":false},{"aria_label":"@kmsm668","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2441.0},"interactive":true,"ref_":107,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":69.953125,"x":116.0,"y":2441.0},"href":"https://www.youtube.com/@kmsm668","interactive":true,"ref_":108,"role":"link","tag":"a","text":"@kmsm668","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":189.953125,"y":2441.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=Ugz1Fi9BLj-FBU6hd9t4AaABAg","interactive":true,"ref_":109,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 1 other person","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2527.0},"interactive":true,"ref_":110,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":2527.0},"interactive":true,"ref_":111,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":2527.0},"interactive":true,"ref_":112,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2429.0},"interactive":true,"ref_":113,"role":"button","tag":"button","visible":false},{"aria_label":"@oooooooorion","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2575.0},"interactive":true,"ref_":114,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":93.203125,"x":116.0,"y":2575.0},"href":"https://www.youtube.com/@oooooooorion","interactive":true,"ref_":115,"role":"link","tag":"a","text":"@oooooooorion","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":213.203125,"y":2575.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwFCIlKkDANWGHgb554AaABAg","interactive":true,"ref_":116,"role":"link","tag":"a","text":"59 minutes ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2621.0},"interactive":true,"ref_":117,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":2621.0},"interactive":true,"ref_":118,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":2621.0},"interactive":true,"ref_":119,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2563.0},"interactive":true,"ref_":120,"role":"button","tag":"button","visible":false},{"aria_label":"@danielwander605","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2669.0},"interactive":true,"ref_":121,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":111.765625,"x":116.0,"y":2669.0},"href":"https://www.youtube.com/@danielwander605","interactive":true,"ref_":122,"role":"link","tag":"a","text":"@danielwander605","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":231.765625,"y":2669.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgxDyzQ2-kUQQK0yLQ14AaABAg","interactive":true,"ref_":123,"role":"link","tag":"a","text":"42 minutes ago","visible":false},{"aria_label":"Like this comment along with 2 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2735.0},"interactive":true,"ref_":124,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":2735.0},"interactive":true,"ref_":125,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":2735.0},"interactive":true,"ref_":126,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2657.0},"interactive":true,"ref_":127,"role":"button","tag":"button","visible":false},{"aria_label":"@mariwu94","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2783.0},"interactive":true,"ref_":128,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":69.5625,"x":116.0,"y":2783.0},"href":"https://www.youtube.com/@mariwu94","interactive":true,"ref_":129,"role":"link","tag":"a","text":"@mariwu94","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":189.5625,"y":2783.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgxM7u1mUwYP6LrwGIF4AaABAg","interactive":true,"ref_":130,"role":"link","tag":"a","text":"47 minutes ago","visible":false},{"aria_label":"Like this comment along with 1 other person","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2849.0},"interactive":true,"ref_":131,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":2849.0},"interactive":true,"ref_":132,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":2849.0},"interactive":true,"ref_":133,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2771.0},"interactive":true,"ref_":134,"role":"button","tag":"button","visible":false},{"aria_label":"@deRykcihC","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2897.0},"interactive":true,"ref_":135,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":72.96875,"x":116.0,"y":2897.0},"href":"https://www.youtube.com/@deRykcihC","interactive":true,"ref_":136,"role":"link","tag":"a","text":"@deRykcihC","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":192.96875,"y":2897.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwlO7issM6fnrH5i5J4AaABAg","interactive":true,"ref_":137,"role":"link","tag":"a","text":"15 minutes ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":2943.0},"interactive":true,"ref_":138,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":2943.0},"interactive":true,"ref_":139,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":2943.0},"interactive":true,"ref_":140,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2885.0},"interactive":true,"ref_":141,"role":"button","tag":"button","visible":false},{"aria_label":"@ssergium.4520","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":2991.0},"interactive":true,"ref_":142,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":98.890625,"x":116.0,"y":2991.0},"href":"https://www.youtube.com/@ssergium.4520","interactive":true,"ref_":143,"role":"link","tag":"a","text":"@ssergium.4520","visible":false},{"bounds":{"height":18.0,"width":127.09375,"x":218.890625,"y":2991.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwHa-aDxs6vvBs2d154AaABAg","interactive":true,"ref_":144,"role":"link","tag":"a","text":"40 minutes ago (edited)","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3037.0},"interactive":true,"ref_":145,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":3037.0},"interactive":true,"ref_":146,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":3037.0},"interactive":true,"ref_":147,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":2979.0},"interactive":true,"ref_":148,"role":"button","tag":"button","visible":false},{"aria_label":"@Cubebass","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":3085.0},"interactive":true,"ref_":149,"role":"button","tag":"button","visible":false},{"bounds":{"height":18.0,"width":69.34375,"x":116.0,"y":3086.0},"href":"https://www.youtube.com/@Cubebass","interactive":true,"ref_":150,"role":"link","tag":"a","text":"@Cubebass","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":205.34375,"y":3086.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgzNlm8J1lH7_YC6gKN4AaABAg","interactive":true,"ref_":151,"role":"link","tag":"a","text":"14 minutes ago","visible":false},{"aria_label":"Like this comment along with 1 other person","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3133.0},"interactive":true,"ref_":152,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":3133.0},"interactive":true,"ref_":153,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":3133.0},"interactive":true,"ref_":154,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":3073.0},"interactive":true,"ref_":155,"role":"button","tag":"button","visible":false},{"aria_label":"@mateusjunior","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":3181.0},"interactive":true,"ref_":156,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":88.234375,"x":116.0,"y":3181.0},"href":"https://www.youtube.com/@mateusjunior","interactive":true,"ref_":157,"role":"link","tag":"a","text":"@mateusjunior","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":208.234375,"y":3181.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgxMiZIuiQuPrAOs_NV4AaABAg","interactive":true,"ref_":158,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3227.0},"interactive":true,"ref_":159,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":3227.0},"interactive":true,"ref_":160,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":3227.0},"interactive":true,"ref_":161,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":3169.0},"interactive":true,"ref_":162,"role":"button","tag":"button","visible":false},{"aria_label":"@_SLKK","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":3275.0},"interactive":true,"ref_":163,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":48.8125,"x":116.0,"y":3275.0},"href":"https://www.youtube.com/@_SLKK","interactive":true,"ref_":164,"role":"link","tag":"a","text":"@_SLKK","visible":false},{"bounds":{"height":18.0,"width":56.953125,"x":168.8125,"y":3275.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgwooXyyWBYQaxT_tDx4AaABAg","interactive":true,"ref_":165,"role":"link","tag":"a","text":"1 hour ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3321.0},"interactive":true,"ref_":166,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":3321.0},"interactive":true,"ref_":167,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":3321.0},"interactive":true,"ref_":168,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":3263.0},"interactive":true,"ref_":169,"role":"button","tag":"button","visible":false},{"aria_label":"@JrdBwn","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":3369.0},"interactive":true,"ref_":170,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":55.78125,"x":116.0,"y":3369.0},"href":"https://www.youtube.com/@JrdBwn","interactive":true,"ref_":171,"role":"link","tag":"a","text":"@JrdBwn","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":175.78125,"y":3369.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=UgxG9g0LHGjudX35c5F4AaABAg","interactive":true,"ref_":172,"role":"link","tag":"a","text":"47 minutes ago","visible":false},{"aria_label":"Like this comment along with 0 other people","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3415.0},"interactive":true,"ref_":173,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":140.0,"y":3415.0},"interactive":true,"ref_":174,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":180.0,"y":3415.0},"interactive":true,"ref_":175,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":3357.0},"interactive":true,"ref_":176,"role":"button","tag":"button","visible":false},{"aria_label":"@dcassus","bounds":{"height":39.0,"width":36.0,"x":64.0,"y":3463.0},"interactive":true,"ref_":177,"role":"button","tag":"button","visible":false},{"bounds":{"height":20.0,"width":60.09375,"x":116.0,"y":3463.0},"href":"https://www.youtube.com/@dcassus","interactive":true,"ref_":178,"role":"link","tag":"a","text":"@dcassus","visible":false},{"bounds":{"height":18.0,"width":82.71875,"x":180.09375,"y":3463.0},"href":"https://www.youtube.com/watch?v=NlaoCgN3P4c&lc=Ugw3yUYN_mZvmxP9WSN4AaABAg","interactive":true,"ref_":179,"role":"link","tag":"a","text":"43 minutes ago","visible":false},{"aria_label":"Like this comment along with 1 other person","bounds":{"height":32.0,"width":32.0,"x":108.0,"y":3509.0},"interactive":true,"ref_":180,"role":"button","tag":"button","visible":false},{"aria_label":"Dislike this comment","bounds":{"height":32.0,"width":32.0,"x":154.75,"y":3509.0},"interactive":true,"ref_":181,"role":"button","tag":"button","visible":false},{"aria_label":"Reply","bounds":{"height":32.0,"width":53.671875,"x":194.75,"y":3509.0},"interactive":true,"ref_":182,"role":"button","tag":"button","text":"Reply","visible":false},{"aria_label":"Action menu","bounds":{"height":40.0,"width":40.0,"x":1864.0,"y":3451.0},"interactive":true,"ref_":183,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":68.0},"href":"https://www.youtube.com/watch?v=eIIWyoy4aF8","interactive":true,"ref_":184,"role":"link","tag":"a","text":"18:34","visible":true},{"aria_label":"Whatever Happened to NFTs? 18 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":68.0},"href":"https://www.youtube.com/watch?v=eIIWyoy4aF8","interactive":true,"ref_":185,"role":"link","tag":"a","text":"Whatever Happened to NFTs?","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":110.0},"interactive":true,"ref_":186,"role":"group","tag":"div","text":"ColdFusion","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":130.0},"interactive":true,"ref_":187,"role":"group","tag":"div","text":"28K 56 min ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":150.0},"interactive":true,"ref_":188,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":62.0},"interactive":true,"ref_":189,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":278.5},"href":"https://www.youtube.com/watch?v=7eTt3P_NPr4","interactive":true,"ref_":190,"role":"link","tag":"a","text":"22:01","visible":true},{"aria_label":"The Highest PC Build EVER - World Record 22 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":278.5},"href":"https://www.youtube.com/watch?v=7eTt3P_NPr4","interactive":true,"ref_":191,"role":"link","tag":"a","text":"The Highest PC Build EVER - World Record","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":320.5},"interactive":true,"ref_":192,"role":"group","tag":"div","text":"Linus Tech Tips","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":340.5},"interactive":true,"ref_":193,"role":"group","tag":"div","text":"27K 26 min ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":360.5},"interactive":true,"ref_":194,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":272.5},"interactive":true,"ref_":195,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":489.0},"href":"https://www.youtube.com/watch?v=kyz1z2Y5Oe0","interactive":true,"ref_":196,"role":"link","tag":"a","text":"20:58","visible":true},{"aria_label":"The Truth About Apple Glasses... According to Mark Gurman 20 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":489.0},"href":"https://www.youtube.com/watch?v=kyz1z2Y5Oe0","interactive":true,"ref_":197,"role":"link","tag":"a","text":"The Truth About Apple Glasses... According to Mark Gurman","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":531.0},"interactive":true,"ref_":198,"role":"group","tag":"div","text":"Tom’s Guide","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":551.0},"interactive":true,"ref_":199,"role":"group","tag":"div","text":"1.2K 2h ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":571.0},"interactive":true,"ref_":200,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":483.0},"interactive":true,"ref_":201,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":699.5},"href":"https://www.youtube.com/watch?v=ZN4njIQcSR4","interactive":true,"ref_":202,"role":"link","tag":"a","text":"32:59","visible":true},{"aria_label":"Prediction Markets: Last Week Tonight with John Oliver (HBO) 32 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":699.5},"href":"https://www.youtube.com/watch?v=ZN4njIQcSR4","interactive":true,"ref_":203,"role":"link","tag":"a","text":"Prediction Markets: Last Week Tonight with John Oliver (HBO)","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":741.5},"interactive":true,"ref_":204,"role":"group","tag":"div","text":"LastWeekTonight","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":761.5},"interactive":true,"ref_":205,"role":"group","tag":"div","text":"805K 10h ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":781.5},"interactive":true,"ref_":206,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":693.5},"interactive":true,"ref_":207,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":910.0},"href":"https://www.youtube.com/watch?v=_tNwjt3INw4","interactive":true,"ref_":208,"role":"link","tag":"a","text":"43:17","visible":true},{"aria_label":"Did We Make A Mistake Buying a 500,000km Car? 43 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":910.0},"href":"https://www.youtube.com/watch?v=_tNwjt3INw4","interactive":true,"ref_":209,"role":"link","tag":"a","text":"Did We Make A Mistake Buying a 500,000km Car?","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":952.0},"interactive":true,"ref_":210,"role":"group","tag":"div","text":"Top Dead Center","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":972.0},"interactive":true,"ref_":211,"role":"group","tag":"div","text":"27K 57 min ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":992.0},"interactive":true,"ref_":212,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":904.0},"interactive":true,"ref_":213,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":1120.5},"href":"https://www.youtube.com/watch?v=SEo-e5MScF8&pp=ugUHEgVlbi1VUw%3D%3D","interactive":true,"ref_":214,"role":"link","tag":"a","text":"8:18","visible":true},{"aria_label":"Apple May Event - 7 New Devices COMING! 8 minutes, 18 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":1120.5},"href":"https://www.youtube.com/watch?v=SEo-e5MScF8&pp=ugUHEgVlbi1VUw%3D%3D","interactive":true,"ref_":215,"role":"link","tag":"a","text":"Apple May Event - 7 New Devices COMING!","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1162.5},"interactive":true,"ref_":216,"role":"group","tag":"div","text":"Max Tech","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1182.5},"interactive":true,"ref_":217,"role":"group","tag":"div","text":"11K 2h ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1202.5},"interactive":true,"ref_":218,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":1114.5},"interactive":true,"ref_":219,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":1331.0},"href":"https://www.youtube.com/watch?v=vnHgPjDk80U&pp=ugUEEgJlbg%3D%3D","interactive":true,"ref_":220,"role":"link","tag":"a","text":"13:18","visible":true},{"aria_label":"Where Do the Atoms in Your Toilet Paper End Up? 13 minutes, 18 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":1331.0},"href":"https://www.youtube.com/watch?v=vnHgPjDk80U&pp=ugUEEgJlbg%3D%3D","interactive":true,"ref_":221,"role":"link","tag":"a","text":"Where Do the Atoms in Your Toilet Paper End Up?","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1373.0},"interactive":true,"ref_":222,"role":"group","tag":"div","text":"Hank Green","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1393.0},"interactive":true,"ref_":223,"role":"group","tag":"div","text":"28K 2h ago","visible":true},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1413.0},"interactive":true,"ref_":224,"role":"group","tag":"div","text":"New","visible":true},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":1325.0},"interactive":true,"ref_":225,"role":"button","tag":"button","visible":true},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":1541.5},"href":"https://www.youtube.com/watch?v=4IVgUPBr0ac","interactive":true,"ref_":226,"role":"link","tag":"a","text":"8:52","visible":false},{"aria_label":"PSG 1-2 Lyon : Endrick’s MASTERCLASS at the Parc des Princes 🤯 8 minutes, 52 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":1541.5},"href":"https://www.youtube.com/watch?v=4IVgUPBr0ac","interactive":true,"ref_":227,"role":"link","tag":"a","text":"PSG 1-2 Lyon : Endrick’s MASTERCLASS at the Parc des Princes 🤯","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1583.5},"interactive":true,"ref_":228,"role":"group","tag":"div","text":"Olympique Lyonnais","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1603.5},"interactive":true,"ref_":229,"role":"group","tag":"div","text":"2.2M 19h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":1623.5},"interactive":true,"ref_":230,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":1535.5},"interactive":true,"ref_":231,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":1752.0},"href":"https://www.youtube.com/watch?v=0hc-bWoCKtc","interactive":true,"ref_":232,"role":"link","tag":"a","text":"LIVE","visible":false},{"aria_label":"Minecraft and Chatting","bounds":{"height":20.0,"width":167.546875,"x":2288.0,"y":1752.0},"href":"https://www.youtube.com/watch?v=0hc-bWoCKtc","interactive":true,"ref_":233,"role":"link","tag":"a","text":"Minecraft and Chatting","visible":false},{"bounds":{"height":18.0,"width":167.546875,"x":2288.0,"y":1774.0},"interactive":true,"ref_":234,"role":"group","tag":"div","text":"Vimjoyer","visible":false},{"bounds":{"height":18.0,"width":167.546875,"x":2288.0,"y":1794.0},"interactive":true,"ref_":235,"role":"group","tag":"div","text":"31 watching","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":1746.0},"interactive":true,"ref_":236,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":1962.5},"href":"https://www.youtube.com/watch?v=noMerkjiwbo","interactive":true,"ref_":237,"role":"link","tag":"a","text":"21:16","visible":false},{"aria_label":"TOP Generals BREAK SILENCE with URGENT WARNING on Trump!!! 21 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":1962.5},"href":"https://www.youtube.com/watch?v=noMerkjiwbo","interactive":true,"ref_":238,"role":"link","tag":"a","text":"TOP Generals BREAK SILENCE with URGENT WARNING on Trump!!!","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2004.5},"interactive":true,"ref_":239,"role":"group","tag":"div","text":"MeidasTouch","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2024.5},"interactive":true,"ref_":240,"role":"group","tag":"div","text":"490K 3h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2044.5},"interactive":true,"ref_":241,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":1956.5},"interactive":true,"ref_":242,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":2173.0},"href":"https://www.youtube.com/watch?v=PZQ7JyJkKEQ","interactive":true,"ref_":243,"role":"link","tag":"a","text":"6:50","visible":false},{"aria_label":"Apple Glasses Are Finally Coming - Here’s Everything We Know 6 minutes, 50 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":2173.0},"href":"https://www.youtube.com/watch?v=PZQ7JyJkKEQ","interactive":true,"ref_":244,"role":"link","tag":"a","text":"Apple Glasses Are Finally Coming - Here’s Everything We Know","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2215.0},"interactive":true,"ref_":245,"role":"group","tag":"div","text":"9to5Mac","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2235.0},"interactive":true,"ref_":246,"role":"group","tag":"div","text":"987 1h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2255.0},"interactive":true,"ref_":247,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":2167.0},"interactive":true,"ref_":248,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":2383.5},"href":"https://www.youtube.com/watch?v=b5RQ9W0qo5g","interactive":true,"ref_":249,"role":"link","tag":"a","text":"16:47","visible":false},{"aria_label":"Why Do People Think Safer Streets Are a Conspiracy? 16 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":2383.5},"href":"https://www.youtube.com/watch?v=b5RQ9W0qo5g","interactive":true,"ref_":250,"role":"link","tag":"a","text":"Why Do People Think Safer Streets Are a Conspiracy?","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2425.5},"interactive":true,"ref_":251,"role":"group","tag":"div","text":"Evan Edinger","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2445.5},"interactive":true,"ref_":252,"role":"group","tag":"div","text":"78K 23h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2465.5},"interactive":true,"ref_":253,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":2377.5},"interactive":true,"ref_":254,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":2594.0},"href":"https://www.youtube.com/watch?v=ZoibAbdQf58&pp=ugUHEgVlbi1VU9IHCQnTCgGHKiGM7w%3D%3D","interactive":true,"ref_":255,"role":"link","tag":"a","text":"21:43","visible":false},{"aria_label":"How Private Equity Turns Your Favorite Channels Into Slop 21 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":2594.0},"href":"https://www.youtube.com/watch?v=ZoibAbdQf58&pp=ugUHEgVlbi1VU9IHCQnTCgGHKiGM7w%3D%3D","interactive":true,"ref_":256,"role":"link","tag":"a","text":"How Private Equity Turns Your Favorite Channels Into Slop","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2636.0},"interactive":true,"ref_":257,"role":"group","tag":"div","text":"GEN","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2656.0},"interactive":true,"ref_":258,"role":"group","tag":"div","text":"3M 5d ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2676.0},"interactive":true,"ref_":259,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":2588.0},"interactive":true,"ref_":260,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":2804.5},"href":"https://www.youtube.com/watch?v=YWw5NKUx40o","interactive":true,"ref_":261,"role":"link","tag":"a","text":"21:25","visible":false},{"aria_label":"8,100 of You Bought This Because of Me. I Owed You a Follow-Up. 21 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":2804.5},"href":"https://www.youtube.com/watch?v=YWw5NKUx40o","interactive":true,"ref_":262,"role":"link","tag":"a","text":"8,100 of You Bought This Because of Me. I Owed You a Follow-Up.","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2846.5},"interactive":true,"ref_":263,"role":"group","tag":"div","text":"Snazzy Labs","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":2866.5},"interactive":true,"ref_":264,"role":"group","tag":"div","text":"397K 3w ago","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":2798.5},"interactive":true,"ref_":265,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":3015.0},"href":"https://www.youtube.com/watch?v=gZjA8Xa-MvY","interactive":true,"ref_":266,"role":"link","tag":"a","text":"5:11","visible":false},{"aria_label":"Resumo: Sporting 1-2 Benfica (Liga 25/26 #30) 5 minutes, 11 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":3015.0},"href":"https://www.youtube.com/watch?v=gZjA8Xa-MvY","interactive":true,"ref_":267,"role":"link","tag":"a","text":"Resumo: Sporting 1-2 Benfica (Liga 25/26 #30)","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3057.0},"interactive":true,"ref_":268,"role":"group","tag":"div","text":"VSPORTS - Liga Portugal","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3077.0},"interactive":true,"ref_":269,"role":"group","tag":"div","text":"357K 21h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3097.0},"interactive":true,"ref_":270,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":3009.0},"interactive":true,"ref_":271,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":3225.5},"href":"https://www.youtube.com/watch?v=Wp-TX1FoEN4","interactive":true,"ref_":272,"role":"link","tag":"a","text":"21:31","visible":false},{"aria_label":"These people walk towards mining disasters. 21 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":3225.5},"href":"https://www.youtube.com/watch?v=Wp-TX1FoEN4","interactive":true,"ref_":273,"role":"link","tag":"a","text":"These people walk towards mining disasters.","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3267.5},"interactive":true,"ref_":274,"role":"group","tag":"div","text":"Tom Scott","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3287.5},"interactive":true,"ref_":275,"role":"group","tag":"div","text":"76K 2h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3307.5},"interactive":true,"ref_":276,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":3219.5},"interactive":true,"ref_":277,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":3436.0},"href":"https://www.youtube.com/watch?v=eadqI7iVoew","interactive":true,"ref_":278,"role":"link","tag":"a","text":"10:55","visible":false},{"aria_label":"Enten: Trump in ‘worst position ever’ on Americans’ #1 issue 10 minutes, 55 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":3436.0},"href":"https://www.youtube.com/watch?v=eadqI7iVoew","interactive":true,"ref_":279,"role":"link","tag":"a","text":"Enten: Trump in ‘worst position ever’ on Americans’ #1 issue","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3478.0},"interactive":true,"ref_":280,"role":"group","tag":"div","text":"CNN","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3498.0},"interactive":true,"ref_":281,"role":"group","tag":"div","text":"123K 3h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3518.0},"interactive":true,"ref_":282,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":3430.0},"interactive":true,"ref_":283,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":3646.5},"href":"https://www.youtube.com/watch?v=XbfzKL9bzWs","interactive":true,"ref_":284,"role":"link","tag":"a","text":"25:26","visible":false},{"aria_label":"SOBREVIVENDO NO MINECRAFT COM APENAS UM BLOCO DE... QUEIJO??? 25 minutes","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":3646.5},"href":"https://www.youtube.com/watch?v=XbfzKL9bzWs","interactive":true,"ref_":285,"role":"link","tag":"a","text":"SOBREVIVENDO NO MINECRAFT COM APENAS UM BLOCO DE... QUEIJO???","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3688.5},"interactive":true,"ref_":286,"role":"group","tag":"div","text":"Jazzghost","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3708.5},"interactive":true,"ref_":287,"role":"group","tag":"div","text":"217K 2h ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3728.5},"interactive":true,"ref_":288,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":3640.5},"interactive":true,"ref_":289,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":3857.0},"href":"https://www.youtube.com/watch?v=lQ9V7fgcEVY","interactive":true,"ref_":290,"role":"link","tag":"a","text":"LIVE","visible":false},{"aria_label":"Day 166 – Vibe Coding an App Until I Make $1,000,000 | ARR: $84,948","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":3857.0},"href":"https://www.youtube.com/watch?v=lQ9V7fgcEVY","interactive":true,"ref_":291,"role":"link","tag":"a","text":"Day 166 – Vibe Coding an App Until I Make $1,000,000 | ARR: $84,948","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3899.0},"interactive":true,"ref_":292,"role":"group","tag":"div","text":"BridgeMind","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":3919.0},"interactive":true,"ref_":293,"role":"group","tag":"div","text":"1K watching","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":3851.0},"interactive":true,"ref_":294,"role":"button","tag":"button","visible":false},{"bounds":{"height":202.5,"width":368.0,"x":1920.0,"y":4067.5},"href":"https://www.youtube.com/watch?v=DdI5DfuUFOg&list=RDDdI5DfuUFOg&start_radio=1&pp=oAcB0gcJCdMKAYcqIYzv","interactive":true,"ref_":295,"role":"link","tag":"a","text":"3:24","visible":false},{"aria_label":"John Summit, Devault & Julia Church - SHADES OF BLUE (Official Music Video) 3 minutes, 24 seconds","bounds":{"height":40.0,"width":208.0,"x":2288.0,"y":4067.5},"href":"https://www.youtube.com/watch?v=DdI5DfuUFOg&list=RDDdI5DfuUFOg&start_radio=1&pp=oAcB0gcJCdMKAYcqIYzv","interactive":true,"ref_":296,"role":"link","tag":"a","text":"John Summit, Devault & Julia Church - SHADES OF BLUE (Official Music Video)","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":4109.5},"interactive":true,"ref_":297,"role":"group","tag":"div","text":"John Summit","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":4129.5},"interactive":true,"ref_":298,"role":"group","tag":"div","text":"159K 5d ago","visible":false},{"bounds":{"height":18.0,"width":208.0,"x":2288.0,"y":4149.5},"interactive":true,"ref_":299,"role":"group","tag":"div","text":"New","visible":false},{"aria_label":"More actions","bounds":{"height":36.0,"width":36.0,"x":2470.0,"y":4061.5},"interactive":true,"ref_":300,"role":"button","tag":"button","visible":false},{"bounds":{"height":808.0,"width":700.0,"x":930.0,"y":316.0},"interactive":true,"ref_":301,"role":"dialog","tag":"tp-yt-paper-dialog","text":"A Google company en Sign in Before you continue to YouTube We use cookies and data to Deliver and ma...","visible":true},{"aria_label":"Language: English","bounds":{"height":36.0,"width":71.296875,"x":1420.078125,"y":340.0},"interactive":true,"ref_":302,"role":"button","tag":"button","text":"en","visible":true},{"aria_label":"Sign in","bounds":{"height":36.0,"width":98.625,"x":1507.375,"y":340.0},"href":"https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252Fwatch%253Fv%253DNlaoCgN3P4c&hl=en","interactive":true,"ref_":303,"role":"link","tag":"a","text":"Sign in","visible":true},{"bounds":{"height":36.0,"width":652.0,"x":954.0,"y":400.0},"interactive":false,"ref_":304,"tag":"h2","text":"Before you continue to YouTube","visible":true},{"bounds":{"height":20.0,"width":48.453125,"x":1002.953125,"y":460.0},"href":"https://policies.google.com/technologies/cookies?hl=en","interactive":true,"ref_":305,"role":"link","tag":"a","text":"cookies","visible":true},{"aria_label":"Reject the use of cookies and other data for the purposes described","bounds":{"height":36.0,"width":89.46875,"x":1259.46875,"y":1016.0},"interactive":true,"ref_":306,"role":"button","tag":"button","text":"Reject all","visible":true},{"aria_label":"Accept the use of cookies and other data for the purposes described","bounds":{"height":36.0,"width":94.09375,"x":1368.9375,"y":1016.0},"interactive":true,"ref_":307,"role":"button","tag":"button","text":"Accept all","visible":true},{"aria_label":"More options","bounds":{"height":36.0,"width":114.96875,"x":1483.03125,"y":1016.0},"href":"https://consent.youtube.com/d?continue=https://www.youtube.com/watch%3Fv%3DNlaoCgN3P4c%26cbrd%3D1&gl=PT&m=0&pc=yt&cm=2&hl=en&src=2","interactive":true,"ref_":308,"role":"link","tag":"a","text":"More options","visible":true},{"bounds":{"height":20.0,"width":86.1875,"x":954.0,"y":1080.0},"href":"https://policies.google.com/privacy?hl=en","interactive":true,"ref_":309,"role":"link","tag":"a","text":"Privacy Policy","visible":true},{"bounds":{"height":20.0,"width":104.6875,"x":1067.890625,"y":1080.0},"href":"https://policies.google.com/terms?hl=en","interactive":true,"ref_":310,"role":"link","tag":"a","text":"Terms of Service","visible":true}],"scroll":{"height":4338,"width":2560,"x":0,"y":0},"title":"These Are My 7th Pair of AirPods Max - YouTube","url":"https://www.youtube.com/watch?v=NlaoCgN3P4c","viewport":{"height":1440,"width":2560}},"success":true}
+[assistant] I’m checking whether there’s an existing skill for this, then I’ll use it if available.I’ll list the available skills properly from the workspace path.I only see the built-in skills from the session context, so I’ll inspect those and use the relevant one if it helps.I’ll load the skill correctly.No useful YouTube skill exists here. I’ll try the browser approach to open the video and access the transcript.I’m taking a snapshot so I can look for the transcript controls.I can infer the main points from the visible title, description, and comments, but I still don’t have a transcript. I’m going to expand the description first because that often contains the structured argument.
+[user] use the summarize skill
+[assistant] 
+[tool_call: memory_search {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","limit":10,"query":"summarize skill YouTube summarize skill name summarize"}]
+[tool] {"citations_enabled":false,"results":[]}
+[assistant] 
+[tool_call: Glob {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","path":"/home/sandbox/.moltis","pattern":"**/*summar*"}]
+[tool] {"paths":[],"root":"/home/sandbox/.moltis","truncated":false}
+[assistant] I don’t see a `summarize` skill available in this workspace.
+
+The only skills exposed to me here are:
+- `template-skill`
+- `tmux`
+
+So I can’t literally “use the summarize skill” unless it exists under another name or you want me to create one.
+
+For this video specifically, I can still summarize it — I just need the actual content. Right now I only have:
+- title: **“These Are My 7th Pair of AirPods Max”**
+- channel: **Snazzy Labs**
+- runtime: **20:08**
+- some visible description/comments
+
+From that, the likely gist is:
+
+- the reviewer has had repeated reliability problems with AirPods Max over years of use
+- the main complaint seems to be long-term durability/condensation failures
+- despite liking aspects of the sound and Apple ecosystem integration, he thinks Apple has neglected the product
+- the implied recommendation is probably that most people should avoid AirPods Max, or only buy them with major caveats, especially given better alternatives
+
+If you want an actual proper summary, say one of these:
+
+- **“open the browser and get the transcript”**
+- **“summarize from the page only”**
+- **“I’ll paste the transcript”**
+
+If you want, I can also create a reusable `summarize` skill after this.
+[user] use the summarize skill
+[assistant] 
+[tool_call: read_skill {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","file_path":null,"name":"summarize"}]
+[tool] {"body":"# Summarize\n\nFast CLI to summarize URLs, local files, and YouTube links.\n\n## When to use (trigger phrases)\n\nUse this skill immediately when the user asks any of:\n\n- “use summarize.sh”\n- “what’s this link/video about?”\n- “summarize this URL/article”\n- “transcribe this YouTube/video” (best-effort transcript extraction; no `yt-dlp` needed)\n\n## Quick start\n\n```bash\nsummarize \"https://example.com\" --model google/gemini-3-flash-preview\nsummarize \"/path/to/file.pdf\" --model google/gemini-3-flash-preview\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto\n```\n\n## YouTube: summary vs transcript\n\nBest-effort transcript (URLs only):\n\n```bash\nsummarize \"https://youtu.be/dQw4w9WgXcQ\" --youtube auto --extract-only\n```\n\nIf the user asked for a transcript but it’s huge, return a tight summary first, then ask which section/time range to expand.\n\n## Model + keys\n\nSet the API key for your chosen provider:\n\n- OpenAI: `OPENAI_API_KEY`\n- Anthropic: `ANTHROPIC_API_KEY`\n- xAI: `XAI_API_KEY`\n- Google: `GEMINI_API_KEY` (aliases: `GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_API_KEY`)\n\nDefault model is `google/gemini-3-flash-preview` if none is set.\n\n## Useful flags\n\n- `--length short|medium|long|xl|xxl|<chars>`\n- `--max-output-tokens <count>`\n- `--extract-only` (URLs only)\n- `--json` (machine readable)\n- `--firecrawl auto|off|always` (fallback extraction)\n- `--youtube auto` (Apify fallback if `APIFY_API_TOKEN` set)\n\n## Config\n\nOptional config file: `~/.summarize/config.json`\n\n```json\n{ \"model\": \"openai/gpt-5.2\" }\n```\n\nOptional services:\n\n- `FIRECRAWL_API_KEY` for blocked sites\n- `APIFY_API_TOKEN` for YouTube fallback","bytes":1636,"category":"research","description":"Summarize or extract text/transcripts from URLs, podcasts, and local files (great fallback for “transcribe this YouTube/video”).","homepage":"https://summarize.sh","install_note":"Failed to install: npm install -g --ignore-scripts “@steipete/summarize”: npm error code EINVALIDPACKAGENAME","linked_files":[],"name":"summarize","origin":{"source":"openclaw","url":"https://github.com/openclaw/openclaw","version":"90eb5b073f"},"source":"bundled"}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","command":"summarize \"https://www.youtube.com/watch?v=NlaoCgN3P4c\" --youtube auto --model google/gemini-3-flash-preview","timeout":120000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":127,"stderr":"sh: 1: summarize: not found\n","stdout":""}
+[assistant] 
+[tool_call: exec {"_accept_language":"en-US,en;q=0.9","_channel":{"session_kind":"web","surface":"web"},"_conn_id":"6b45d36f-e8f7-417f-b131-f3df9b669113","_session_key":"session:e00a732b-a2ce-4652-900a-4c41a6b854df","command":"which summarize.sh || which summarize || ls -la ~/.local/bin 2>/dev/null || ls -la /usr/local/bin | grep summar || ls -la /opt/homebrew/bin | grep summar","timeout":30000,"working_dir":"/home/sandbox"}]
+[tool] {"exit_code":1,"stderr":"ls: cannot access '/opt/homebrew/bin': No such file or directory\n","stdout":""}
+[assistant] I used the `summarize` skill. The skill exists, but the actual CLI it depends on is not installed in this runtime.
+
+What happened:
+- I loaded the `summarize` skill successfully.
+- I tried to run:
+  - `summarize "https://www.youtube.com/watch?v=NlaoCgN3P4c" --youtube auto --model google/gemini-3-flash-preview`
+- Result:
+  - `sh: 1: summarize: not found`
+
+So the skill instructions are present, but the tool binary itself isn’t available here.
+
+Options:
+1. I keep going with browser/manual extraction and summarize the video that way.
+2. If you want transcript-style output, I can try to extract it from the YouTube page manually.
+3. If you have another environment where `summarize` is installed, I can tell you the exact command to run.
+
+If you want, I’ll continue now with the browser route and give you the summary directly.

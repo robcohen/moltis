@@ -1,0 +1,111 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "c0d2df25d684",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T17:33:45.134488Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/gateway/Cargo.toml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "aa251340c994",
+  "token_usage": {
+    "input_tokens": 494,
+    "cache_creation_tokens": 620959,
+    "cache_read_tokens": 112601155,
+    "output_tokens": 126623,
+    "api_call_count": 423
+  },
+  "summary": {
+    "intent": "Add a curated set of default skills to Moltis, embedded in the binary like web UI assets, sourced from Hermes Agent and OpenClaw, so the agent has useful capabilities out of the box without user configuration.",
+    "outcome": "101 bundled skills (69 from Hermes, 32 from OpenClaw) are embedded via `include_dir!` in `crates/skills/src/assets/`, surfaced in the system prompt via a new `CompositeSkillDiscoverer`, viewable in the web UI with category filters and inline detail panels, and auto-install missing binary deps on `read_skill` invocation. PR #797 created, iterated through two rounds of review, and merged to main twice.",
+    "learnings": {
+      "repo": [
+        "Skills are discovered by 4 sources (Project \u003e Personal \u003e Registry \u003e Plugin); bundled is a 5th lowest-priority source — user skills override bundled by name.",
+        "The chat crate (`crates/chat/src/prompt.rs`) has its own `discover_skills_if_enabled` call using a plain `FsSkillDiscoverer`, separate from the gateway's discoverer — both must be updated when adding new discovery sources.",
+        "The web API handler (`crates/web/src/api.rs`) also instantiates its own `FsSkillDiscoverer` independently of the gateway, requiring a third update point for the composite discoverer.",
+        "The `watcher.rs` file has an exhaustive match on `SkillSource` — any new variant must add an arm there (no-op for Bundled since embedded files aren't watched).",
+        "Feature flags (`bundled-skills`) must be forwarded through the entire dependency chain: skills → tools → gateway → cli, and separately skills → chat → gateway.",
+        "The `include_dir!` macro embeds files at compile time; dev mode uses filesystem fallback for instant iteration without recompilation.",
+        "Hermes and OpenClaw both list all skill names+descriptions upfront in the system prompt (~2500 tokens for 100 skills) and load full content on demand via a read tool — Moltis already matched this architecture.",
+        "The `SkillSource` enum uses `serde(rename_all = 'lowercase')` so new variants serialize automatically without extra work.",
+        "Sidecar files (references/, templates/, scripts/, assets/) alongside SKILL.md are also embedded via `include_dir!` and served from memory in release builds.",
+        "Godmode/red-teaming skills should not be bundled by default — Greptile flagged this as a P1 security issue in PR review."
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore with `include_dir!` embedding, recursive directory traversal for skills nested 2+ levels deep (e.g. mlops/training/axolotl/), dev-mode filesystem fallback, and `find_skill_dir` that searches by frontmatter name not directory name."
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "CompositeSkillDiscoverer merges FS + bundled with name deduplication using `seen.insert()` (not `!seen.contains()`) to also deduplicate within the bundled set itself — caught by PR review."
+        },
+        {
+          "path": "crates/skills/src/requirements.rs",
+          "finding": "npm `--ignore-scripts` flag breaks scoped package installs (e.g. `@steipete/summarize`) with EINVALIDPACKAGENAME; removed the flag to fix auto-install."
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool auto-installs missing deps on invocation: checks `requires:` metadata, runs install if bins missing, injects `install_note` into the response. Path normalization via `normalize_relative_skill_file_path` must be applied to sidecar paths for bundled skills (flagged in PR review as path traversal risk)."
+        },
+        {
+          "path": "crates/chat/src/prompt.rs",
+          "finding": "Was using plain `FsSkillDiscoverer` — bundled skills never appeared in the agent's system prompt until this was changed to `CompositeSkillDiscoverer`. This was a distinct code path from the gateway's discoverer."
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "Three-tier format fallback: full (name+description+category, default 30KB budget) → compact (self-closing tags, no descriptions) → truncated (binary search for largest fitting prefix). Header changes to signal compact mode to the agent."
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "finding": "Inline detail panel must render as a `\u003ctr colspan\u003e` row inserted after the active row in `tbody`, not as a sibling element below the table — otherwise it appears far from the clicked item when the table is long."
+        },
+        {
+          "path": "crates/web/src/api.rs",
+          "finding": "The `/api/skills` endpoint created its own `FsSkillDiscoverer` — bundled skills didn't appear in the web UI until this was updated to `CompositeSkillDiscoverer` and the `bundled-skills` feature was added to the web crate."
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "`skill_detail` RPC handler had no branch for `SkillSource::Bundled` — clicking a bundled skill in the UI did nothing until `skill_detail_bundled` was added to serve content from `BundledSkillStore`."
+        }
+      ],
+      "workflow": [
+        "Python `sed` for multi-line YAML frontmatter injection is unreliable and can corrupt files — use a Python script with explicit frontmatter parsing instead.",
+        "Directory names must match SKILL.md frontmatter `name` fields; `find_skill_dir` searches by directory name, so mismatches cause silent read failures. Tests caught 6 such mismatches.",
+        "`@` is a reserved YAML indicator and cannot start an unquoted scalar value — scoped npm/go module paths in `requires:` blocks need quoting.",
+        "When merging main into a branch with a generated Tailwind `style.css`, the easiest conflict resolution is to simply regenerate it rather than manually resolving hundreds of lines.",
+        "Greptile bot provides automated code review — check for unresolved threads before considering a PR ready; two rounds of fixes were needed (path normalization, deduplication, godmode removal, Python lint issues, SRI hash).",
+        "Feature flags in Rust workspace crates must be explicitly forwarded at each level of the dependency chain — forgetting one intermediate crate silently disables the feature in production builds."
+      ]
+    },
+    "friction": [
+      "sed-based YAML frontmatter injection corrupted SKILL.md files; had to re-copy from Hermes and use Python instead.",
+      "Background bash tasks hanging/timing out during `cargo test` in the worktree due to disk space constraints from llama-cpp compilation artifacts.",
+      "npm `--ignore-scripts` flag broke auto-install of scoped packages (`@steipete/summarize`) with a misleading EINVALIDPACKAGENAME error.",
+      "Bundled skills were missing from the agent's system prompt for an entire PR cycle because `crates/chat/src/prompt.rs` had its own independent skill discoverer that wasn't updated.",
+      "The web UI detail panel appeared at the bottom of the page (below the entire table) rather than inline — required restructuring to render as a `\u003ctr\u003e` inside `tbody`.",
+      "Tailwind style.css merge conflicts required full regeneration on each main merge.",
+      "PR review (Greptile) caught that godmode/red-teaming skills were bundled by default — required removal after the fact rather than being caught upfront.",
+      "Multiple independent instantiation points for `FsSkillDiscoverer` (gateway, chat, web API) meant each required a separate update — the dependency was not centralized."
+    ],
+    "open_items": [
+      "System prompt does not annotate ineligible skills (missing binaries) — skills show as available even when their required tools aren't installed; considered adding `eligible=\"false\"` attribute but deferred.",
+      "Some bundled sidecar scripts still reference Hermes-specific paths (e.g. `~/.hermes/`) that weren't fully cleaned up during the body text pass.",
+      "Auto-install runs in the gateway process, not in the sandbox — installs go to the host rather than the sandbox environment where the agent runs `exec` commands; may cause skills to appear installed but be unavailable to the agent.",
+      "No per-skill opt-out mechanism for auto-install — some skills' install commands may be slow or undesirable to run automatically without user confirmation.",
+      "The `summarize` skill depends on `@steipete/summarize` npm package which has install issues with scoped package names in some environments; needs verification that the fixed install command works end-to-end."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T17:32:39.342004Z",
+    "agent_lines": 1,
+    "human_added": 245,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 246,
+    "agent_percentage": 0.40650406504065045
+  }
+}
