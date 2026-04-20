@@ -809,8 +809,6 @@ async fn test_native_text_function_tool_calling_non_streaming() {
     assert_eq!(args["command"], "pwd");
 }
 
-// ── Parallel tool execution tests ────────────────────────────────
-
 #[tokio::test]
 async fn test_parallel_tool_execution() {
     let provider = Arc::new(MultiToolProvider {
