@@ -1,0 +1,575 @@
+Looking at hermes in ~/code/hermes-agent I see it comes with tons of skills already, the loader shows:
+
+██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗       █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝      ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗█████╗███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║
+██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║╚════╝██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║
+██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║      ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
+
+╭──────────────────────────── Hermes Agent v0.10.0 (2026.4.16) · upstream 9f22977f ─────────────────────────────╮
+│                                   Available Tools                                                             │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⡀⠀⣀⣀⠀⢀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   browser: browser_back, browser_cdp, browser_click, ...                      │
+│  ⠀⠀⠀⠀⠀⠀⢀⣠⣴⣾⣿⣿⣇⠸⣿⣿⠇⣸⣿⣿⣷⣦⣄⡀⠀⠀⠀⠀⠀⠀   clarify: clarify                                                            │
+│  ⠀⢀⣠⣴⣶⠿⠋⣩⡿⣿⡿⠻⣿⡇⢠⡄⢸⣿⠟⢿⣿⢿⣍⠙⠿⣶⣦⣄⡀⠀   code_execution: execute_code                                                │
+│  ⠀⠀⠉⠉⠁⠶⠟⠋⠀⠉⠀⢀⣈⣁⡈⢁⣈⣁⡀⠀⠉⠀⠙⠻⠶⠈⠉⠉⠀⠀   cronjob: cronjob                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡿⠛⢁⡈⠛⢿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   delegation: delegate_task                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣦⣤⣈⠁⢠⣴⣿⠿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   discord: discord_server                                                     │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠻⢿⣿⣦⡉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   file: patch, read_file, search_files, write_file                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⣦⣈⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   homeassistant: ha_call_service, ha_get_state, ...                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣴⠦⠈⠙⠿⣦⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   (and 12 more toolsets...)                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣤⡈⠁⢤⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                                                               │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠷⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   Available Skills                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠑⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   autonomous-ai-agents: claude-code, codex, hermes-agent, opencode            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠁⢰⡆⠈⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   creative: architecture-diagram, ascii-art, ascii-video, b...                │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⠈⣡⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   data-science: jupyter-live-kernel                                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   devops: webhook-subscriptions                                               │
+│                                   email: himalaya                                                             │
+│  claude-opus-4.6 · Nous Research  gaming: minecraft-modpack-server, pokemon-player                            │
+│               /root               general: dogfood                                                            │
+│  Session: 20260420_113745_966d4d  github: codebase-inspection, github-auth, github-code-r...                  │
+│                                   mcp: native-mcp                                                             │
+│                                   media: gif-search, heartmula, songsee, youtube-content                      │
+│                                   mlops: audiocraft-audio-generation, axolotl, dspy, eva...                   │
+│                                   note-taking: obsidian                                                       │
+│                                   productivity: google-workspace, linear, maps, nano-pdf, notio...            │
+│                                   red-teaming: godmode                                                        │
+│                                   research: arxiv, blogwatcher, llm-wiki, polymarket, resea...                │
+│                                   smart-home: openhue                                                         │
+│                                   social-media: xurl                                                          │
+│                                   software-development: plan, requesting-code-review, subagent-driven-d...    │
+│                                                                                                               │
+│                                   27 tools · 67 skills · /help for commands                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+I'd like to have those skills by default in Moltis so it does more by default. How would you do that?
+
+---
+
+I would rather have something like assets for the web-ui (html, etc), with an external directory where we just copy hermes skills (and other skills I'll find online and I "vouched" for security issues), each skill could have metadata for its original source/origin. And have all those skills enabled by default since they've been secured.
+
+---
+
+please proceed
+
+---
+
+commit push create a PR
+
+---
+
+You can now add all hermes skills by default, just copy them over from the local hermes clone I gave you
+
+---
+
+This skill is specific to hermes: crates/skills/src/assets/devops/webhook-subscriptions/SKILL.md but since we have webhooks in moltis you should be able to update it for moltis
+
+---
+
+Look at every skills and see which ones are actually depending on hermes or another tool, I think Moltis skills include frontmatter data to list required tools (cli, etc) for the skill to work, we could include that.
+
+---
+
+Please cleanup hermes sections, and use the moltis skill metadata fields to add binary expectations if any
+
+---
+
+Merge main to this branch, commit and push
+
+---
+
+I see +160k lines, where are they from?
+
+---
+
+How can we know those are safe?
+
+---
+
+but those are from the hermes repo, so I guess it's fine to fully copy them over
+
+---
+
+anything else to improve? Can you look at ~/code/openclaw and see if there are bundled skills?
+
+---
+
+yes please, also having categories in skills make sense, can you do that and add the web-ui component to view categories?
+
+---
+
+Should you add tests for some of those default skills?
+
+---
+
+Look at openclaw and hermes code, how are they adding skills to system prompts? Do they use a search skill like I have (not default enabled I think)? Because that's a lot of skills.
+
+---
+
+Maybe a format fallback would be nice?
+
+---
+
+commit push
+
+---
+
+Fix and resolve PR comments
+
+---
+
+<task-notification>
+<task-id>balds1h1h</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/balds1h1h.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push PR fixes" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/balds1h1h.output
+
+---
+
+Base directory for this skill: /Users/penso/.claude/skills/greploop
+
+# Greploop
+
+Iteratively fix a PR/MR/CL until Greptile gives a perfect review: 5/5 confidence, zero unresolved comments.
+
+## Inputs
+
+- **PR/MR/CL number** (optional): If not provided, detect the PR/MR for the current branch, or the default pending changelist for p4.
+
+## Instructions
+
+### 0. Detect platform
+
+First check for Perforce, then fall back to git remote detection:
+
+```bash
+# Check for Perforce environment
+if p4 info >/dev/null 2>&1; then
+  VCS="perforce"
+else
+  REMOTE_URL=$(git remote get-url origin)
+  if echo "$REMOTE_URL" | grep -qi "gitlab"; then
+    VCS="gitlab"
+  else
+    VCS="github"
+  fi
+fi
+```
+
+For self-hosted GitLab instances whose hostname doesn't contain "gitlab", the user can override by passing `--vcs gitlab` as an input. For Perforce, pass `--vcs perforce`.
+
+### 1. Identify the PR/MR/CL
+
+**GitHub:**
+```bash
+gh pr view --json number,headRefName -q '{number: .number, branch: .headRefName}'
+```
+
+**GitLab:**
+```bash
+glab mr view --output json | jq '{iid: .iid, branch: .source_branch}'
+```
+
+Switch to the PR/MR branch if not already on it.
+
+**Perforce:**
+```bash
+# List pending changelists for current user/client
+p4 changes -s pending -u $P4USER -c $P4CLIENT
+
+# Describe a specific CL
+p4 describe -s <CL_NUMBER>
+```
+
+Ensure the correct workspace (`p4 client`) is set before proceeding.
+
+Key field differences:
+- GitHub: `number`, `headRefName`, `headRefOid`
+- GitLab: `iid`, `source_branch`, `sha`
+- Perforce: changelist number, `P4CLIENT`, shelved files
+
+### 2. Loop
+
+Repeat the following cycle. **Max 5 iterations** to avoid runaway loops.
+
+#### A. Trigger Greptile review
+
+Push/shelve the latest changes (if any):
+
+**GitHub/GitLab:**
+```bash
+git push
+```
+
+**Perforce:**
+```bash
+# Re-shelve to update the shelved files for review
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+**GitHub** — check if Greptile is already running before posting a new trigger comment:
+
+```bash
+GREPTILE_STATE=$(gh pr checks <PR_NUMBER> --json name,state | jq -r '.[] | select(.name | test("greptile"; "i")) | .state')
+```
+
+If Greptile is **not** already running (`PENDING` or `IN_PROGRESS`), request a fresh review:
+
+```bash
+if [ "$GREPTILE_STATE" != "PENDING" ] && [ "$GREPTILE_STATE" != "IN_PROGRESS" ]; then
+  gh pr comment <PR_NUMBER> --body "@greptile review"
+fi
+```
+
+Then poll for the Greptile check run to complete:
+
+```bash
+HEAD_SHA=$(gh pr view <PR_NUMBER> --json headRefOid -q .headRefOid)
+
+while true; do
+  GREPTILE_CHECK=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA/check-runs" \
+    --jq '.check_runs[] | select(.name | test("greptile"; "i"))' 2>/dev/null)
+  
+  if [ -z "$GREPTILE_CHECK" ]; then
+    echo "Waiting for Greptile check to appear..."
+    sleep 5
+    continue
+  fi
+  
+  STATUS=$(echo "$GREPTILE_CHECK" | jq -r '.status // "completed"')
+  CONCLUSION=$(echo "$GREPTILE_CHECK" | jq -r '.conclusion // "pending"')
+  
+  if [ "$STATUS" = "completed" ]; then
+    if [ "$CONCLUSION" = "success" ]; then
+      echo "Greptile check passed!"
+    else
+      echo "Greptile check completed with: $CONCLUSION"
+    fi
+    break
+  fi
+  
+  echo "Waiting for Greptile... (status: $STATUS)"
+  sleep 10
+done
+```
+
+**GitLab** — check if Greptile is already running before posting a trigger comment:
+
+```bash
+PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+GREPTILE_RUNNING=$(echo "$PIPELINES" | jq '[.[] | select(.status == "running" or .status == "pending")] | length')
+```
+
+If no pipeline is running, post a trigger comment:
+
+```bash
+if [ "$GREPTILE_RUNNING" = "0" ]; then
+  glab mr note <MR_IID> --message "@greptile review"
+fi
+```
+
+**Perforce** — Perforce does not have native check runs. If Greptile is integrated via a webhook triggered on `p4 shelve`, wait for it to process. Check your Greptile installation's webhook endpoint or dashboard for the review status. Poll by re-fetching the Greptile review comment on the CL until a score appears.
+
+Then poll for the Greptile pipeline job to complete (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+HEAD_SHA=$(glab mr view <MR_IID> --output json | jq -r '.sha')
+
+while true; do
+  PIPELINES=$(glab api "projects/:fullpath/merge_requests/<MR_IID>/pipelines")
+  # Find the most recent pipeline for this SHA
+  PIPELINE_ID=$(echo "$PIPELINES" | jq -r --arg sha "$HEAD_SHA" \
+    '[.[] | select(.sha == $sha)] | sort_by(.id) | last | .id // empty')
+
+  if [ -z "$PIPELINE_ID" ]; then
+    echo "Waiting for Greptile pipeline to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOBS=$(glab api "projects/:fullpath/pipelines/$PIPELINE_ID/jobs")
+  GREPTILE_JOB=$(echo "$JOBS" | jq '.[] | select(.name | test("greptile"; "i"))')
+
+  if [ -z "$GREPTILE_JOB" ]; then
+    echo "Waiting for Greptile job to appear..."
+    sleep 5
+    continue
+  fi
+
+  JOB_STATUS=$(echo "$GREPTILE_JOB" | jq -r '.status')
+
+  if [ "$JOB_STATUS" = "success" ] || [ "$JOB_STATUS" = "failed" ] || [ "$JOB_STATUS" = "canceled" ]; then
+    echo "Greptile job completed with: $JOB_STATUS"
+    break
+  fi
+
+  echo "Waiting for Greptile... (status: $JOB_STATUS)"
+  sleep 10
+done
+```
+
+#### B. Fetch Greptile review results
+
+Greptile may surface its score in two places — check **both** (three for Perforce):
+
+**GitHub:**
+
+**1. PR description (body):**
+```bash
+gh pr view <PR_NUMBER> --json body -q '.body'
+```
+
+**2. PR reviews:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews
+```
+
+Look for the most recent entry from `greptile-apps[bot]` or `greptile-apps-staging[bot]`.
+
+**GitLab:**
+
+**1. MR description (body):**
+```bash
+glab mr view <MR_IID> --output json | jq -r '.description'
+```
+
+**2. MR notes (comments):**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/notes"
+```
+
+Filter for notes from the Greptile bot user (check the `author.username` field — the exact username may vary per installation; verify on first run).
+
+**Perforce:**
+
+**1. CL description:**
+```bash
+p4 describe -s <CL_NUMBER>
+```
+Check the description field for a Greptile-appended score block.
+
+**2. CL comments / review notes:**
+```bash
+p4 review -c <CL_NUMBER>
+```
+Look for comments from the Greptile bot user. The exact mechanism depends on your Greptile installation (it may post via a review tool like Swarm or directly via `p4 review`).
+
+For all platforms, parse the text for:
+- **Confidence score**: a pattern like `3/5` or `5/5` (or `Confidence: 3/5`).
+- **Comment count**: Number of inline review comments noted in the summary.
+
+Use whichever source has the **most recent** score.
+
+Also fetch all unresolved inline comments:
+
+**GitHub:**
+```bash
+gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments
+```
+
+**GitLab:**
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions"
+```
+
+Filter to `DiffNote` type discussions (`notes[0].type == "DiffNote"`) from Greptile that are on the latest commit and not yet resolved (`"resolved": false`).
+
+**Perforce:**
+```bash
+# Fetch inline diff comments from Greptile bot on the shelved CL
+p4 review -c <CL_NUMBER>
+```
+
+Filter to comments from the Greptile bot user that have not been marked as resolved/addressed.
+
+#### C. Check exit conditions
+
+Stop the loop if **any** of these are true:
+
+- Confidence score is **5/5** AND there are **zero unresolved comments**
+- Max iterations reached (report current state)
+
+#### D. Fix actionable comments
+
+For each unresolved Greptile comment:
+
+1. Read the file and understand the comment in context.
+2. Determine if it's actionable (code change needed) or informational.
+3. If actionable, make the fix.
+4. If informational or a false positive, note it but still resolve the thread.
+
+#### E. Resolve threads
+
+**GitHub** — fetch unresolved review threads and resolve all that have been addressed (see [GraphQL reference](references/graphql-queries.md)):
+
+```bash
+gh api graphql -f query='
+query($cursor: String) {
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR_NUMBER) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes { body path author { login } }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Resolve addressed threads:
+
+```bash
+gh api graphql -f query='
+mutation {
+  t1: resolveReviewThread(input: {threadId: "ID1"}) { thread { isResolved } }
+  t2: resolveReviewThread(input: {threadId: "ID2"}) { thread { isResolved } }
+}'
+```
+
+**GitLab** — fetch unresolved discussions and resolve each one (see [GitLab API reference](references/gitlab-api.md)):
+
+```bash
+glab api "projects/:fullpath/merge_requests/<MR_IID>/discussions?per_page=100"
+```
+
+Filter for `"resolved": false` discussions. Then resolve each by its `id`:
+
+```bash
+glab api --method PUT \
+  "projects/:fullpath/merge_requests/<MR_IID>/discussions/<DISCUSSION_ID>" \
+  --field resolved=true
+```
+
+Repeat for each unresolved discussion ID. (GitLab has no batch resolution — loop through each one.)
+
+#### F. Commit and push / re-shelve
+
+**GitHub/GitLab:**
+```bash
+git add -A
+git commit -m "address greptile review feedback (greploop iteration N)"
+git push
+```
+
+**Perforce:**
+```bash
+# Stage changes back into the CL and re-shelve for the next review round
+p4 shelve -f -c <CL_NUMBER>
+```
+
+Wait for checks to start after push/shelve:
+
+```bash
+sleep 5
+```
+
+Then go back to step **A**.
+
+### 3. Report
+
+After exiting the loop, summarize:
+
+| Field              | Value      |
+| ------------------ | ---------- |
+| Platform           | GitHub / GitLab / Perforce |
+| Iterations         | N          |
+| Final confidence   | X/5        |
+| Comments resolved  | N          |
+| Remaining comments | N (if any) |
+
+If the loop exited due to max iterations, list any remaining unresolved comments and suggest next steps.
+
+## Output format
+
+```
+Greploop complete.
+  Platform:      GitHub
+  Iterations:    2
+  Confidence:    5/5
+  Resolved:      7 comments
+  Remaining:     0
+```
+
+If not fully resolved:
+
+```
+Greploop stopped after 5 iterations.
+  Platform:      GitLab
+  Confidence:    4/5
+  Resolved:      12 comments
+  Remaining:     2
+
+Remaining issues:
+  - src/auth.ts:45 — "Consider rate limiting this endpoint"
+  - src/db.ts:112 — "Missing index on user_id column"
+```
+
+**Perforce example:**
+
+```
+Greploop complete.
+  Platform:      Perforce
+  Changelist:    12345
+  Iterations:    3
+  Confidence:    5/5
+  Resolved:      9 comments
+  Remaining:     0
+```
+
+---
+
+PR title is probably wrong "feat(skills): add bundled skills embedded in the binary"
+
+---
+
+Fix and resolve PR comments
+
+---
+
+merge main to this branch, solve conflicts commit and push
+
+---
+
+<task-notification>
+<task-id>btr2fyfpj</task-id>
+<tool-use-id>toolu_01RB5YVngVF1XArdBq3MkBMN</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btr2fyfpj.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit merge and push" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/btr2fyfpj.output
+
+---
+
+<task-notification>
+<task-id>bbg3qn6e1</task-id>
+<tool-use-id>toolu_0115RQhAdnbm3qpojzNhQjji</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/bbg3qn6e1.output</output-file>
+<status>completed</status>
+<summary>Background command "Commit and push web UI fix" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-stealth-hovercraft/ed791c89-3b1f-46b9-8e56-2d948f24f0e5/tasks/bbg3qn6e1.output
+
+---
+
+merge main to this branch, solve conflicts commit and push
+
+---
+
+When I click on a bundled skill, I should still be able to view it. Clicks does nothing right now

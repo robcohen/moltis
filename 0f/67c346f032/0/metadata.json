@@ -1,0 +1,98 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0f67c346f032",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T17:12:50.277215Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/web/ui/src/pages/SkillsPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "895b2ca76651",
+  "token_usage": {
+    "input_tokens": 410,
+    "cache_creation_tokens": 533726,
+    "cache_read_tokens": 84453044,
+    "output_tokens": 111478,
+    "api_call_count": 355
+  },
+  "summary": {
+    "intent": "Add default bundled skills to Moltis by copying vetted skills from Hermes Agent and OpenClaw, with category UI, format fallback, and web UI visibility.",
+    "outcome": "101 bundled skills (from Hermes + OpenClaw) embedded in the binary via include_dir!, with category metadata, web UI category filter, prompt format fallback, origin tracking, PR review fixes, and full web UI click-through for bundled skill details.",
+    "learnings": {
+      "repo": [
+        "Moltis uses include_dir! for embedded assets (same as web UI), feature-gated under 'bundled-skills' defaulting to on",
+        "SkillSource enum is used in exhaustive matches in discover.rs and watcher.rs — new variants require adding arms in both",
+        "The /api/skills web endpoint (crates/web/src/api.rs) creates its own FsSkillDiscoverer independently from the gateway, so bundled skills must be wired there separately",
+        "skill_detail RPC handler has per-source branches; bundled source needed its own branch reading from BundledSkillStore",
+        "Style.css is a generated Tailwind output — merge conflicts should be resolved by regenerating, not manually merging",
+        "Directory names for bundled skills must match the frontmatter 'name' field exactly; mismatches cause silent read failures in find_skill_dir lookups",
+        "Feature flags must be explicitly forwarded through each crate in the dependency chain (skills → tools → gateway → cli, and skills → web → cli)",
+        "mlops skills have 3-level nesting (mlops/training/axolotl/SKILL.md) requiring recursive directory traversal in both FS and embedded discovery"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore uses include_dir! in release mode and direct filesystem reads in dev mode (same three-tier pattern as web assets); discovery must be recursive to handle nested categories"
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "CompositeSkillDiscoverer merges FS + bundled with name deduplication using a HashSet; must also deduplicate within the bundled set itself (not just cross-set)"
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "Three-tier format fallback: full (name+desc+attrs) → compact (self-closing, no desc) → truncated (binary search for largest prefix); header changes to signal compact mode"
+        },
+        {
+          "path": "crates/gateway/src/services.rs",
+          "finding": "skill_detail dispatches to source-specific functions; bundled source needs skill_detail_bundled reading from BundledSkillStore"
+        },
+        {
+          "path": "crates/web/src/api.rs",
+          "finding": "api_skills_handler was creating FsSkillDiscoverer with only Personal+Project paths; must use CompositeSkillDiscoverer to expose bundled skills in web UI"
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "read_bundled must call normalize_relative_skill_file_path() before passing to the store to prevent path traversal in dev-mode filesystem fallback"
+        }
+      ],
+      "workflow": [
+        "Python script injection of YAML frontmatter is more reliable than sed for multi-line blocks; sed truncates files when pattern spans lines",
+        "Greptile automated review caught real security issues (godmode bundled by default, path traversal, CDN integrity) — worth waiting for it before merging",
+        "When copying skills from another project, check for directory name vs frontmatter name mismatches — they cause silent failures that tests catch",
+        "Re-copy source files before running cleanup scripts to avoid operating on already-corrupted data",
+        "Tests should assert both count lower bounds and that every discovered skill is actually readable — catches name/path mismatches"
+      ]
+    },
+    "friction": [
+      "sed-based YAML frontmatter injection corrupted files by truncating content — required re-copy and switch to Python",
+      "Background bash tasks with jq parsing caused stuck polling loops; had to re-fetch results directly",
+      "Feature flag forwarding required touching 4+ Cargo.toml files (skills, tools, gateway, web, cli) — easy to miss one",
+      "Disk space issues on the worktree prevented full CLI build/test cycles; had to rely on per-crate checks",
+      "Arc import lint error in services.rs after replacing std::sync::Arc::new with Arc::new — existing import was already in scope",
+      "Tailwind CSS style.css merge conflicts on every main merge — entire file conflicts since it's fully generated",
+      "Node modules not installed in worktree required npm install before TypeScript type-checking or Vite builds",
+      "GitHub GraphQL API for resolving review threads required careful mutation construction to avoid shell word-splitting on thread IDs"
+    ],
+    "open_items": [
+      "Hermes-specific body text still remains in some skills (e.g., '~/.hermes/' paths, 'Hermes Integration' sections in github/* skills) — noted as cosmetic follow-up",
+      "Prompt format compact fallback would kick in around 300-400 skills — no char budget config exposed yet, hardcoded at 30KB",
+      "red-teaming/godmode removed entirely; could be re-added as opt-in non-default skill if useful",
+      "OpenClaw platform-specific extensions (Feishu, QQBot, ACP) and internal skills (clawflow, clawhub) not bundled — could be added if Moltis adds those integrations",
+      "Skills search in web UI added at end of session but not explicitly tested for correctness",
+      "Large sidecar reference files (unsloth/references/llms-full.md at 16.8k lines, powerpoint XSD schemas) bloat the binary — could be trimmed if binary size becomes a concern",
+      "No mechanism to update bundled skills independently of a full binary release — skills are frozen at compile time"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T17:12:12.135981Z",
+    "agent_lines": 0,
+    "human_added": 50,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 50,
+    "agent_percentage": 0
+  }
+}
