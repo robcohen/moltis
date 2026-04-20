@@ -1,0 +1,103 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "5b6c8e7eb8bb",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T14:23:53.995626Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/gateway/src/services.rs",
+    "crates/skills/src/bundled.rs",
+    "crates/skills/src/prompt_gen.rs",
+    "crates/skills/src/types.rs",
+    "crates/tools/src/skill_tools.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "8be26f19062c",
+  "token_usage": {
+    "input_tokens": 262,
+    "cache_creation_tokens": 443923,
+    "cache_read_tokens": 42991062,
+    "output_tokens": 80098,
+    "api_call_count": 232
+  },
+  "summary": {
+    "intent": "Add bundled default skills to Moltis by copying vetted skills from Hermes Agent and OpenClaw, embedding them in the binary like web UI assets, with category support and a web UI component to browse them by category.",
+    "outcome": "101 skills (69 from Hermes, 32 from OpenClaw) are now embedded in the Moltis binary via include_dir!, discoverable via CompositeSkillDiscoverer with user skills overriding bundled ones, cleaned of Hermes-specific references, annotated with origin metadata and requires: frontmatter, and browsable by category in the web UI.",
+    "learnings": {
+      "repo": [
+        "Moltis already had a SkillSource enum and SkillDiscoverer trait in crates/skills/src/ — the bundled system extended existing patterns rather than introducing new ones.",
+        "The web asset embedding pattern (include_dir! with dev-mode filesystem fallback) is the canonical way to embed static content in Moltis binaries.",
+        "SkillSource had exhaustive matches in discover.rs and watcher.rs that needed updating when adding the Bundled variant.",
+        "The bundled-skills feature must be forwarded through the dependency chain: skills → tools → gateway → cli Cargo.toml.",
+        "Hermes skills use metadata:/hermes:/dependencies:/prerequisites: frontmatter that is not Moltis-native and needed to be stripped; Moltis uses name/description/origin/requires/platforms.",
+        "Sidecar files (references/, templates/, scripts/, assets/) alongside SKILL.md are supported by include_dir! and contribute the bulk of line count (~144k of 162k total).",
+        "mlops skills have 3-level deep directory nesting (mlops/training/axolotl/) requiring recursive discovery logic rather than the initial 2-level assumption.",
+        "The services.rs SkillListEntry needed a category field added to expose category grouping to the web UI via the REST API."
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore uses include_dir! in release mode and direct filesystem reads in dev mode for instant iteration, same three-tier pattern as web assets."
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "CompositeSkillDiscoverer merges FS + bundled sources with name-based deduplication; user skills (Personal/Project) take priority over bundled by appearing earlier in the chain."
+        },
+        {
+          "path": "crates/skills/src/watcher.rs",
+          "finding": "Had an exhaustive match on SkillSource that needed a Bundled arm (no-op, bundled skills are not watched for filesystem changes)."
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool gained a with_bundled() constructor and read_bundled() function that serves content from memory for bundled skills instead of filesystem."
+        },
+        {
+          "path": "crates/skills/src/types.rs",
+          "finding": "Added SkillSource::Bundled variant, SkillOrigin struct (source/url/commit/copied_at), origin field on SkillMetadata, and category: Option\u003cString\u003e field for directory-derived categorization."
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "finding": "EnabledSkillsTable extended to group skills by category with filter pills; category field added to the Skill TypeScript type."
+        },
+        {
+          "path": "crates/web/src/assets/css/components.css",
+          "finding": "Category pill and badge CSS classes added alongside existing skills component styles."
+        }
+      ],
+      "workflow": [
+        "Python scripts are more reliable than sed for injecting structured YAML frontmatter into markdown files; sed truncated files when the pattern spanned lines.",
+        "cargo check is sufficient to validate compilation across feature chains without incurring full test build costs (which hit disk space limits in worktrees).",
+        "Auditing bundled scripts for security: scripts/ sidecars are passive text served to the LLM, not auto-executed — actual execution requires the agent to explicitly write+run them via exec tool.",
+        "Background bash commands with output redirection hung in this environment; running commands directly is more reliable.",
+        "Node modules are not pre-installed in git worktrees; npm install required before TypeScript type-checking or Vite builds."
+      ]
+    },
+    "friction": [
+      "Initial sed-based origin metadata injection corrupted SKILL.md files by truncating them; required re-copying from Hermes and rewriting with Python.",
+      "Disk space exhaustion in the worktree prevented full cargo test runs for gateway and CLI crates — only skills and tools crates could be tested.",
+      "Background bash commands with output file redirection hung silently, requiring multiple retry approaches to compare skill lists between repos.",
+      "Arc import was already in scope in services.rs but the added code used fully-qualified std::sync::Arc::new causing a clippy lint failure.",
+      "The bundled skills directory was initially designed for 2-level nesting (category/skill/) but mlops has 3-level nesting (mlops/subcategory/skill/) requiring a recursive discovery rewrite.",
+      "Node modules absent from worktree required an npm install step before TypeScript validation could proceed."
+    ],
+    "open_items": [
+      "Remaining 5 'Nous Hermes' model name references in godmode/SKILL.md are correct but the godmode skill itself (red-teaming jailbreak) warrants a policy review for inclusion in default bundled skills.",
+      "~25k lines of unsloth reference files (llms-full.md, llms-txt.md) and ~15k lines of powerpoint XSD schemas dominate the binary size contribution; these could be trimmed if binary size becomes a concern.",
+      "OpenClaw extensions/ skills (Feishu, QQBot, ACP) and platform-specific skills were skipped but could be added as opt-in skills for users on those platforms.",
+      "The GitHub skills still contain some ~/.hermes/ path references in example code that were not caught by the bulk cleanup (mentioned in session but deferred).",
+      "A mechanism to disable individual bundled skills from the web UI (rather than only overriding by name) was not implemented.",
+      "Category metadata is derived purely from directory structure; skills copied from openclaw into existing categories may not have the right category if their source category differed."
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T14:22:44.765696Z",
+    "agent_lines": 0,
+    "human_added": 9627,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 9627,
+    "agent_percentage": 0
+  }
+}
