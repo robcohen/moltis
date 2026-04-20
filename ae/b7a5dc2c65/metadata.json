@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "aeb7a5dc2c65",
+  "strategy": "manual-commit",
+  "branch": "feat/github-header-links",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "crates/web/src/assets/css/layout.css",
+    "crates/web/src/assets/css/style.css",
+    "crates/web/src/assets/dist/main.js",
+    "crates/web/src/assets/icons/masks/mask-github-discussion.svg",
+    "crates/web/src/assets/icons/masks/mask-github-issue.svg",
+    "crates/web/src/templates/index.html",
+    "crates/web/ui/input.css",
+    "crates/web/ui/src/app.tsx",
+    "crates/web/ui/src/github-stats.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ae/b7a5dc2c65/0/metadata.json",
+      "transcript": "/ae/b7a5dc2c65/0/full.jsonl",
+      "context": "/ae/b7a5dc2c65/0/context.md",
+      "content_hash": "/ae/b7a5dc2c65/0/content_hash.txt",
+      "prompt": "/ae/b7a5dc2c65/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 62,
+    "cache_creation_tokens": 54310,
+    "cache_read_tokens": 2541024,
+    "output_tokens": 16548,
+    "api_call_count": 52
+  }
+}
