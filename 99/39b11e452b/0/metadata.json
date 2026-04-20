@@ -1,0 +1,72 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "9939b11e452b",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T13:19:08.789657Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/skills/src/assets/devops/webhook-subscriptions/SKILL.md",
+    "crates/skills/src/assets/research/arxiv/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "493f16f7d37e",
+  "checkpoint_transcript_start": 925,
+  "transcript_lines_at_start": 925,
+  "token_usage": {
+    "input_tokens": 45,
+    "cache_creation_tokens": 52688,
+    "cache_read_tokens": 7637805,
+    "output_tokens": 19378,
+    "api_call_count": 37
+  },
+  "summary": {
+    "intent": "Audit all 69 bundled skills for Hermes-specific dependencies, add Moltis-native `requires:` frontmatter blocks, and remove all Hermes references from skill bodies.",
+    "outcome": "28 skills received `requires:` frontmatter with binary names and install methods; 66 files were cleaned of Hermes references; the webhook-subscriptions skill was fully rewritten for the Moltis RPC API. 5 remaining 'Hermes' references are legitimate (Nous Hermes model name) and intentionally kept.",
+    "learnings": {
+      "repo": [
+        "Moltis skill frontmatter supports `requires:` with `bins` (required binaries), `any_bins` (at least one needed), and `install` (install instructions) — defined in crates/skills/src/types.rs",
+        "Skills originated from hermes-agent@9f22977f carry `origin:` metadata and `metadata.hermes:` tags that are Hermes-specific and should be stripped for Moltis",
+        "Moltis-native frontmatter fields are: name, description, origin, requires, platforms, license — all others (metadata, dependencies, version, author) are Hermes artifacts",
+        "6 skills have `platforms:` restrictions (macOS/Linux specific); 1 skill has a non-MIT license",
+        "The webhook system uses RPC API (`webhooks.*`) with built-in source profiles (GitHub, GitLab, Stripe, Linear, PagerDuty, Sentry) and supports per_delivery/per_entity/named_session modes"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/types.rs",
+          "finding": "Defines the `requires:` frontmatter schema: `bins` (all required), `any_bins` (one of), and `install` (how to install)"
+        },
+        {
+          "path": "crates/skills/src/assets/devops/webhook-subscriptions/SKILL.md",
+          "finding": "Fully rewritten from Hermes CLI (`hermes webhook`) to Moltis RPC API (`webhooks.*`) with auth modes, session modes, filtering, and troubleshooting"
+        }
+      ],
+      "workflow": [
+        "Initial agent-based audit was too shallow; a direct bash grep across all files was more reliable for bulk dependency discovery",
+        "Binary names in `requires:` must be verified — grep output truncation caused one wrong binary name (`a` instead of `memo` for apple-notes) that had to be fixed",
+        "Bulk sed-based cleanup of frontmatter fields across 66 files is practical when fields follow consistent YAML patterns; individual file edits needed for edge cases",
+        "Skills that use Python in-body scripts (e.g. uv run) still list `python3` as a required bin even though uv manages the environment"
+      ]
+    },
+    "friction": [
+      "First audit agent pass was too shallow and missed most skills, requiring a manual re-scan with bash grep",
+      "grep output truncation caused an incorrect binary name (`a`) to be injected for apple-notes, requiring a follow-up fix pass",
+      "Bulk regex cleanup cannot handle all Hermes references in code blocks or prose context — 9 files needed individual attention after the bulk pass"
+    ],
+    "open_items": [
+      "github/* skills still contain `~/.hermes/` paths that should be replaced with Moltis equivalents (deferred cosmetic cleanup)",
+      "Some skills still have 'Hermes Integration' section prose that references Hermes workflows — noted as cosmetic and deferred",
+      "41 skills have no `requires:` block — confirm these truly have no external binary dependencies beyond curl/git/python3"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T13:18:48.641654Z",
+    "agent_lines": 236,
+    "human_added": 270,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 506,
+    "agent_percentage": 46.6403162055336
+  }
+}
