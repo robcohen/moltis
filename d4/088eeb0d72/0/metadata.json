@@ -1,0 +1,92 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "d4088eeb0d72",
+  "session_id": "ed791c89-3b1f-46b9-8e56-2d948f24f0e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T15:10:22.215058Z",
+  "branch": "stealth-hovercraft",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/skills/src/discover.rs",
+    "crates/tools/src/skill_tools.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "41d99bdae0e3",
+  "token_usage": {
+    "input_tokens": 316,
+    "cache_creation_tokens": 483885,
+    "cache_read_tokens": 56536220,
+    "output_tokens": 94163,
+    "api_call_count": 276
+  },
+  "summary": {
+    "intent": "Add bundled default skills to Moltis by copying vetted skills from Hermes Agent and OpenClaw, embedding them in the binary like web UI assets, with category support and web UI filtering.",
+    "outcome": "101 bundled skills (from Hermes and OpenClaw) are now embedded in the Moltis binary via include_dir!, with category metadata, origin tracking, a 3-tier prompt format fallback, web UI category filtering, and comprehensive tests. PR #797 was created, iterated on, and PR review comments were fixed.",
+    "learnings": {
+      "repo": [
+        "Moltis already had a skill system (crates/skills/) with SKILL.md format and discovery sources before this work — what was missing was bundled default content",
+        "Web assets embedding pattern uses include_dir! with dev-mode filesystem fallback — the same pattern was applied for bundled skills",
+        "SkillSource enum and SkillDiscoverer trait are the extension points for new skill sources; CompositeSkillDiscoverer was added to merge FS + bundled with name deduplication",
+        "Skills are discovered by directory name, not frontmatter name — 6 skills in Hermes/OpenClaw had directory/name mismatches causing silent read failures",
+        "The gateway's append_skills_section calls generate_skills_prompt directly; prompt_gen.rs is the single place to change prompt formatting",
+        "Category is derived from the first directory component relative to assets_dir (e.g., crates/skills/src/assets/research/arxiv/ → category 'research')",
+        "Skills in mlops category have nested sub-categories (3 levels deep), requiring recursive directory traversal in both FS and embedded discovery",
+        "PR review flagged two real issues: sidecar path traversal in dev-mode read_bundled, and intra-bundled deduplication using wrong set operation"
+      ],
+      "code": [
+        {
+          "path": "crates/skills/src/bundled.rs",
+          "finding": "BundledSkillStore uses include_dir! in release mode and filesystem fallback in dev mode; discovery is recursive to handle nested mlops sub-categories"
+        },
+        {
+          "path": "crates/skills/src/discover.rs",
+          "finding": "CompositeSkillDiscoverer merges FS + bundled results; uses a HashSet for deduplication with FS taking priority over bundled by name"
+        },
+        {
+          "path": "crates/skills/src/prompt_gen.rs",
+          "finding": "3-tier format fallback: full (name+desc+attrs) → compact (self-closing tags, no desc) → truncated compact; 30KB default budget; header changes to signal compact mode"
+        },
+        {
+          "path": "crates/tools/src/skill_tools.rs",
+          "finding": "ReadSkillTool gained with_bundled() constructor and read_bundled() function; sidecar paths must be normalized via normalize_relative_skill_file_path before lookup to prevent path traversal"
+        },
+        {
+          "path": "crates/web/ui/src/pages/SkillsPage.tsx",
+          "finding": "Category filter pills added above the skills table; category badges shown per row when unfiltered; category field added to SkillMetadata TypeScript type"
+        }
+      ],
+      "workflow": [
+        "Injecting origin metadata into SKILL.md frontmatter via sed is fragile — Python scripting is more reliable for multi-line YAML block insertion",
+        "When bulk-copying external skills, run a name/directory mismatch check before assuming reads work; tests caught 6 silent failures",
+        "Hermes skills have frontmatter fields (metadata, dependencies, prerequisites, version, author, triggers) that need bulk removal when porting to another system",
+        "Both Hermes and OpenClaw list all skill names+descriptions in the system prompt (~2500 tokens for 100 skills) and load full content on demand — no search/lazy mode needed at this scale",
+        "include_dir! embedded binary bloats (162k lines from sidecar files) are expected and acceptable when the source repo is vetted"
+      ]
+    },
+    "friction": [
+      "sed-based YAML frontmatter injection corrupted files by truncating content — required re-copy from source and Python rewrite",
+      "Background bash tasks hung silently, requiring direct execution for openclaw skill comparison",
+      "node_modules not installed in the worktree, requiring npm install before TypeScript type-checking could run",
+      "Disk space issues on the worktree prevented full CLI build/test (llama-cpp compilation fills disk)",
+      "Greptile PR comments identified two real security/correctness bugs that had to be fixed post-merge: sidecar path traversal and incorrect deduplication logic",
+      "Exhaustive match on SkillSource in watcher.rs and discover.rs had to be found and patched after adding the Bundled variant"
+    ],
+    "open_items": [
+      "Some skills still reference '~/.moltis/' paths that may not be correct for Moltis's actual config directory structure",
+      "godmode/SKILL.md red-teaming skill was copied from Hermes — may need a policy decision about whether jailbreak-related skills should be bundled by default",
+      "OpenClaw extensions (Feishu, QQBot, ACP) were skipped — could be added if those integrations are ever supported",
+      "Compact format fallback truncation uses binary search for largest fitting prefix — could be smarter (e.g., prioritize by source, keeping Project/Personal over Bundled)",
+      "No char budget configuration is exposed to users yet — 30KB is hardcoded in prompt_gen.rs",
+      "Skills from other curated sources beyond Hermes and OpenClaw can be added to src/assets/ following the same pattern"
+    ]
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T15:09:47.324806Z",
+    "agent_lines": 0,
+    "human_added": 7,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 7,
+    "agent_percentage": 0
+  }
+}

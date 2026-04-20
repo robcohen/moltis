@@ -1,0 +1,118 @@
+Looking at hermes in ~/code/hermes-agent I see it comes with tons of skills already, the loader shows:
+
+██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗       █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝      ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗█████╗███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║
+██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║╚════╝██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║
+██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║      ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
+
+╭──────────────────────────── Hermes Agent v0.10.0 (2026.4.16) · upstream 9f22977f ─────────────────────────────╮
+│                                   Available Tools                                                             │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⡀⠀⣀⣀⠀⢀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   browser: browser_back, browser_cdp, browser_click, ...                      │
+│  ⠀⠀⠀⠀⠀⠀⢀⣠⣴⣾⣿⣿⣇⠸⣿⣿⠇⣸⣿⣿⣷⣦⣄⡀⠀⠀⠀⠀⠀⠀   clarify: clarify                                                            │
+│  ⠀⢀⣠⣴⣶⠿⠋⣩⡿⣿⡿⠻⣿⡇⢠⡄⢸⣿⠟⢿⣿⢿⣍⠙⠿⣶⣦⣄⡀⠀   code_execution: execute_code                                                │
+│  ⠀⠀⠉⠉⠁⠶⠟⠋⠀⠉⠀⢀⣈⣁⡈⢁⣈⣁⡀⠀⠉⠀⠙⠻⠶⠈⠉⠉⠀⠀   cronjob: cronjob                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡿⠛⢁⡈⠛⢿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   delegation: delegate_task                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣦⣤⣈⠁⢠⣴⣿⠿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   discord: discord_server                                                     │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠻⢿⣿⣦⡉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   file: patch, read_file, search_files, write_file                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⣦⣈⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   homeassistant: ha_call_service, ha_get_state, ...                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣴⠦⠈⠙⠿⣦⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   (and 12 more toolsets...)                                                   │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣤⡈⠁⢤⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀                                                                               │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠷⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   Available Skills                                                            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠑⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   autonomous-ai-agents: claude-code, codex, hermes-agent, opencode            │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠁⢰⡆⠈⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   creative: architecture-diagram, ascii-art, ascii-video, b...                │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⠈⣡⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   data-science: jupyter-live-kernel                                           │
+│  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   devops: webhook-subscriptions                                               │
+│                                   email: himalaya                                                             │
+│  claude-opus-4.6 · Nous Research  gaming: minecraft-modpack-server, pokemon-player                            │
+│               /root               general: dogfood                                                            │
+│  Session: 20260420_113745_966d4d  github: codebase-inspection, github-auth, github-code-r...                  │
+│                                   mcp: native-mcp                                                             │
+│                                   media: gif-search, heartmula, songsee, youtube-content                      │
+│                                   mlops: audiocraft-audio-generation, axolotl, dspy, eva...                   │
+│                                   note-taking: obsidian                                                       │
+│                                   productivity: google-workspace, linear, maps, nano-pdf, notio...            │
+│                                   red-teaming: godmode                                                        │
+│                                   research: arxiv, blogwatcher, llm-wiki, polymarket, resea...                │
+│                                   smart-home: openhue                                                         │
+│                                   social-media: xurl                                                          │
+│                                   software-development: plan, requesting-code-review, subagent-driven-d...    │
+│                                                                                                               │
+│                                   27 tools · 67 skills · /help for commands                                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+I'd like to have those skills by default in Moltis so it does more by default. How would you do that?
+
+---
+
+I would rather have something like assets for the web-ui (html, etc), with an external directory where we just copy hermes skills (and other skills I'll find online and I "vouched" for security issues), each skill could have metadata for its original source/origin. And have all those skills enabled by default since they've been secured.
+
+---
+
+please proceed
+
+---
+
+commit push create a PR
+
+---
+
+You can now add all hermes skills by default, just copy them over from the local hermes clone I gave you
+
+---
+
+This skill is specific to hermes: crates/skills/src/assets/devops/webhook-subscriptions/SKILL.md but since we have webhooks in moltis you should be able to update it for moltis
+
+---
+
+Look at every skills and see which ones are actually depending on hermes or another tool, I think Moltis skills include frontmatter data to list required tools (cli, etc) for the skill to work, we could include that.
+
+---
+
+Please cleanup hermes sections, and use the moltis skill metadata fields to add binary expectations if any
+
+---
+
+Merge main to this branch, commit and push
+
+---
+
+I see +160k lines, where are they from?
+
+---
+
+How can we know those are safe?
+
+---
+
+but those are from the hermes repo, so I guess it's fine to fully copy them over
+
+---
+
+anything else to improve? Can you look at ~/code/openclaw and see if there are bundled skills?
+
+---
+
+yes please, also having categories in skills make sense, can you do that and add the web-ui component to view categories?
+
+---
+
+Should you add tests for some of those default skills?
+
+---
+
+Look at openclaw and hermes code, how are they adding skills to system prompts? Do they use a search skill like I have (not default enabled I think)? Because that's a lot of skills.
+
+---
+
+Maybe a format fallback would be nice?
+
+---
+
+commit push
+
+---
+
+Fix and resolve PR comments
