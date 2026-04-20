@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "cf378af8687b",
+  "session_id": "f8228535-8121-40f9-82ee-745151a5c580",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T21:23:29.633792Z",
+  "branch": "functional-shame",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/providers/src/openai/provider/request.rs",
+    "crates/providers/tests/fireworks_integration.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "aebf7d998bef",
+  "token_usage": {
+    "input_tokens": 128,
+    "cache_creation_tokens": 136689,
+    "cache_read_tokens": 10017217,
+    "output_tokens": 31906,
+    "api_call_count": 118
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T21:23:27.661282Z",
+    "agent_lines": 173,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 173,
+    "agent_percentage": 100
+  }
+}
