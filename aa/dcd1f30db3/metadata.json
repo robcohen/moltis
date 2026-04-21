@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "aadcd1f30db3",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/code-index/src/discover.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/aa/dcd1f30db3/0/metadata.json",
+      "transcript": "/aa/dcd1f30db3/0/full.jsonl",
+      "context": "/aa/dcd1f30db3/0/context.md",
+      "content_hash": "/aa/dcd1f30db3/0/content_hash.txt",
+      "prompt": "/aa/dcd1f30db3/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 516,
+    "cache_creation_tokens": 1035682,
+    "cache_read_tokens": 65618370,
+    "output_tokens": 87233,
+    "api_call_count": 385
+  }
+}
