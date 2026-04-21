@@ -158,6 +158,8 @@ const DANGEROUS_ENV_VARS: &[&str] = &[
     "NODE_OPTIONS",
     "NODE_PATH",
     "JAVA_TOOL_OPTIONS",
+    "_JAVA_OPTIONS",
+    "JDK_JAVA_OPTIONS",
     "PERL5OPT",
     "PERL5LIB",
     "RUBYOPT",
@@ -227,7 +229,7 @@ static DANGEROUS_PATTERN_DEFS: &[(&str, &str)] = &[
     ),
     (r"(?i)(?:^|\s)PATH=\S", "PATH override"),
     (
-        r"(?i)(?:^|\s)(PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|NODE_PATH|JAVA_TOOL_OPTIONS)=\S",
+        r"(?i)(?:^|\s)(PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|NODE_PATH|JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)=\S",
         "dangerous language runtime env var",
     ),
     (
@@ -991,6 +993,18 @@ mod tests {
     fn test_dangerous_java_tool_options() {
         assert_eq!(
             check_dangerous("JAVA_TOOL_OPTIONS=-javaagent:/evil.jar java Main"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_java_options_variants() {
+        assert_eq!(
+            check_dangerous("_JAVA_OPTIONS=-javaagent:/evil.jar java Main"),
+            Some("dangerous language runtime env var"),
+        );
+        assert_eq!(
+            check_dangerous("JDK_JAVA_OPTIONS=-javaagent:/evil.jar java Main"),
             Some("dangerous language runtime env var"),
         );
     }
