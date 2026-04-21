@@ -135,6 +135,41 @@ pub const SAFE_BINS: &[&str] = &[
     "command",
 ];
 
+/// Environment variable names that can hijack process execution.
+///
+/// Used by both `DANGEROUS_PATTERN_DEFS` (regex layer) and `extract_first_bin`
+/// (semantic layer) for defense-in-depth against env-var prefix injection
+/// (moltis-org/moltis#814).
+const DANGEROUS_ENV_VARS: &[&str] = &[
+    // Linux dynamic linker
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "LD_AUDIT",
+    "LD_DEBUG",
+    "LD_CONFIG",
+    // macOS dynamic linker
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FRAMEWORK_PATH",
+    // PATH override
+    "PATH",
+    // Language runtimes
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "NODE_OPTIONS",
+    "NODE_PATH",
+    "JAVA_TOOL_OPTIONS",
+    "PERL5OPT",
+    "PERL5LIB",
+    "RUBYOPT",
+    "RUBYLIB",
+    "CLASSPATH",
+    // Shell startup
+    "BASH_ENV",
+    "ENV",
+    "ZDOTDIR",
+];
+
 /// Dangerous command patterns that force approval even when `approval_mode` is
 /// off or `security_level` is full.  Each entry: `(regex_pattern, description)`.
 static DANGEROUS_PATTERN_DEFS: &[(&str, &str)] = &[
@@ -176,6 +211,28 @@ static DANGEROUS_PATTERN_DEFS: &[(&str, &str)] = &[
         r"chmod\s+(-\S*R\S*\s+)*777\s+/",
         "recursive chmod 777 on root",
     ),
+    // Inline environment variable injection (moltis-org/moltis#814)
+    (
+        r"(?i)\b(LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT|LD_DEBUG|LD_CONFIG)=",
+        "dangerous dynamic linker env var",
+    ),
+    (
+        r"(?i)\b(DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|DYLD_FRAMEWORK_PATH)=",
+        "dangerous macOS dynamic linker env var",
+    ),
+    (r"(?i)\bPATH=", "PATH override"),
+    (
+        r"(?i)\b(PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|NODE_PATH|JAVA_TOOL_OPTIONS)=",
+        "dangerous language runtime env var",
+    ),
+    (
+        r"(?i)\b(PERL5OPT|PERL5LIB|RUBYOPT|RUBYLIB|CLASSPATH)=",
+        "dangerous language runtime env var",
+    ),
+    (
+        r"(?i)\b(BASH_ENV|ENV|ZDOTDIR)=",
+        "dangerous shell startup env var",
+    ),
 ];
 
 static DANGEROUS_SET: std::sync::LazyLock<RegexSet> = std::sync::LazyLock::new(|| {
@@ -194,12 +251,26 @@ pub fn check_dangerous(command: &str) -> Option<&'static str> {
 }
 
 /// Extract the first command/binary from a shell command string.
+///
+/// Returns `None` when the command is empty **or** when a leading env-var
+/// assignment uses a dangerous variable name (see [`DANGEROUS_ENV_VARS`]).
+/// This prevents attackers from smuggling `LD_PRELOAD=… cat /file` through the
+/// safe-bin / allowlist path (moltis-org/moltis#814).
 fn extract_first_bin(command: &str) -> Option<&str> {
     let trimmed = command.trim();
     // Skip env var assignments at the start (e.g. `FOO=bar cmd`).
     let mut parts = trimmed.split_whitespace();
     for part in parts.by_ref() {
-        if !part.contains('=') {
+        if let Some((key, _)) = part.split_once('=') {
+            // Dangerous env-var prefix — refuse to extract a binary so the
+            // caller falls through to the approval / denial path.
+            if DANGEROUS_ENV_VARS
+                .iter()
+                .any(|d| d.eq_ignore_ascii_case(key))
+            {
+                return None;
+            }
+        } else {
             // Strip path prefix (e.g. `/usr/bin/jq` → `jq`).
             return Some(part.rsplit('/').next().unwrap_or(part));
         }
@@ -834,5 +905,277 @@ mod tests {
                 .iter()
                 .all(|request| request.session_key.as_deref() == Some("session:a"))
         );
+    }
+
+    // --- Env-var prefix injection (moltis-org/moltis#814) ---
+
+    // Layer 1: check_dangerous regex hits
+
+    #[test]
+    fn test_dangerous_ld_preload() {
+        assert_eq!(
+            check_dangerous("LD_PRELOAD=/evil.so cat /etc/passwd"),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_ld_library_path() {
+        assert_eq!(
+            check_dangerous("LD_LIBRARY_PATH=/tmp cat /file"),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_ld_audit() {
+        assert_eq!(
+            check_dangerous("LD_AUDIT=/evil.so ls"),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_dyld_insert_libraries() {
+        assert_eq!(
+            check_dangerous("DYLD_INSERT_LIBRARIES=/evil.dylib cat /etc/passwd"),
+            Some("dangerous macOS dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_dyld_library_path() {
+        assert_eq!(
+            check_dangerous("DYLD_LIBRARY_PATH=/tmp ls"),
+            Some("dangerous macOS dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_path_override() {
+        assert_eq!(
+            check_dangerous("PATH=/tmp:$PATH cat /etc/passwd"),
+            Some("PATH override"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_pythonpath() {
+        assert_eq!(
+            check_dangerous("PYTHONPATH=/evil python3 -c 'import os'"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_node_options() {
+        assert_eq!(
+            check_dangerous("NODE_OPTIONS='--require=/evil.js' node app.js"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_java_tool_options() {
+        assert_eq!(
+            check_dangerous("JAVA_TOOL_OPTIONS=-javaagent:/evil.jar java Main"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_perl5opt() {
+        assert_eq!(
+            check_dangerous("PERL5OPT=-M/evil perl -e1"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_rubyopt() {
+        assert_eq!(
+            check_dangerous("RUBYOPT=-r/evil ruby -e1"),
+            Some("dangerous language runtime env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_bash_env() {
+        assert_eq!(
+            check_dangerous("BASH_ENV=/evil.sh bash -c 'echo hi'"),
+            Some("dangerous shell startup env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_env_var_in_subshell() {
+        // Regex must catch env vars even inside subshell strings.
+        assert_eq!(
+            check_dangerous(r#"sh -c "LD_PRELOAD=/evil.so cat /etc/passwd""#),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_dangerous_env_var_case_insensitive() {
+        assert_eq!(
+            check_dangerous("ld_preload=/evil.so cat /file"),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_benign_env_var_not_flagged() {
+        // Variables whose names are not in the dangerous list.
+        assert!(check_dangerous("FOO=bar echo hi").is_none());
+        assert!(check_dangerous("RUST_LOG=debug cargo test").is_none());
+        assert!(check_dangerous("MY_LD_PRELOAD_FLAG=1 echo hi").is_none());
+    }
+
+    // Layer 2: extract_first_bin semantic check
+
+    #[test]
+    fn test_extract_first_bin_dangerous_prefix_returns_none() {
+        assert_eq!(extract_first_bin("LD_PRELOAD=/evil.so cat /file"), None);
+        assert_eq!(extract_first_bin("DYLD_INSERT_LIBRARIES=/e.dylib ls"), None);
+        assert_eq!(extract_first_bin("PATH=/tmp:$PATH cat /etc/passwd"), None);
+        assert_eq!(extract_first_bin("NODE_OPTIONS=--evil node app.js"), None);
+        assert_eq!(extract_first_bin("BASH_ENV=/evil.sh bash -c hi"), None);
+    }
+
+    #[test]
+    fn test_extract_first_bin_dangerous_case_insensitive() {
+        assert_eq!(extract_first_bin("ld_preload=/evil.so cat /file"), None);
+        assert_eq!(extract_first_bin("Ld_Preload=/evil.so cat /file"), None);
+    }
+
+    #[test]
+    fn test_extract_first_bin_benign_prefix_still_works() {
+        assert_eq!(extract_first_bin("FOO=bar echo hi"), Some("echo"));
+        assert_eq!(
+            extract_first_bin("RUST_LOG=debug cargo test"),
+            Some("cargo"),
+        );
+        assert_eq!(extract_first_bin("CC=gcc CXX=g++ cmake .."), Some("cmake"),);
+    }
+
+    #[test]
+    fn test_extract_first_bin_non_dangerous_ld_prefix() {
+        // MY_LD_PRELOAD_FLAG contains "LD_PRELOAD" as substring but the key
+        // itself is not a match.
+        assert_eq!(
+            extract_first_bin("MY_LD_PRELOAD_FLAG=1 echo hi"),
+            Some("echo"),
+        );
+    }
+
+    // is_safe_command rejects dangerous-prefixed safe commands
+
+    #[test]
+    fn test_is_safe_command_rejects_dangerous_prefix() {
+        assert!(!is_safe_command("LD_PRELOAD=/evil.so cat /etc/passwd"));
+        assert!(!is_safe_command("PATH=/tmp echo hi"));
+        assert!(!is_safe_command("DYLD_INSERT_LIBRARIES=/e.dylib ls"));
+    }
+
+    #[test]
+    fn test_is_safe_command_allows_benign_prefix() {
+        assert!(is_safe_command("FOO=bar echo hi"));
+        assert!(is_safe_command("RUST_LOG=debug cat file.txt"));
+    }
+
+    // matches_allowlist rejects dangerous-prefixed allowlisted commands
+
+    #[test]
+    fn test_allowlist_rejects_dangerous_prefix() {
+        let list = vec!["cat".into(), "ls".into()];
+        assert!(!matches_allowlist("LD_PRELOAD=/evil.so cat /file", &list));
+        assert!(!matches_allowlist("PATH=/tmp ls", &list));
+    }
+
+    #[test]
+    fn test_allowlist_wildcard_still_matches_dangerous_prefix() {
+        // Wildcard `*` overrides everything — existing documented behavior.
+        let list = vec!["*".into()];
+        assert!(matches_allowlist("LD_PRELOAD=/evil.so cat /file", &list));
+    }
+
+    // check_command integration tests
+
+    #[tokio::test]
+    async fn test_env_injection_needs_approval_on_miss() {
+        let mgr = ApprovalManager::default();
+        let action = mgr
+            .check_command("LD_PRELOAD=/evil.so cat /etc/passwd")
+            .await
+            .unwrap();
+        assert_eq!(action, ApprovalAction::NeedsApproval);
+    }
+
+    #[tokio::test]
+    async fn test_env_injection_denied_in_off_mode() {
+        let mgr = ApprovalManager {
+            mode: ApprovalMode::Off,
+            ..Default::default()
+        };
+        let err = mgr
+            .check_command("LD_PRELOAD=/evil.so cat /etc/passwd")
+            .await
+            .expect_err("expected denial for env injection in off mode");
+        assert!(
+            err.to_string().contains("dangerous"),
+            "unexpected error message: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_env_injection_needs_approval_always_mode() {
+        let mgr = ApprovalManager {
+            mode: ApprovalMode::Always,
+            ..Default::default()
+        };
+        let action = mgr
+            .check_command("DYLD_INSERT_LIBRARIES=/evil.dylib ls")
+            .await
+            .unwrap();
+        assert_eq!(action, ApprovalAction::NeedsApproval);
+    }
+
+    #[tokio::test]
+    async fn test_benign_prefix_proceeds_on_miss() {
+        let mgr = ApprovalManager::default();
+        let action = mgr.check_command("RUST_LOG=debug echo hi").await.unwrap();
+        assert_eq!(action, ApprovalAction::Proceed);
+    }
+
+    #[tokio::test]
+    async fn test_env_injection_in_subshell_needs_approval() {
+        let mgr = ApprovalManager::default();
+        let action = mgr
+            .check_command(r#"sh -c "LD_PRELOAD=/evil.so cat /etc/passwd""#)
+            .await
+            .unwrap();
+        assert_eq!(action, ApprovalAction::NeedsApproval);
+    }
+
+    #[tokio::test]
+    async fn test_env_injection_with_explicit_allowlist_wildcard() {
+        // Wildcard allowlist still overrides dangerous env var patterns.
+        let mgr = ApprovalManager {
+            allowlist: vec!["*".into()],
+            ..Default::default()
+        };
+        let action = mgr
+            .check_command("LD_PRELOAD=/evil.so cat /etc/passwd")
+            .await
+            .unwrap();
+        // Dangerous pattern matched, but allowlist wildcard overrides → falls
+        // through to the mode check where safe-bin check fails (extract_first_bin
+        // returns None) → NeedsApproval in default OnMiss mode.
+        // Actually: check_dangerous fires, matches_allowlist("*") returns true,
+        // so the dangerous block is skipped. Then security_level=Allowlist,
+        // mode=OnMiss. is_safe_command returns false (extract_first_bin → None).
+        // matches_allowlist("*") returns true → Proceed.
+        assert_eq!(action, ApprovalAction::Proceed);
     }
 }
