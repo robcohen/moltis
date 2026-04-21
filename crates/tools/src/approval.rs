@@ -141,11 +141,10 @@ pub const SAFE_BINS: &[&str] = &[
 /// (semantic layer) for defense-in-depth against env-var prefix injection
 /// (moltis-org/moltis#814).
 const DANGEROUS_ENV_VARS: &[&str] = &[
-    // Linux dynamic linker
+    // Linux dynamic linker (LD_DEBUG excluded — diagnostic only, no code injection)
     "LD_PRELOAD",
     "LD_LIBRARY_PATH",
     "LD_AUDIT",
-    "LD_DEBUG",
     "LD_CONFIG",
     // macOS dynamic linker
     "DYLD_INSERT_LIBRARIES",
@@ -164,9 +163,9 @@ const DANGEROUS_ENV_VARS: &[&str] = &[
     "RUBYOPT",
     "RUBYLIB",
     "CLASSPATH",
-    // Shell startup
+    // Shell startup (bare ENV excluded — only dangerous for sh/bash interactive
+    // startup, too noisy for general use: ENV=test, ENV=production, etc.)
     "BASH_ENV",
-    "ENV",
     "ZDOTDIR",
 ];
 
@@ -213,7 +212,7 @@ static DANGEROUS_PATTERN_DEFS: &[(&str, &str)] = &[
     ),
     // Inline environment variable injection (moltis-org/moltis#814)
     (
-        r"(?i)\b(LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT|LD_DEBUG|LD_CONFIG)=",
+        r"(?i)\b(LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT|LD_CONFIG)=",
         "dangerous dynamic linker env var",
     ),
     (
@@ -230,7 +229,7 @@ static DANGEROUS_PATTERN_DEFS: &[(&str, &str)] = &[
         "dangerous language runtime env var",
     ),
     (
-        r"(?i)\b(BASH_ENV|ENV|ZDOTDIR)=",
+        r"(?i)\b(BASH_ENV|ZDOTDIR)=",
         "dangerous shell startup env var",
     ),
 ];
@@ -256,6 +255,11 @@ pub fn check_dangerous(command: &str) -> Option<&'static str> {
 /// assignment uses a dangerous variable name (see [`DANGEROUS_ENV_VARS`]).
 /// This prevents attackers from smuggling `LD_PRELOAD=… cat /file` through the
 /// safe-bin / allowlist path (moltis-org/moltis#814).
+///
+/// **Limitation:** Quoted tokens like `"LD_PRELOAD=/evil.so" cat /file` will
+/// not be caught here because `split_once('=')` sees key `"LD_PRELOAD` (with
+/// a leading `"`). The regex layer (Layer 1 in `check_dangerous`) still
+/// matches the raw string, so defence-in-depth holds.
 fn extract_first_bin(command: &str) -> Option<&str> {
     let trimmed = command.trim();
     // Skip env var assignments at the start (e.g. `FOO=bar cmd`).
@@ -1030,6 +1034,11 @@ mod tests {
         assert!(check_dangerous("FOO=bar echo hi").is_none());
         assert!(check_dangerous("RUST_LOG=debug cargo test").is_none());
         assert!(check_dangerous("MY_LD_PRELOAD_FLAG=1 echo hi").is_none());
+        // LD_DEBUG is diagnostic only (no code injection) — not flagged.
+        assert!(check_dangerous("LD_DEBUG=bindings ./myprogram").is_none());
+        // Bare ENV is too noisy (ENV=test, ENV=production) — not flagged.
+        assert!(check_dangerous("ENV=test rake test").is_none());
+        assert!(check_dangerous("ENV=production ./server").is_none());
     }
 
     // Layer 2: extract_first_bin semantic check
@@ -1067,6 +1076,32 @@ mod tests {
             extract_first_bin("MY_LD_PRELOAD_FLAG=1 echo hi"),
             Some("echo"),
         );
+    }
+
+    #[test]
+    fn test_extract_first_bin_quoted_token_limitation() {
+        // Quoted env-var assignments bypass Layer 2 because split_once('=')
+        // sees key `"LD_PRELOAD` (with leading `"`). Layer 1 regex still
+        // catches the raw string, so defence-in-depth holds.
+        assert_eq!(
+            extract_first_bin(r#""LD_PRELOAD=/evil.so" cat /file"#),
+            Some("cat"),
+        );
+        // But Layer 1 catches it regardless:
+        assert_eq!(
+            check_dangerous(r#""LD_PRELOAD=/evil.so" cat /file"#),
+            Some("dangerous dynamic linker env var"),
+        );
+    }
+
+    #[test]
+    fn test_extract_first_bin_ld_debug_and_env_are_benign() {
+        // LD_DEBUG and ENV were intentionally excluded from DANGEROUS_ENV_VARS.
+        assert_eq!(
+            extract_first_bin("LD_DEBUG=bindings ./myprogram"),
+            Some("myprogram"),
+        );
+        assert_eq!(extract_first_bin("ENV=test rake test"), Some("rake"));
     }
 
     // is_safe_command rejects dangerous-prefixed safe commands
