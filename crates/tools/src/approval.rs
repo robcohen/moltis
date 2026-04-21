@@ -308,18 +308,24 @@ pub fn is_safe_command(command: &str) -> bool {
 
 /// Check if a command matches any pattern in an allowlist.
 pub fn matches_allowlist(command: &str, allowlist: &[String]) -> bool {
-    let bin = extract_first_bin(command).unwrap_or("");
+    let bin = extract_first_bin(command);
+    let bin_name = bin.unwrap_or("");
     for pattern in allowlist {
         if pattern == "*" {
             return true;
         }
-        if pattern == bin {
+        if pattern == bin_name {
             return true;
         }
         // Prefix match with wildcard.
         if pattern.ends_with('*') {
             let prefix = &pattern[..pattern.len() - 1];
-            if command.starts_with(prefix) || bin.starts_with(prefix) {
+            // Only match against the raw command string when we extracted a
+            // valid binary. When extract_first_bin returned None (dangerous
+            // env-var prefix), raw-string matching would let chained
+            // assignments like `MY_APP=1 LD_PRELOAD=/evil.so cat` bypass
+            // the env-var protection (moltis-org/moltis#814).
+            if bin_name.starts_with(prefix) || (bin.is_some() && command.starts_with(prefix)) {
                 return true;
             }
         }
@@ -1189,6 +1195,19 @@ mod tests {
         // Wildcard `*` overrides everything — existing documented behavior.
         let list = vec!["*".into()];
         assert!(matches_allowlist("LD_PRELOAD=/evil.so cat /file", &list));
+    }
+
+    #[test]
+    fn test_allowlist_prefix_no_bypass_via_chained_assignment() {
+        // Regression: `command.starts_with(prefix)` must not match when
+        // extract_first_bin returned None due to a dangerous env var.
+        let list = vec!["MY_APP*".into()];
+        assert!(!matches_allowlist(
+            "MY_APP=1 LD_PRELOAD=/evil.so cat /file",
+            &list,
+        ));
+        // But benign chained assignments still match.
+        assert!(matches_allowlist("MY_APP run --flag", &list));
     }
 
     // check_command integration tests
