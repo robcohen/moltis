@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "4999fc827276",
+  "strategy": "manual-commit",
+  "branch": "jet-gopher",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/browser/src/container.rs",
+    "crates/browser/src/pool.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/49/99fc827276/0/metadata.json",
+      "transcript": "/49/99fc827276/0/full.jsonl",
+      "context": "/49/99fc827276/0/context.md",
+      "content_hash": "/49/99fc827276/0/content_hash.txt",
+      "prompt": "/49/99fc827276/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 28,
+    "cache_creation_tokens": 122899,
+    "cache_read_tokens": 1466241,
+    "output_tokens": 5932,
+    "api_call_count": 22
+  }
+}
