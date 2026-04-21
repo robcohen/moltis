@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a6d1bc73fc40",
+  "strategy": "manual-commit",
+  "branch": "similar-papyrus",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/approval.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a6/d1bc73fc40/0/metadata.json",
+      "transcript": "/a6/d1bc73fc40/0/full.jsonl",
+      "context": "/a6/d1bc73fc40/0/context.md",
+      "content_hash": "/a6/d1bc73fc40/0/content_hash.txt",
+      "prompt": "/a6/d1bc73fc40/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 9022,
+    "cache_read_tokens": 2364228,
+    "output_tokens": 5837,
+    "api_call_count": 16
+  }
+}
