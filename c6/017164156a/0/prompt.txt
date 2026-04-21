@@ -1,0 +1,148 @@
+Implement the following plan:
+
+# Fix: Exec approval bypass via env-var prefix injection (#814)
+
+## Context
+
+`extract_first_bin("LD_PRELOAD=/evil.so cat /file")` returns `cat` (a `SAFE_BIN`),
+so the command proceeds without approval. The full command is passed verbatim to
+`sh -c`, which honors the inline `LD_PRELOAD` assignment. No `DANGEROUS_PATTERN_DEFS`
+regex matches env-var assignments. This allows prompt-injection attackers to inject
+arbitrary shared objects into any safe/allowlisted binary.
+
+Vectors: `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `DYLD_INSERT_LIBRARIES`,
+`PATH`, `PYTHONPATH`, `NODE_OPTIONS`, `JAVA_TOOL_OPTIONS`, `BASH_ENV`, etc.
+
+## Approach: Two-layer defense in `approval.rs`
+
+Single file change: `crates/tools/src/approval.rs` (~243 lines added, total ~1081, under 1500 limit).
+
+### Layer 1 — Regex patterns in `DANGEROUS_PATTERN_DEFS`
+
+Add 6 new regex entries for dangerous env-var assignments. These fire via
+`check_dangerous()` at the top of `check_command()`, catching env vars **anywhere**
+in the command string (including inside subshells like `sh -c "LD_PRELOAD=..."`).
+Forces approval (OnMiss/Always) or denial (Off mode).
+
+Patterns grouped by category:
+- Linux dynamic linker: `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `LD_DEBUG`, `LD_CONFIG`
+- macOS dynamic linker: `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH`, `DYLD_FRAMEWORK_PATH`
+- PATH override: `PATH`
+- Language runtimes: `PYTHONPATH`, `PYTHONSTARTUP`, `NODE_OPTIONS`, `NODE_PATH`, `JAVA_TOOL_OPTIONS`
+- Language runtimes (cont): `PERL5OPT`, `PERL5LIB`, `RUBYOPT`, `RUBYLIB`, `CLASSPATH`
+- Shell startup: `BASH_ENV`, `ENV`, `ZDOTDIR`
+
+Uses `\b` word boundary to avoid false positives on `MY_LD_PRELOAD_FLAG=1`.
+Uses `(?i)` for case-insensitive defense-in-depth.
+
+### Layer 2 — Semantic check in `extract_first_bin`
+
+Add a `DANGEROUS_ENV_VARS` constant (same variable names as above). Modify
+`extract_first_bin` to use `split_once('=')` to extract the key from each skipped
+token, then check it against `DANGEROUS_ENV_VARS` (case-insensitive). Return `None`
+when a dangerous var is found.
+
+Effect: `is_safe_command()` returns `false`, `matches_allowlist()` matches on `""`
+(fails unless wildcard `*`), so the command enters the approval/denial path.
+
+This layer specifically prevents the safe-bin bypass even if regex patterns were
+somehow circumvented.
+
+### What stays the same
+
+- Benign prefixes (`FOO=bar echo hi`, `RUST_LOG=debug cargo test`) still work
+- Allowlist wildcard `*` still overrides everything (existing behavior at line 223/289)
+- No changes to `exec.rs` — fix is entirely in the approval boundary
+- Existing tests remain valid
+
+## Changes
+
+### 1. Add `DANGEROUS_ENV_VARS` constant (after `SAFE_BINS`, before `DANGEROUS_PATTERN_DEFS`)
+
+```rust
+const DANGEROUS_ENV_VARS: &[&str] = &[
+    "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_DEBUG", "LD_CONFIG",
+    "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH",
+    "PATH",
+    "PYTHONPATH", "PYTHONSTARTUP", "NODE_OPTIONS", "NODE_PATH", "JAVA_TOOL_OPTIONS",
+    "PERL5OPT", "PERL5LIB", "RUBYOPT", "RUBYLIB", "CLASSPATH",
+    "BASH_ENV", "ENV", "ZDOTDIR",
+];
+```
+
+### 2. Append to `DANGEROUS_PATTERN_DEFS` (6 new entries)
+
+```rust
+// Inline environment variable injection
+(r"(?i)\b(LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT|LD_DEBUG|LD_CONFIG)=", "dangerous dynamic linker env var"),
+(r"(?i)\b(DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|DYLD_FRAMEWORK_PATH)=", "dangerous macOS dynamic linker env var"),
+(r"(?i)\bPATH=", "PATH override"),
+(r"(?i)\b(PYTHONPATH|PYTHONSTARTUP|NODE_OPTIONS|NODE_PATH|JAVA_TOOL_OPTIONS)=", "dangerous language runtime env var"),
+(r"(?i)\b(PERL5OPT|PERL5LIB|RUBYOPT|RUBYLIB|CLASSPATH)=", "dangerous language runtime env var"),
+(r"(?i)\b(BASH_ENV|ENV|ZDOTDIR)=", "dangerous shell startup env var"),
+```
+
+### 3. Modify `extract_first_bin` (lines 197-208)
+
+Use `split_once('=')` to extract the key, check against `DANGEROUS_ENV_VARS`:
+
+```rust
+fn extract_first_bin(command: &str) -> Option<&str> {
+    let trimmed = command.trim();
+    let mut parts = trimmed.split_whitespace();
+    for part in parts.by_ref() {
+        if let Some((key, _)) = part.split_once('=') {
+            if DANGEROUS_ENV_VARS.iter().any(|d| d.eq_ignore_ascii_case(key)) {
+                return None;
+            }
+        } else {
+            return Some(part.rsplit('/').next().unwrap_or(part));
+        }
+    }
+    None
+}
+```
+
+### 4. Tests (~40 new test functions)
+
+Cover all categories:
+- `check_dangerous` regex hits for each env-var group
+- `extract_first_bin` returns `None` for dangerous prefixes, `Some` for benign
+- `is_safe_command` rejects dangerous-prefixed safe commands
+- `matches_allowlist` rejects dangerous-prefixed allowlisted commands (wildcard still matches)
+- `check_command` integration: NeedsApproval in OnMiss, denied in Off, benign prefix proceeds
+
+## Verification
+
+```bash
+# Unit tests
+cargo test -p moltis-tools -- approval
+
+# Clippy
+just lint
+
+# Format check
+just format-check
+```
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/penso/.claude/projects/-Users-penso--superset-worktrees-moltis-similar-papyrus/561231bc-91e2-40cb-a42e-972865ebf6f9.jsonl
+
+---
+
+<task-notification>
+<task-id>b0wpcv3tt</task-id>
+<tool-use-id>toolu_016ZEiGgvJUia1Sh11xmLZVP</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-similar-papyrus/561231bc-91e2-40cb-a42e-972865ebf6f9/tasks/b0wpcv3tt.output</output-file>
+<status>completed</status>
+<summary>Background command "Run clippy lints" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-penso--superset-worktrees-moltis-similar-papyrus/561231bc-91e2-40cb-a42e-972865ebf6f9/tasks/b0wpcv3tt.output
+
+---
+
+commit push create a PR
+
+---
+
+Fix and resolve all PR comments
