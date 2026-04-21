@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "0a659a7a18c1",
+  "session_id": "36c89018-c8ec-4ad7-a7a7-2fe78ec0b3a3",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-21T11:10:57.34392Z",
+  "branch": "abalone-place",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/telegram/src/handlers/media.rs",
+    "crates/telegram/src/handlers/tests/media.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c5e441471960",
+  "token_usage": {
+    "input_tokens": 38,
+    "cache_creation_tokens": 66297,
+    "cache_read_tokens": 1471907,
+    "output_tokens": 7098,
+    "api_call_count": 28
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-21T11:10:55.002957Z",
+    "agent_lines": 117,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 117,
+    "agent_percentage": 100
+  }
+}
