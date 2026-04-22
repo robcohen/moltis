@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ad015792fa3",
+  "strategy": "manual-commit",
+  "branch": "oxidized-foundation",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/docker.rs",
+    "crates/tools/src/sandbox/tests/core.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/6a/d015792fa3/0/metadata.json",
+      "transcript": "/6a/d015792fa3/0/full.jsonl",
+      "context": "/6a/d015792fa3/0/context.md",
+      "content_hash": "/6a/d015792fa3/0/content_hash.txt",
+      "prompt": "/6a/d015792fa3/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 49,
+    "cache_creation_tokens": 72264,
+    "cache_read_tokens": 3014518,
+    "output_tokens": 11401,
+    "api_call_count": 45
+  }
+}

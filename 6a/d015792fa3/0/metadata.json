@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "6ad015792fa3",
+  "session_id": "a8ad002c-d946-4d99-8c40-4411d161eaee",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T10:55:29.858247Z",
+  "branch": "oxidized-foundation",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/tools/src/sandbox/tests/core.rs",
+    "crates/tools/src/sandbox/docker.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bfa3173533c5",
+  "token_usage": {
+    "input_tokens": 49,
+    "cache_creation_tokens": 72264,
+    "cache_read_tokens": 3014518,
+    "output_tokens": 11401,
+    "api_call_count": 45
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T10:55:27.530487Z",
+    "agent_lines": 76,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 76,
+    "agent_percentage": 100
+  }
+}
