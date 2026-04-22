@@ -403,6 +403,7 @@ pub(super) fn register(reg: &mut MethodRegistry) {
                                 to: patch.to.clone(),
                             }),
                             enabled: Some(effective_enabled),
+                            task_id: patch.task_id.clone(),
                             sandbox: Some(moltis_cron::types::CronSandboxConfig {
                                 enabled: patch.sandbox_enabled,
                                 image: patch.sandbox_image.clone(),
@@ -446,6 +447,7 @@ pub(super) fn register(reg: &mut MethodRegistry) {
                                 auto_prune_container: None,
                             },
                             wake_mode: moltis_cron::types::CronWakeMode::default(),
+                            task_id: patch.task_id.clone(),
                         };
                         let create_json = serde_json::to_value(create)
                             .map_err(|e| ErrorShape::new(error_codes::INVALID_REQUEST, format!("failed to serialize job: {e}")))?;

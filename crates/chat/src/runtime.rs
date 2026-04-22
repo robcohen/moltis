@@ -121,6 +121,9 @@ pub trait ChatRuntime: Send + Sync {
     /// Project service for loading project context.
     fn project_service(&self) -> &dyn moltis_service_traits::ProjectService;
 
+    /// Work service for loading task and goal context.
+    fn work_service(&self) -> &dyn moltis_service_traits::WorkService;
+
     /// MCP service for listing MCP servers.
     fn mcp_service(&self) -> &dyn moltis_service_traits::McpService;
 

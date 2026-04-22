@@ -23,7 +23,7 @@ use crate::{
     remote::{ResolvedRemoteConfig, header_names, sanitize_url_for_display},
     tool_bridge::McpToolBridge,
     traits::McpClientTrait,
-    types::{McpManagerError, McpToolDef, McpTransportError},
+    types::{McpManagerError, McpToolDef, McpTransportError, ToolsCallResult},
 };
 
 /// Status of a managed MCP server.
@@ -573,6 +573,29 @@ impl McpManager {
         self.inner.read().await.tools.get(name).cloned()
     }
 
+    /// Call a tool on a specific running server.
+    pub async fn call_tool(
+        &self,
+        server_name: &str,
+        tool_name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<ToolsCallResult> {
+        let client = self
+            .inner
+            .read()
+            .await
+            .clients
+            .get(server_name)
+            .cloned()
+            .ok_or_else(|| {
+                Error::Manager(McpManagerError::ServerNotFound {
+                    server: server_name.to_string(),
+                })
+            })?;
+        let guard = client.read().await;
+        guard.call_tool(tool_name, arguments).await
+    }
+
     // ── Registry operations ─────────────────────────────────────────
 
     /// Add a server to the registry and optionally start it.
@@ -665,6 +688,50 @@ mod tests {
         crate::auth::{McpAuthProvider, McpAuthState},
     };
 
+    struct MockClient;
+
+    #[async_trait::async_trait]
+    impl McpClientTrait for MockClient {
+        fn server_name(&self) -> &str {
+            "mock"
+        }
+
+        fn state(&self) -> McpClientState {
+            McpClientState::Ready
+        }
+
+        fn tools(&self) -> &[McpToolDef] {
+            &[]
+        }
+
+        async fn list_tools(&mut self) -> Result<&[McpToolDef]> {
+            Ok(&[])
+        }
+
+        async fn call_tool(
+            &self,
+            name: &str,
+            arguments: serde_json::Value,
+        ) -> Result<ToolsCallResult> {
+            Ok(ToolsCallResult {
+                content: vec![crate::types::ToolContent::Text {
+                    text: serde_json::json!({
+                        "name": name,
+                        "arguments": arguments,
+                    })
+                    .to_string(),
+                }],
+                is_error: false,
+            })
+        }
+
+        async fn is_alive(&self) -> bool {
+            true
+        }
+
+        async fn shutdown(&mut self) {}
+    }
+
     #[test]
     fn test_manager_creation() {
         let reg = McpRegistry::new();
@@ -711,6 +778,27 @@ mod tests {
         let mgr = McpManager::new(McpRegistry::new());
         let bridges = mgr.tool_bridges().await;
         assert!(bridges.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_call_tool_on_running_server() {
+        let mgr = McpManager::new(McpRegistry::new());
+        mgr.inner
+            .write()
+            .await
+            .clients
+            .insert("github".to_string(), Arc::new(RwLock::new(MockClient)));
+
+        let result = mgr
+            .call_tool("github", "fetch_issue", serde_json::json!({ "id": 42 }))
+            .await
+            .expect("tool call should succeed");
+        assert!(!result.is_error);
+        let crate::types::ToolContent::Text { text } = &result.content[0] else {
+            panic!("expected text result");
+        };
+        assert!(text.contains("fetch_issue"));
+        assert!(text.contains("\"id\":42"));
     }
 
     #[tokio::test]

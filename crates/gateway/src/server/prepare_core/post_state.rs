@@ -1038,7 +1038,8 @@ pub(super) async fn complete_startup(
         ));
 
         tool_registry.register(Box::new(moltis_tools::task_list::TaskListTool::new(
-            &data_dir,
+            db_pool.clone(),
+            Some(Arc::clone(&session_metadata)),
         )));
         tool_registry.register(Box::new(crate::voice_agent_tools::SpeakTool::new(
             Arc::clone(&state.services.tts),

@@ -115,7 +115,10 @@ export function handleChatSendRpcResponse(res: RpcResponse<ChatSendPayload>, use
 		markMessageQueued(userEl, S.activeSessionKey);
 		return;
 	}
-	if (!res.ok && res.error) chatAddMsg("error", res.error.message || "Request failed");
+	if (!res.ok && res.error) {
+		setSessionReplying(S.activeSessionKey, false);
+		chatAddMsg("error", res.error.message || "Request failed");
+	}
 }
 
 export function buildChatMessage(

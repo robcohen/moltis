@@ -748,6 +748,7 @@ deliver = false                   # Deliver heartbeat replies to a channel accou
 # to = "123456789"                # Chat/recipient ID (required when deliver = true)
 sandbox_enabled = true            # Run heartbeat commands in sandbox
 # sandbox_image = "..."           # Override sandbox image for heartbeats
+# task_id = "task-123"            # Bind heartbeat runs to a durable work task
 
 # Active hours window - heartbeats only run during this time
 [heartbeat.active_hours]

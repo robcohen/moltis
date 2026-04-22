@@ -82,6 +82,7 @@ impl CronService for MockCronService {
             system: create.system,
             sandbox: create.sandbox.clone(),
             wake_mode: create.wake_mode,
+            task_id: create.task_id.clone(),
             state: moltis_cron::types::CronJobState::default(),
             created_at_ms: 0,
             updated_at_ms: 0,
@@ -401,6 +402,7 @@ async fn heartbeat_update_updates_existing_job() {
             auto_prune_container: None,
         },
         wake_mode: moltis_cron::types::CronWakeMode::NextHeartbeat,
+        task_id: None,
     };
     let create_json = serde_json::to_value(create).unwrap();
     mock_cron.add(create_json).await.unwrap();

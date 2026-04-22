@@ -309,6 +309,8 @@ impl SessionService for LiveSessionService {
                 "messageCount": e.message_count,
                 "lastSeenMessageCount": e.last_seen_message_count,
                 "projectId": e.project_id,
+                "taskId": e.task_id,
+                "task_id": e.task_id,
                 "sandbox_enabled": e.sandbox_enabled,
                 "sandbox_image": e.sandbox_image,
                 "worktree_branch": e.worktree_branch,
@@ -389,6 +391,8 @@ impl SessionService for LiveSessionService {
                     "updatedAt": entry.updated_at,
                     "messageCount": entry.message_count,
                     "projectId": entry.project_id,
+                    "taskId": entry.task_id,
+                    "task_id": entry.task_id,
                     "archived": entry.archived,
                     "sandbox_enabled": entry.sandbox_enabled,
                     "sandbox_image": entry.sandbox_image,
@@ -442,6 +446,8 @@ impl SessionService for LiveSessionService {
                 "updatedAt": entry.updated_at,
                 "messageCount": entry.message_count,
                 "projectId": entry.project_id,
+                "taskId": entry.task_id,
+                "task_id": entry.task_id,
                 "archived": entry.archived,
                 "sandbox_enabled": entry.sandbox_enabled,
                 "sandbox_image": entry.sandbox_image,
@@ -484,6 +490,10 @@ impl SessionService for LiveSessionService {
         if let Some(project_id_opt) = p.project_id {
             let project_id = project_id_opt.filter(|s| !s.is_empty());
             self.metadata.set_project_id(key, project_id).await;
+        }
+        if let Some(task_id_opt) = p.task_id {
+            let task_id = task_id_opt.filter(|s| !s.is_empty());
+            self.metadata.set_task_id(key, task_id).await;
         }
         if let Some(worktree_branch_opt) = p.worktree_branch {
             let worktree_branch = worktree_branch_opt.filter(|s| !s.is_empty());
@@ -551,6 +561,9 @@ impl SessionService for LiveSessionService {
             "key": entry.key,
             "label": entry.label,
             "model": entry.model,
+            "projectId": entry.project_id,
+            "taskId": entry.task_id,
+            "task_id": entry.task_id,
             "archived": entry.archived,
             "sandbox_enabled": entry.sandbox_enabled,
             "sandbox_image": entry.sandbox_image,

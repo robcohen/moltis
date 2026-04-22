@@ -121,6 +121,9 @@ pub struct CronJob {
     /// hidden from the normal jobs table in the UI.
     #[serde(default)]
     pub system: bool,
+    /// Optional durable work task bound to agent-turn executions for this job.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
     pub created_at_ms: u64,
     pub updated_at_ms: u64,
 }
@@ -196,6 +199,8 @@ pub struct CronJobCreate {
     pub sandbox: CronSandboxConfig,
     #[serde(default)]
     pub wake_mode: CronWakeMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -222,6 +227,8 @@ pub struct CronJobPatch {
     pub sandbox: Option<CronSandboxConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wake_mode: Option<CronWakeMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
 }
 
 /// Summary status of the cron system.
@@ -326,6 +333,7 @@ mod tests {
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
             system: false,
+            task_id: None,
             created_at_ms: 1000,
             updated_at_ms: 1000,
         };
@@ -428,6 +436,7 @@ mod tests {
         assert_eq!(create.session_target, SessionTarget::Isolated);
         assert!(create.sandbox.enabled);
         assert!(create.sandbox.image.is_none());
+        assert!(create.task_id.is_none());
     }
 
     #[test]
@@ -493,6 +502,7 @@ mod tests {
             },
             wake_mode: CronWakeMode::default(),
             system: false,
+            task_id: Some("task-123".into()),
             created_at_ms: 1000,
             updated_at_ms: 1000,
         };
@@ -501,6 +511,7 @@ mod tests {
         assert_eq!(job, back);
         assert!(!back.sandbox.enabled);
         assert_eq!(back.sandbox.image.as_deref(), Some("my-image:v1"));
+        assert_eq!(back.task_id.as_deref(), Some("task-123"));
     }
 
     #[test]
@@ -574,5 +585,24 @@ mod tests {
         let json = r#"{ "wakeMode": "now" }"#;
         let patch: CronJobPatch = serde_json::from_str(json).unwrap();
         assert_eq!(patch.wake_mode, Some(CronWakeMode::Now));
+    }
+
+    #[test]
+    fn test_cronjob_create_with_task_id() {
+        let json = r#"{
+            "name": "test",
+            "schedule": { "kind": "every", "every_ms": 1000 },
+            "payload": { "kind": "agentTurn", "message": "hi", "deliver": false },
+            "taskId": "task-1"
+        }"#;
+        let create: CronJobCreate = serde_json::from_str(json).unwrap();
+        assert_eq!(create.task_id.as_deref(), Some("task-1"));
+    }
+
+    #[test]
+    fn test_cronjob_patch_with_task_id() {
+        let json = r#"{ "taskId": "task-1" }"#;
+        let patch: CronJobPatch = serde_json::from_str(json).unwrap();
+        assert_eq!(patch.task_id.as_deref(), Some("task-1"));
     }
 }

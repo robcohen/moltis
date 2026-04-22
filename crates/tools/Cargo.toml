@@ -47,6 +47,7 @@ moltis-network-filter = { workspace = true }
 moltis-providers      = { workspace = true }
 moltis-sessions       = { workspace = true }
 moltis-skills         = { workspace = true }
+moltis-work           = { workspace = true }
 pdf-extract           = { optional = true, workspace = true }
 regex                 = { workspace = true }
 reqwest               = { features = ["blocking"], workspace = true }

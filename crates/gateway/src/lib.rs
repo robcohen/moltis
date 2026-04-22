@@ -57,6 +57,7 @@ pub mod update_check;
 pub mod voice;
 pub mod voice_agent_tools;
 pub mod webhooks;
+pub mod work;
 
 #[cfg(test)]
 pub(crate) fn config_override_test_lock() -> std::sync::MutexGuard<'static, ()> {

@@ -58,6 +58,7 @@ default-members = [
   "crates/web",
   "crates/webhooks",
   "crates/whatsapp",
+  "crates/work",
 ]
 members = [
   "apps/courier",
@@ -116,6 +117,7 @@ members = [
   "crates/web",
   "crates/webhooks",
   "crates/whatsapp",
+  "crates/work",
 ]
 resolver = "2"
 
@@ -375,6 +377,7 @@ moltis-voice            = { path = "crates/voice" }
 moltis-web              = { default-features = false, path = "crates/web" }
 moltis-webhooks         = { path = "crates/webhooks" }
 moltis-whatsapp         = { path = "crates/whatsapp" }
+moltis-work             = { path = "crates/work" }
 
 [profile.release]
 codegen-units = 1

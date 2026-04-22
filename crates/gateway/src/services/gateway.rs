@@ -26,6 +26,7 @@ pub struct GatewayServices {
     pub logs: Arc<dyn LogsService>,
     pub provider_setup: Arc<dyn ProviderSetupService>,
     pub project: Arc<dyn ProjectService>,
+    pub work: Arc<dyn WorkService>,
     pub local_llm: Arc<dyn LocalLlmService>,
     pub network_audit: Arc<dyn crate::network_audit::NetworkAuditService>,
     /// Optional channel registry for direct plugin access (thread context, etc.).
@@ -141,6 +142,7 @@ impl GatewayServices {
             logs: Arc::new(NoopLogsService),
             provider_setup: Arc::new(NoopProviderSetupService),
             project: Arc::new(NoopProjectService),
+            work: Arc::new(NoopWorkService),
             local_llm: Arc::new(NoopLocalLlmService),
             network_audit: Arc::new(crate::network_audit::NoopNetworkAuditService),
             channel_registry: None,
@@ -175,6 +177,11 @@ impl GatewayServices {
 
     pub fn with_project(mut self, project: Arc<dyn ProjectService>) -> Self {
         self.project = project;
+        self
+    }
+
+    pub fn with_work(mut self, work: Arc<dyn WorkService>) -> Self {
+        self.work = work;
         self
     }
 
@@ -255,6 +262,7 @@ impl GatewayServices {
             logs: self.logs.clone(),
             provider_setup: self.provider_setup.clone(),
             project: self.project.clone(),
+            work: self.work.clone(),
             local_llm: self.local_llm.clone(),
             system_info,
         })

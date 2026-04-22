@@ -233,6 +233,7 @@ mod tests {
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
             system: false,
+            task_id: None,
             created_at_ms: 1000,
             updated_at_ms: 1000,
         }

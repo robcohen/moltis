@@ -182,6 +182,8 @@ pub struct HeartbeatConfig {
     pub sandbox_enabled: bool,
     /// Override sandbox image for heartbeat. If `None`, uses the default image.
     pub sandbox_image: Option<String>,
+    /// Optional durable work task bound to heartbeat runs.
+    pub task_id: Option<String>,
 }
 
 impl Default for HeartbeatConfig {
@@ -198,6 +200,7 @@ impl Default for HeartbeatConfig {
             to: None,
             sandbox_enabled: true,
             sandbox_image: None,
+            task_id: None,
         }
     }
 }

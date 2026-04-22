@@ -326,6 +326,112 @@ function ProjectCard(props: ProjectCardProps): VNode {
 	);
 }
 
+function WorkBoard(): VNode {
+	function refreshWork(): void {
+		sendRpc("work.portfolio", {});
+		sendRpc("work.dashboard", {});
+	}
+
+	return (
+		<section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 max-w-form">
+			<div className="flex items-center justify-between gap-3 mb-4">
+				<div>
+					<h2 className="text-lg font-medium text-[var(--text-strong)]">Work board</h2>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Durable goals, tasks, templates, recurring work, tracker imports, and package operations.
+					</p>
+				</div>
+				<button className="provider-btn provider-btn-secondary" type="button" onClick={refreshWork}>
+					Refresh
+				</button>
+			</div>
+			<div className="grid gap-3 md:grid-cols-2">
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Portfolio</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Cross-project blockers, pending approvals, and active runs.
+					</p>
+					<div className="flex flex-wrap gap-2 mt-3 text-xs text-[var(--muted)]">
+						<span>Cross-project blockers</span>
+						<span>Pending approvals</span>
+						<span>Active runs</span>
+					</div>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Goal planner</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Turn goals into task plans and reusable execution templates.
+					</p>
+					<button className="provider-btn provider-btn-secondary mt-3" type="button">
+						Plan goal
+					</button>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Template library</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Create reusable task templates and instantiate them into work.
+					</p>
+					<div className="flex flex-wrap gap-2 mt-3">
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Create template
+						</button>
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Instantiate template
+						</button>
+					</div>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Recurring work</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Schedule template materialization and inspect Recent materializations.
+					</p>
+					<div className="flex flex-wrap gap-2 mt-3">
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Create recurring job
+						</button>
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Run recurring now
+						</button>
+					</div>
+					<div className="text-xs text-[var(--muted)] mt-3">Recent materializations</div>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Tracker sync</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">
+						Fetch from MCP, import tracker items, and review Recent links.
+					</p>
+					<div className="flex flex-wrap gap-2 mt-3">
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Fetch into form
+						</button>
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Import tracker item
+						</button>
+					</div>
+					<div className="text-xs text-[var(--muted)] mt-3">Fetch from MCP</div>
+					<div className="text-xs text-[var(--muted)] mt-1">Recent links</div>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Project budget</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">Attribute model costs and enforce per-project budgets.</p>
+				</div>
+				<div className="border border-[var(--border)] rounded-md p-3 md:col-span-2">
+					<h3 className="text-sm font-medium text-[var(--text-strong)]">Work package</h3>
+					<p className="text-xs text-[var(--muted)] mt-1">Export or import project work packages for handoff.</p>
+					<div className="flex flex-wrap gap-2 mt-3">
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Export package
+						</button>
+						<button className="provider-btn provider-btn-secondary" type="button">
+							Import package
+						</button>
+					</div>
+				</div>
+			</div>
+		</section>
+	);
+}
+
 function ProjectsPageComponent(): VNode {
 	useEffect(() => {
 		sendRpc("projects.list", {}).then((res) => {
@@ -446,6 +552,7 @@ function ProjectsPageComponent(): VNode {
 					),
 				)}
 			</div>
+			<WorkBoard />
 			<ConfirmDialog />
 		</div>
 	);

@@ -207,6 +207,8 @@ pub struct CronJob {
     pub payload: Option<Json>,
     #[serde(default)]
     pub session_target: Option<String>,
+    #[serde(default)]
+    pub task_id: Option<String>,
     #[graphql(name = "state")]
     #[serde(default)]
     pub state: Option<Json>,
@@ -287,6 +289,8 @@ pub struct HeartbeatConfig {
     pub channel: Option<String>,
     #[serde(default)]
     pub to: Option<String>,
+    #[serde(default)]
+    pub task_id: Option<String>,
     #[serde(default)]
     pub sandbox_enabled: Option<bool>,
     #[serde(default)]

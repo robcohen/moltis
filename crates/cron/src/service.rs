@@ -114,6 +114,7 @@ pub struct AgentTurnRequest {
     pub to: Option<String>,
     pub session_target: SessionTarget,
     pub sandbox: CronSandboxConfig,
+    pub task_id: Option<String>,
 }
 
 /// The cron scheduler.
@@ -303,6 +304,7 @@ impl CronService {
             sandbox: create.sandbox,
             wake_mode: create.wake_mode,
             system: create.system,
+            task_id: create.task_id.filter(|value| !value.trim().is_empty()),
             created_at_ms: now,
             updated_at_ms: now,
         };
@@ -360,6 +362,9 @@ impl CronService {
         }
         if let Some(wake_mode) = patch.wake_mode {
             job.wake_mode = wake_mode;
+        }
+        if let Some(task_id) = patch.task_id {
+            job.task_id = (!task_id.trim().is_empty()).then_some(task_id);
         }
 
         job.updated_at_ms = now;
@@ -566,6 +571,7 @@ impl CronService {
                     to: to.clone(),
                     session_target: job.session_target.clone(),
                     sandbox: job.sandbox.clone(),
+                    task_id: job.task_id.clone(),
                 };
                 (self.on_agent_turn)(req).await
             },
@@ -724,6 +730,11 @@ fn validate_job_spec(job: &CronJob) -> Result<()> {
             ));
         },
         _ => {},
+    }
+    if job.task_id.is_some() && !matches!(job.payload, CronPayload::AgentTurn { .. }) {
+        return Err(Error::message(
+            "taskId can only be set for payload kind=agentTurn",
+        ));
     }
     if let CronPayload::AgentTurn {
         deliver: true,

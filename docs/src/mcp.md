@@ -181,6 +181,16 @@ Found 15 repositories:
 ...
 ```
 
+Moltis also exposes direct MCP RPCs for operator workflows:
+
+- `mcp.list` to inspect configured servers
+- `mcp.tools` to inspect the tools available on a running server
+- `mcp.call` to invoke a specific tool with JSON arguments
+
+The Projects work board uses this to fetch live tracker records from configured
+GitHub, Linear, or Jira MCP servers, then import them into the durable work
+graph through tracker sync.
+
 ## Creating an MCP Server
 
 ### Simple Node.js Server

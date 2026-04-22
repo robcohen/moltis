@@ -411,6 +411,9 @@ pub async fn prepare_gateway_core(
     moltis_projects::run_migrations(&db_pool)
         .await
         .expect("failed to run projects migrations");
+    moltis_work::run_migrations(&db_pool)
+        .await
+        .expect("failed to run work migrations");
     moltis_sessions::run_migrations(&db_pool)
         .await
         .expect("failed to run sessions migrations");
@@ -554,6 +557,11 @@ pub async fn prepare_gateway_core(
                         .set_project_id(&entry.key, entry.project_id.clone())
                         .await;
                 }
+                if entry.task_id.is_some() {
+                    sqlite_meta
+                        .set_task_id(&entry.key, entry.task_id.clone())
+                        .await;
+                }
             }
         }
         let bak = metadata_json_path.with_extension("json.bak");
@@ -595,6 +603,7 @@ pub async fn prepare_gateway_core(
     services.project = Arc::new(crate::project::LiveProjectService::new(Arc::clone(
         &project_store,
     )));
+    services = services.with_work(Arc::new(crate::work::LiveWorkService::new(db_pool.clone())));
 
     // Initialize cron service.
     let cron_store: Arc<dyn moltis_cron::store::CronStore> =
@@ -624,10 +633,12 @@ pub async fn prepare_gateway_core(
 
     let agent_state = Arc::clone(&deferred_state);
     let agent_events_queue = Arc::clone(&events_queue);
+    let agent_session_metadata = Arc::clone(&session_metadata);
     let global_auto_prune_containers = config.cron.auto_prune_cron_containers;
     let on_agent_turn: moltis_cron::service::AgentTurnFn = Arc::new(move |req| {
         let st = Arc::clone(&agent_state);
         let eq = Arc::clone(&agent_events_queue);
+        let metadata = Arc::clone(&agent_session_metadata);
         Box::pin(async move {
             let state = st
                 .get()
@@ -718,6 +729,16 @@ pub async fn prepare_gateway_core(
             });
             if let Some(ref model) = req.model {
                 params["model"] = serde_json::Value::String(model.clone());
+            }
+            if let Some(ref task_id) = req.task_id {
+                metadata
+                    .upsert(&session_key, None)
+                    .await
+                    .map_err(|error| moltis_cron::Error::message(error.to_string()))?;
+                metadata
+                    .set_task_id(&session_key, Some(task_id.clone()))
+                    .await;
+                params["taskId"] = serde_json::Value::String(task_id.clone());
             }
             let result = chat
                 .send_sync(params)

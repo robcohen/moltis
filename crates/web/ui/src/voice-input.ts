@@ -272,6 +272,7 @@ function sendTranscribedMessage(text: string, audioFilename: string | null): voi
 	setSessionReplying(S.activeSessionKey, true);
 	sendRpc("chat.send", chatParams).then((sendRes) => {
 		if (sendRes && !sendRes.ok && sendRes.error) {
+			setSessionReplying(S.activeSessionKey, false);
 			chatAddMsg("error", sendRes.error?.message || "Request failed");
 		}
 	});

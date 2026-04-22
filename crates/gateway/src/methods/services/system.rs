@@ -406,6 +406,19 @@ pub(super) fn register(reg: &mut MethodRegistry) {
         }),
     );
     reg.register(
+        "mcp.call",
+        Box::new(|ctx| {
+            Box::pin(async move {
+                ctx.state
+                    .services
+                    .mcp
+                    .call(ctx.params.clone())
+                    .await
+                    .map_err(ErrorShape::from)
+            })
+        }),
+    );
+    reg.register(
         "mcp.restart",
         Box::new(|ctx| {
             Box::pin(async move {

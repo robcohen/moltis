@@ -482,6 +482,16 @@ impl AgentTool for SpawnAgentTool {
         });
         if let Some(session_key) = params.get("_session_key") {
             tool_context["_session_key"] = session_key.clone();
+            if let Some(ref deps) = self.session_deps
+                && let Some(session_key) = session_key.as_str()
+                && let Some(entry) = deps.session_metadata.get(session_key).await
+                && let Some(task_id) = entry.task_id
+            {
+                tool_context["_task_id"] = serde_json::json!(task_id);
+            }
+        }
+        if let Some(task_id) = params.get("_task_id") {
+            tool_context["_task_id"] = task_id.clone();
         }
 
         // Run the sub-agent loop, optionally with a timeout.

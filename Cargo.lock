@@ -7529,6 +7529,7 @@ dependencies = [
  "moltis-voice",
  "moltis-webhooks",
  "moltis-whatsapp",
+ "moltis-work",
  "p256",
  "portable-pty",
  "pulldown-cmark 0.12.2",
@@ -8278,6 +8279,7 @@ dependencies = [
  "moltis-providers",
  "moltis-sessions",
  "moltis-skills",
+ "moltis-work",
  "pdf-extract",
  "regex",
  "reqwest 0.13.2",
@@ -8475,6 +8477,22 @@ dependencies = [
  "whatsapp-rust",
  "whatsapp-rust-tokio-transport",
  "whatsapp-rust-ureq-http-client",
+]
+
+[[package]]
+name = "moltis-work"
+version = "0.1.0"
+dependencies = [
+ "moltis-cron",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "time",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

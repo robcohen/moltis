@@ -73,6 +73,7 @@ async fn test_add_and_list() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -110,6 +111,7 @@ async fn test_add_validates_session_target() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await;
 
@@ -143,6 +145,7 @@ async fn test_update_job() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -185,6 +188,7 @@ async fn test_remove_job() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -235,6 +239,7 @@ async fn test_force_run() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -272,6 +277,7 @@ async fn test_run_disabled_fails_without_force() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -307,6 +313,7 @@ async fn test_system_event_execution() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -355,6 +362,7 @@ async fn test_one_shot_disabled_after_run() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -404,6 +412,7 @@ async fn test_rate_limiting() {
         system: false,
         sandbox: CronSandboxConfig::default(),
         wake_mode: CronWakeMode::default(),
+        task_id: None,
     };
 
     // First 3 jobs should succeed.
@@ -453,6 +462,7 @@ async fn test_rate_limiting_skips_system_jobs() {
         system: true, // This is a system job
         sandbox: CronSandboxConfig::default(),
         wake_mode: CronWakeMode::default(),
+        task_id: None,
     };
 
     // System jobs should bypass rate limiting.
@@ -496,6 +506,7 @@ async fn test_start_executes_due_jobs_and_records_runs() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -546,6 +557,7 @@ async fn test_clear_stuck_jobs_handles_future_running_at_without_overflow() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await
         .unwrap();
@@ -594,6 +606,7 @@ async fn test_wake_sets_next_run_at_now() {
         system: true,
         sandbox: CronSandboxConfig::default(),
         wake_mode: CronWakeMode::default(),
+        task_id: None,
     })
     .await
     .unwrap();
@@ -635,6 +648,7 @@ async fn test_wake_noop_when_running() {
         system: true,
         sandbox: CronSandboxConfig::default(),
         wake_mode: CronWakeMode::default(),
+        task_id: None,
     })
     .await
     .unwrap();
@@ -682,6 +696,7 @@ async fn test_wake_noop_when_disabled() {
         system: true,
         sandbox: CronSandboxConfig::default(),
         wake_mode: CronWakeMode::default(),
+        task_id: None,
     })
     .await
     .unwrap();
@@ -736,6 +751,7 @@ async fn test_deliver_requires_channel_and_to() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await;
     assert!(err.is_err());
@@ -773,6 +789,7 @@ async fn test_deliver_with_both_fields_succeeds() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await;
     assert!(result.is_ok());
@@ -805,6 +822,7 @@ async fn test_deliver_false_allows_missing_channel() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await;
     assert!(result.is_ok());
@@ -837,6 +855,7 @@ async fn test_deliver_empty_string_channel_fails() {
             system: false,
             sandbox: CronSandboxConfig::default(),
             wake_mode: CronWakeMode::default(),
+            task_id: None,
         })
         .await;
     assert!(err.is_err());

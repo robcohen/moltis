@@ -1,396 +1,155 @@
 //! Shared task list tool for inter-agent task coordination.
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::sync::Arc;
 
 use {
     async_trait::async_trait,
-    serde::{Deserialize, Serialize},
-    tokio::sync::RwLock,
-};
-
-use {
-    crate::{
-        Error,
-        params::{require_str, str_param, str_param_any},
-    },
     moltis_agents::tool_registry::AgentTool,
+    moltis_sessions::metadata::SqliteSessionMetadata,
+    moltis_work::{
+        SqliteWorkStore,
+        types::{
+            GoalPlanPreset, InstantiateTaskTemplate, NewRecurringTask, NewTask, NewTaskComment,
+            NewTaskTemplate, RecurringTask, RecurringTaskPatch, Task, TaskFilter, TaskPatch,
+            TaskPriority, TaskStatus, TaskTemplate, TaskTemplatePatch,
+        },
+    },
 };
 
-/// Status of a task in the shared list.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum TaskStatus {
-    Pending,
-    InProgress,
-    Completed,
+use crate::{
+    Error,
+    params::{require_str, str_param, str_param_any},
+};
+
+fn parse_task_status(value: Option<&str>) -> crate::Result<Option<TaskStatus>> {
+    value
+        .map(str::parse::<TaskStatus>)
+        .transpose()
+        .map_err(|error| Error::message(error.to_string()))
 }
 
-impl TaskStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Pending => "pending",
-            Self::InProgress => "in_progress",
-            Self::Completed => "completed",
-        }
-    }
+fn parse_task_priority(value: Option<&str>) -> crate::Result<Option<TaskPriority>> {
+    value
+        .map(str::parse::<TaskPriority>)
+        .transpose()
+        .map_err(|error| Error::message(error.to_string()))
 }
 
-impl std::str::FromStr for TaskStatus {
-    type Err = Error;
-
-    fn from_str(input: &str) -> crate::Result<Self> {
-        match input {
-            "pending" => Ok(Self::Pending),
-            "in_progress" => Ok(Self::InProgress),
-            "completed" => Ok(Self::Completed),
-            other => Err(Error::message(format!("unknown task status: {other}"))),
-        }
-    }
+fn parse_goal_plan_preset(value: Option<&str>) -> crate::Result<GoalPlanPreset> {
+    value
+        .unwrap_or("delivery")
+        .parse::<GoalPlanPreset>()
+        .map_err(|error| Error::message(error.to_string()))
 }
 
-/// A single task in the shared list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Task {
-    pub id: String,
-    pub subject: String,
-    #[serde(default)]
-    pub description: String,
-    pub status: TaskStatus,
-    #[serde(default)]
-    pub owner: Option<String>,
-    #[serde(default)]
-    pub blocked_by: Vec<String>,
-    pub created_at: u64,
-    pub updated_at: u64,
-    /// Which list this task belongs to. Always populated since creation
-    /// associates tasks with a list. Persisted to disk as part of the
-    /// task JSON; deserialization defaults to empty for legacy files.
-    #[serde(default)]
-    pub list_id: String,
+fn blocked_by_from_params(params: &serde_json::Value) -> Option<Vec<String>> {
+    params
+        .get("blocked_by")
+        .or_else(|| params.get("blockedBy"))
+        .and_then(serde_json::Value::as_array)
+        .map(|arr| {
+            arr.iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
 }
 
-/// File-backed store for one logical task list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskList {
-    pub next_id: u64,
-    pub tasks: HashMap<String, Task>,
+fn parse_schedule(params: &serde_json::Value) -> crate::Result<moltis_cron::types::CronSchedule> {
+    let schedule_value = params
+        .get("schedule")
+        .cloned()
+        .ok_or_else(|| Error::message("missing required parameter: schedule"))?;
+    serde_json::from_value(schedule_value).map_err(|error| Error::message(error.to_string()))
 }
 
-impl Default for TaskList {
-    fn default() -> Self {
-        Self {
-            next_id: 1,
-            tasks: HashMap::new(),
-        }
-    }
+fn task_to_json(task: &Task) -> serde_json::Value {
+    serde_json::json!({
+        "id": task.id.clone(),
+        "list_id": task.list_key.clone(),
+        "listId": task.list_key.clone(),
+        "list_key": task.list_key.clone(),
+        "subject": task.title.clone(),
+        "title": task.title.clone(),
+        "description": task.description.clone().unwrap_or_default(),
+        "status": task.status,
+        "priority": task.priority,
+        "owner": task.owner.clone(),
+        "project_id": task.project_id.clone(),
+        "projectId": task.project_id.clone(),
+        "goal_id": task.goal_id.clone(),
+        "goalId": task.goal_id.clone(),
+        "session_key": task.session_key.clone(),
+        "sessionKey": task.session_key.clone(),
+        "claimed_at": task.claimed_at.clone(),
+        "created_at": task.created_at.clone(),
+        "updated_at": task.updated_at.clone(),
+        "blocked_by": task.blocked_by.clone(),
+        "blockedBy": task.blocked_by.clone(),
+    })
 }
 
-/// Thread-safe, file-backed task store.
-pub struct TaskStore {
-    data_dir: PathBuf,
-    lists: RwLock<HashMap<String, TaskList>>,
+fn template_to_json(template: &TaskTemplate) -> serde_json::Value {
+    serde_json::json!({
+        "id": template.id.clone(),
+        "slug": template.slug.clone(),
+        "title": template.title.clone(),
+        "description": template.description.clone().unwrap_or_default(),
+        "priority": template.priority,
+        "list_id": template.list_key.clone(),
+        "listId": template.list_key.clone(),
+        "goal_id": template.goal_id.clone(),
+        "goalId": template.goal_id.clone(),
+        "parent_template_id": template.parent_template_id.clone(),
+        "parentTemplateId": template.parent_template_id.clone(),
+        "owner": template.owner.clone(),
+        "project_id": template.project_id.clone(),
+        "projectId": template.project_id.clone(),
+        "created_at": template.created_at.clone(),
+        "updated_at": template.updated_at.clone(),
+        "blocked_by": template.blocked_by.clone(),
+        "blockedBy": template.blocked_by.clone(),
+    })
 }
 
-impl TaskStore {
-    pub fn new(base_dir: &Path) -> Self {
-        Self {
-            data_dir: base_dir.join("tasks"),
-            lists: RwLock::new(HashMap::new()),
-        }
-    }
-
-    fn file_path(&self, list_id: &str) -> PathBuf {
-        self.data_dir.join(format!("{list_id}.json"))
-    }
-
-    async fn ensure_list(&self, list_id: &str) -> crate::Result<()> {
-        let mut lists = self.lists.write().await;
-        if lists.contains_key(list_id) {
-            return Ok(());
-        }
-
-        let path = self.file_path(list_id);
-        let list = if path.exists() {
-            let data = tokio::fs::read_to_string(&path).await.map_err(|e| {
-                Error::message(format!("failed to read task list '{list_id}': {e}"))
-            })?;
-            serde_json::from_str::<TaskList>(&data).map_err(|e| {
-                Error::message(format!("failed to parse task list '{list_id}' JSON: {e}"))
-            })?
-        } else {
-            TaskList::default()
-        };
-        lists.insert(list_id.to_string(), list);
-        Ok(())
-    }
-
-    async fn persist(&self, list_id: &str) -> crate::Result<()> {
-        let lists = self.lists.read().await;
-        let Some(list) = lists.get(list_id) else {
-            return Ok(());
-        };
-        tokio::fs::create_dir_all(&self.data_dir)
-            .await
-            .map_err(|e| Error::message(format!("failed to create task dir: {e}")))?;
-        let payload = serde_json::to_string_pretty(list).map_err(|e| {
-            Error::message(format!("failed to serialize task list '{list_id}': {e}"))
-        })?;
-        tokio::fs::write(self.file_path(list_id), payload)
-            .await
-            .map_err(|e| Error::message(format!("failed to write task list '{list_id}': {e}")))?;
-        Ok(())
-    }
-
-    fn now() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs()
-    }
-
-    pub async fn create(
-        &self,
-        list_id: &str,
-        subject: String,
-        description: String,
-    ) -> crate::Result<Task> {
-        self.ensure_list(list_id).await?;
-        let mut lists = self.lists.write().await;
-        let list = lists
-            .get_mut(list_id)
-            .ok_or_else(|| Error::message(format!("missing task list: {list_id}")))?;
-
-        let id = list.next_id.to_string();
-        list.next_id = list.next_id.saturating_add(1);
-        let now = Self::now();
-        let task = Task {
-            id: id.clone(),
-            subject,
-            description,
-            status: TaskStatus::Pending,
-            owner: None,
-            blocked_by: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            list_id: list_id.to_string(),
-        };
-        list.tasks.insert(id, task.clone());
-        drop(lists);
-        self.persist(list_id).await?;
-        Ok(task)
-    }
-
-    /// Return all list IDs that have persisted files or contain tasks.
-    /// Filters out phantom in-memory lists created by failed lookups.
-    ///
-    /// Note: this scans the filesystem and holds a read lock, so results
-    /// may be stale if a concurrent write creates or deletes a list file
-    /// between the directory scan and the filter. This is acceptable for
-    /// a discovery API — callers should not assume strong consistency.
-    pub async fn list_ids(&self) -> crate::Result<Vec<String>> {
-        // Ensure every persisted list is loaded.
-        if self.data_dir.exists() {
-            let mut entries = tokio::fs::read_dir(&self.data_dir)
-                .await
-                .map_err(|e| Error::message(format!("failed to read task dir: {e}")))?;
-            while let Some(entry) = entries
-                .next_entry()
-                .await
-                .map_err(|e| Error::message(format!("failed to read task dir entry: {e}")))?
-            {
-                let path = entry.path();
-                if path.extension().is_some_and(|ext| ext == "json") {
-                    let stem = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("")
-                        .to_string();
-                    self.ensure_list(&stem).await?;
-                }
-            }
-        }
-        let lists = self.lists.read().await;
-        let mut ids: Vec<String> = lists
-            .iter()
-            .filter(|(id, list)| {
-                // Keep if persisted on disk or has tasks.
-                self.file_path(id).exists() || !list.tasks.is_empty()
-            })
-            .map(|(id, _)| id.clone())
-            .collect();
-        ids.sort();
-        Ok(ids)
-    }
-
-    /// List tasks from a single list, or all lists when `list_id` is `"*"`.
-    pub async fn list_tasks(
-        &self,
-        list_id: &str,
-        status_filter: Option<&TaskStatus>,
-    ) -> crate::Result<Vec<Task>> {
-        if list_id == "*" {
-            return self.list_all_tasks(status_filter).await;
-        }
-        self.ensure_list(list_id).await?;
-        let lists = self.lists.read().await;
-        let list = lists
-            .get(list_id)
-            .ok_or_else(|| Error::message(format!("missing task list: {list_id}")))?;
-
-        let mut tasks: Vec<Task> = list
-            .tasks
-            .values()
-            .filter(|t| status_filter.is_none_or(|s| &t.status == s))
-            .cloned()
-            .collect();
-        tasks.sort_by_key(|t| t.id.parse::<u64>().unwrap_or(0));
-        Ok(tasks)
-    }
-
-    /// List tasks across every known list.
-    async fn list_all_tasks(&self, status_filter: Option<&TaskStatus>) -> crate::Result<Vec<Task>> {
-        let ids = self.list_ids().await?;
-        // Collect as (list_id, numeric_id, task) for stable cross-list ordering.
-        let mut all: Vec<(String, u64, Task)> = Vec::new();
-        let lists = self.lists.read().await;
-        for id in &ids {
-            let Some(list) = lists.get(id) else {
-                continue;
-            };
-            for task in list
-                .tasks
-                .values()
-                .filter(|t| status_filter.is_none_or(|s| &t.status == s))
-            {
-                let mut t = task.clone();
-                t.list_id = id.clone();
-                all.push((id.clone(), t.id.parse::<u64>().unwrap_or(0), t));
-            }
-        }
-        all.sort_by_key(|(list_id, num, _)| (list_id.clone(), *num));
-        Ok(all.into_iter().map(|(_, _, t)| t).collect())
-    }
-
-    pub async fn get(&self, list_id: &str, task_id: &str) -> crate::Result<Option<Task>> {
-        self.ensure_list(list_id).await?;
-        let lists = self.lists.read().await;
-        let list = lists
-            .get(list_id)
-            .ok_or_else(|| Error::message(format!("missing task list: {list_id}")))?;
-        Ok(list.tasks.get(task_id).cloned())
-    }
-
-    pub async fn update(
-        &self,
-        list_id: &str,
-        task_id: &str,
-        status: Option<TaskStatus>,
-        subject: Option<String>,
-        description: Option<String>,
-        owner: Option<String>,
-        blocked_by: Option<Vec<String>>,
-    ) -> crate::Result<Task> {
-        self.ensure_list(list_id).await?;
-        let mut lists = self.lists.write().await;
-        let list = lists
-            .get_mut(list_id)
-            .ok_or_else(|| Error::message(format!("missing task list: {list_id}")))?;
-        let task = list
-            .tasks
-            .get_mut(task_id)
-            .ok_or_else(|| Error::message(format!("task not found: {task_id}")))?;
-
-        if let Some(status) = status {
-            task.status = status;
-        }
-        if let Some(subject) = subject {
-            task.subject = subject;
-        }
-        if let Some(description) = description {
-            task.description = description;
-        }
-        if let Some(owner) = owner {
-            task.owner = Some(owner);
-        }
-        if let Some(blocked_by) = blocked_by {
-            task.blocked_by = blocked_by;
-        }
-        task.updated_at = Self::now();
-
-        let updated = task.clone();
-        drop(lists);
-        self.persist(list_id).await?;
-        Ok(updated)
-    }
-
-    /// Atomically claim a pending task and set it to in-progress.
-    pub async fn claim(&self, list_id: &str, task_id: &str, owner: &str) -> crate::Result<Task> {
-        self.ensure_list(list_id).await?;
-        let mut lists = self.lists.write().await;
-        let list = lists
-            .get_mut(list_id)
-            .ok_or_else(|| Error::message(format!("missing task list: {list_id}")))?;
-
-        let (status, deps) = {
-            let task = list
-                .tasks
-                .get(task_id)
-                .ok_or_else(|| Error::message(format!("task not found: {task_id}")))?;
-            (task.status.clone(), task.blocked_by.clone())
-        };
-
-        if status != TaskStatus::Pending {
-            return Err(Error::message(format!(
-                "task {task_id} cannot be claimed: current status is {}",
-                status.as_str()
-            )));
-        }
-
-        let blocked: Vec<String> = deps
-            .iter()
-            .filter(|dep_id| {
-                list.tasks
-                    .get(dep_id.as_str())
-                    .is_some_and(|dep| dep.status != TaskStatus::Completed)
-            })
-            .cloned()
-            .collect();
-        if !blocked.is_empty() {
-            return Err(Error::message(format!(
-                "task {task_id} is blocked by incomplete tasks: {}",
-                blocked.join(", ")
-            )));
-        }
-
-        let task = list
-            .tasks
-            .get_mut(task_id)
-            .ok_or_else(|| Error::message(format!("task not found: {task_id}")))?;
-        task.owner = Some(owner.to_string());
-        task.status = TaskStatus::InProgress;
-        task.updated_at = Self::now();
-
-        let claimed = task.clone();
-        drop(lists);
-        self.persist(list_id).await?;
-        Ok(claimed)
-    }
+fn recurring_to_json(item: &RecurringTask) -> serde_json::Value {
+    serde_json::json!({
+        "id": item.id.clone(),
+        "name": item.name.clone(),
+        "template_id": item.template_id.clone(),
+        "templateId": item.template_id.clone(),
+        "schedule": item.schedule.clone(),
+        "enabled": item.enabled,
+        "list_id": item.list_key.clone(),
+        "listId": item.list_key.clone(),
+        "goal_id": item.goal_id.clone(),
+        "goalId": item.goal_id.clone(),
+        "owner": item.owner.clone(),
+        "project_id": item.project_id.clone(),
+        "projectId": item.project_id.clone(),
+        "next_run_at_ms": item.next_run_at_ms,
+        "nextRunAtMs": item.next_run_at_ms,
+        "last_materialized_at_ms": item.last_materialized_at_ms,
+        "lastMaterializedAtMs": item.last_materialized_at_ms,
+        "created_at": item.created_at.clone(),
+        "updated_at": item.updated_at.clone(),
+    })
 }
 
-/// Tool wrapper around [`TaskStore`].
+/// Tool wrapper around the durable work store.
 pub struct TaskListTool {
-    store: Arc<TaskStore>,
+    store: Arc<SqliteWorkStore>,
+    session_metadata: Option<Arc<SqliteSessionMetadata>>,
 }
 
 impl TaskListTool {
-    pub fn new(base_dir: &Path) -> Self {
+    pub fn new(
+        pool: sqlx::SqlitePool,
+        session_metadata: Option<Arc<SqliteSessionMetadata>>,
+    ) -> Self {
         Self {
-            store: Arc::new(TaskStore::new(base_dir)),
+            store: Arc::new(SqliteWorkStore::new(pool)),
+            session_metadata,
         }
     }
 }
@@ -402,8 +161,13 @@ impl AgentTool for TaskListTool {
     }
 
     fn description(&self) -> &str {
-        "Manage a shared task list for coordinated multi-agent execution. \
-         Actions: create, list, list_lists, get, update, claim."
+        "Manage durable shared tasks, reusable task templates, and recurring \
+         task materialization for coordinated multi-agent execution. Actions: \
+         create, list, get, update, claim, comment, comments, goal_plan, \
+         template_create, template_list, template_get, template_update, \
+         template_instantiate, tracker_import, tracker_links, \
+         recurring_create, recurring_list, recurring_get, recurring_update, \
+         recurring_materialize."
     }
 
     fn parameters_schema(&self) -> serde_json::Value {
@@ -412,12 +176,18 @@ impl AgentTool for TaskListTool {
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["create", "list", "list_lists", "get", "update", "claim"],
-                    "description": "Task list action to perform. Use list_lists to discover all lists. Use list with list_id=\"*\" for all tasks."
+                    "enum": [
+                        "create", "list", "get", "update", "claim", "comment", "comments",
+                        "goal_plan",
+                        "tracker_import", "tracker_links",
+                        "template_create", "template_list", "template_get", "template_update", "template_instantiate",
+                        "recurring_create", "recurring_list", "recurring_get", "recurring_update", "recurring_materialize"
+                    ],
+                    "description": "Task list action to perform."
                 },
                 "list_id": {
                     "type": "string",
-                    "description": "Task list identifier. Use \"*\" (or omit) to list across all lists. Pass a specific ID to scope to one list."
+                    "description": "Task list identifier (default: default)."
                 },
                 "id": {
                     "type": "string",
@@ -433,8 +203,18 @@ impl AgentTool for TaskListTool {
                 },
                 "status": {
                     "type": "string",
-                    "enum": ["pending", "in_progress", "completed"],
+                    "enum": ["pending", "in_progress", "blocked", "completed", "cancelled"],
                     "description": "Task status for list/update."
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "critical"],
+                    "description": "Task priority for create/update."
+                },
+                "preset": {
+                    "type": "string",
+                    "enum": ["delivery", "investigation", "maintenance"],
+                    "description": "Goal planning preset for goal_plan."
                 },
                 "owner": {
                     "type": "string",
@@ -444,6 +224,38 @@ impl AgentTool for TaskListTool {
                     "type": "array",
                     "items": { "type": "string" },
                     "description": "List of task IDs that block this task."
+                },
+                "body": {
+                    "type": "string",
+                    "description": "Task comment body for comment."
+                },
+                "provider": {
+                    "type": "string",
+                    "description": "External tracker provider for tracker_import/tracker_links."
+                },
+                "remote_id": {
+                    "type": "string",
+                    "description": "External tracker record identifier for tracker_import."
+                },
+                "remote_title": {
+                    "type": "string",
+                    "description": "External tracker record title for tracker_import."
+                },
+                "remote_status": {
+                    "type": "string",
+                    "description": "External tracker record status for tracker_import."
+                },
+                "remote_url": {
+                    "type": "string",
+                    "description": "External tracker record URL for tracker_import."
+                },
+                "schedule": {
+                    "type": "object",
+                    "description": "Cron-style schedule object for recurring_create/recurring_update."
+                },
+                "instantiate": {
+                    "type": "boolean",
+                    "description": "Whether goal_plan should also instantiate real tasks."
                 }
             },
             "required": ["action"]
@@ -452,90 +264,464 @@ impl AgentTool for TaskListTool {
 
     async fn execute(&self, params: serde_json::Value) -> anyhow::Result<serde_json::Value> {
         let action = require_str(&params, "action")?;
-        let list_id = str_param_any(&params, &["list_id", "listId"]).unwrap_or("default");
+        let list_key = str_param_any(&params, &["list_id", "listId"]).unwrap_or("default");
 
         match action {
             "create" => {
-                let subject = require_str(&params, "subject")?.to_string();
-                let description = str_param(&params, "description").unwrap_or("").to_string();
-                let task = self.store.create(list_id, subject, description).await?;
+                let title = str_param_any(&params, &["subject", "title"])
+                    .ok_or_else(|| Error::message("missing required parameter: subject"))?
+                    .to_string();
+                let task = self
+                    .store
+                    .create_task(NewTask {
+                        list_key: Some(list_key.to_string()),
+                        title,
+                        description: str_param(&params, "description").map(ToString::to_string),
+                        status: parse_task_status(str_param(&params, "status"))?
+                            .unwrap_or(TaskStatus::Pending),
+                        priority: parse_task_priority(str_param(&params, "priority"))?
+                            .unwrap_or(TaskPriority::Medium),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        parent_task_id: str_param_any(&params, &["parent_task_id", "parentTaskId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        session_key: str_param_any(&params, &["session_key", "sessionKey"])
+                            .map(ToString::to_string),
+                        blocked_by: blocked_by_from_params(&params).unwrap_or_default(),
+                    })
+                    .await?;
                 Ok(serde_json::json!({
                     "ok": true,
-                    "task": task,
+                    "task": task_to_json(&task),
                 }))
             },
             "list" => {
-                let status = str_param(&params, "status")
-                    .map(str::parse::<TaskStatus>)
-                    .transpose()?;
-                let effective_id = if list_id == "default"
-                    && params.get("list_id").is_none()
-                    && params.get("listId").is_none()
-                {
-                    // When list_id is truly omitted, default to "*" so agents
-                    // see tasks from all lists without guessing.
-                    "*"
-                } else {
-                    list_id
-                };
-                let tasks = self.store.list_tasks(effective_id, status.as_ref()).await?;
+                let tasks = self
+                    .store
+                    .list_tasks(&TaskFilter {
+                        list_key: Some(list_key.to_string()),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        session_key: str_param_any(&params, &["session_key", "sessionKey"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        status: parse_task_status(str_param(&params, "status"))?,
+                    })
+                    .await?;
+                let items = tasks.iter().map(task_to_json).collect::<Vec<_>>();
                 Ok(serde_json::json!({
                     "ok": true,
-                    "tasks": tasks,
+                    "tasks": items,
                     "count": tasks.len(),
-                }))
-            },
-            "list_lists" => {
-                let ids = self.store.list_ids().await?;
-                Ok(serde_json::json!({
-                    "ok": true,
-                    "list_ids": ids,
-                    "count": ids.len(),
                 }))
             },
             "get" => {
                 let id = require_str(&params, "id")?;
-                let task = self.store.get(list_id, id).await?;
+                let task = self.store.get_task(id).await?;
                 Ok(serde_json::json!({
                     "ok": task.is_some(),
-                    "task": task,
+                    "task": task.as_ref().map(task_to_json),
                 }))
             },
             "update" => {
                 let id = require_str(&params, "id")?;
-                let status = str_param(&params, "status")
-                    .map(str::parse::<TaskStatus>)
-                    .transpose()?;
-                let subject = str_param(&params, "subject").map(String::from);
-                let description = str_param(&params, "description").map(String::from);
-                let owner = str_param(&params, "owner").map(String::from);
-                let blocked_by = params
-                    .get("blocked_by")
-                    .and_then(serde_json::Value::as_array)
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(serde_json::Value::as_str)
-                            .map(String::from)
-                            .collect::<Vec<_>>()
-                    });
                 let task = self
                     .store
-                    .update(list_id, id, status, subject, description, owner, blocked_by)
+                    .update_task(id, TaskPatch {
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        title: str_param_any(&params, &["subject", "title"])
+                            .map(ToString::to_string),
+                        description: str_param(&params, "description").map(ToString::to_string),
+                        status: parse_task_status(str_param(&params, "status"))?,
+                        priority: parse_task_priority(str_param(&params, "priority"))?,
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        parent_task_id: str_param_any(&params, &["parent_task_id", "parentTaskId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        session_key: str_param_any(&params, &["session_key", "sessionKey"])
+                            .map(ToString::to_string),
+                        blocked_by: blocked_by_from_params(&params),
+                    })
                     .await?;
                 Ok(serde_json::json!({
-                    "ok": true,
-                    "task": task,
+                    "ok": task.is_some(),
+                    "task": task.as_ref().map(task_to_json),
                 }))
             },
             "claim" => {
                 let id = require_str(&params, "id")?;
+                let session_key =
+                    str_param_any(&params, &["_session_key", "session_key", "sessionKey"])
+                        .map(ToString::to_string);
                 let owner = str_param_any(&params, &["owner", "_session_key"])
-                    .unwrap_or("agent")
-                    .to_string();
-                let task = self.store.claim(list_id, id, &owner).await?;
+                    .map(ToString::to_string)
+                    .or_else(|| session_key.clone())
+                    .or_else(|| Some("agent".to_string()));
+                let task = self
+                    .store
+                    .claim_task(id, owner, session_key.clone())
+                    .await?;
+                if let Some(ref metadata) = self.session_metadata
+                    && let Some(ref key) = session_key
+                    && let Some(ref claimed_task) = task
+                {
+                    metadata
+                        .set_task_id(key, Some(claimed_task.id.clone()))
+                        .await;
+                }
+                Ok(serde_json::json!({
+                    "ok": task.is_some(),
+                    "task": task.as_ref().map(task_to_json),
+                }))
+            },
+            "comment" => {
+                let task_id = require_str(&params, "id")?.to_string();
+                let body = require_str(&params, "body")?.to_string();
+                let author =
+                    str_param_any(&params, &["author", "_session_key"]).map(ToString::to_string);
+                let comment = self
+                    .store
+                    .add_comment(NewTaskComment {
+                        task_id,
+                        author,
+                        body,
+                    })
+                    .await?;
                 Ok(serde_json::json!({
                     "ok": true,
-                    "task": task,
+                    "comment": comment,
+                }))
+            },
+            "comments" => {
+                let task_id = require_str(&params, "id")?;
+                let comments = self.store.list_comments(task_id).await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "comments": comments,
+                    "count": comments.len(),
+                }))
+            },
+            "goal_plan" => {
+                let goal_id = str_param_any(&params, &["id", "goal_id", "goalId"])
+                    .ok_or_else(|| Error::message("missing required parameter: goal_id"))?
+                    .to_string();
+                let result = self
+                    .store
+                    .plan_goal(moltis_work::types::GoalPlanRequest {
+                        goal_id,
+                        preset: parse_goal_plan_preset(str_param(&params, "preset"))?,
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        instantiate: params
+                            .get("instantiate")
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(false),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "result": result,
+                }))
+            },
+            "tracker_import" => {
+                let provider = require_str(&params, "provider")?.to_string();
+                let remote_id = str_param_any(&params, &["remote_id", "remoteId"])
+                    .ok_or_else(|| Error::message("missing required parameter: remote_id"))?
+                    .to_string();
+                let remote_title = str_param_any(&params, &["remote_title", "remoteTitle"])
+                    .ok_or_else(|| Error::message("missing required parameter: remote_title"))?
+                    .to_string();
+                let remote_status = str_param_any(&params, &["remote_status", "remoteStatus"])
+                    .ok_or_else(|| Error::message("missing required parameter: remote_status"))?
+                    .to_string();
+                let result = self
+                    .store
+                    .import_tracker_task(moltis_work::types::TrackerImportRequest {
+                        provider,
+                        remote_id,
+                        remote_title,
+                        remote_body: str_param_any(&params, &["remote_body", "remoteBody"])
+                            .map(ToString::to_string),
+                        remote_status,
+                        remote_url: str_param_any(&params, &["remote_url", "remoteUrl"])
+                            .map(ToString::to_string),
+                        remote_updated_at: str_param_any(&params, &[
+                            "remote_updated_at",
+                            "remoteUpdatedAt",
+                        ])
+                        .map(ToString::to_string),
+                        task_id: str_param_any(&params, &["id", "task_id", "taskId"])
+                            .map(ToString::to_string),
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "result": result,
+                }))
+            },
+            "tracker_links" => {
+                let links = self
+                    .store
+                    .list_external_links(&moltis_work::types::ExternalTaskLinkFilter {
+                        task_id: str_param_any(&params, &["id", "task_id", "taskId"])
+                            .map(ToString::to_string),
+                        provider: str_param(&params, "provider").map(ToString::to_string),
+                        limit: params
+                            .get("limit")
+                            .and_then(serde_json::Value::as_u64)
+                            .map(|value| value as u32),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "links": links,
+                    "count": links.len(),
+                }))
+            },
+            "template_create" => {
+                let title = str_param_any(&params, &["subject", "title"])
+                    .ok_or_else(|| Error::message("missing required parameter: subject"))?
+                    .to_string();
+                let template = self
+                    .store
+                    .create_task_template(NewTaskTemplate {
+                        slug: str_param(&params, "slug").map(ToString::to_string),
+                        title,
+                        description: str_param(&params, "description").map(ToString::to_string),
+                        priority: parse_task_priority(str_param(&params, "priority"))?
+                            .unwrap_or(TaskPriority::Medium),
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        parent_template_id: str_param_any(&params, &[
+                            "parent_template_id",
+                            "parentTemplateId",
+                        ])
+                        .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        blocked_by: blocked_by_from_params(&params).unwrap_or_default(),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "template": template_to_json(&template),
+                }))
+            },
+            "template_list" => {
+                let templates = self
+                    .store
+                    .list_task_templates(&moltis_work::types::TaskTemplateFilter {
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        parent_template_id: str_param_any(&params, &[
+                            "parent_template_id",
+                            "parentTemplateId",
+                        ])
+                        .map(ToString::to_string),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "templates": templates.iter().map(template_to_json).collect::<Vec<_>>(),
+                    "count": templates.len(),
+                }))
+            },
+            "template_get" => {
+                let id = require_str(&params, "id")?;
+                let template = self.store.get_task_template(id).await?;
+                Ok(serde_json::json!({
+                    "ok": template.is_some(),
+                    "template": template.as_ref().map(template_to_json),
+                }))
+            },
+            "template_update" => {
+                let id = require_str(&params, "id")?;
+                let template = self
+                    .store
+                    .update_task_template(id, TaskTemplatePatch {
+                        slug: str_param(&params, "slug").map(ToString::to_string),
+                        title: str_param_any(&params, &["subject", "title"])
+                            .map(ToString::to_string),
+                        description: str_param(&params, "description").map(ToString::to_string),
+                        priority: parse_task_priority(str_param(&params, "priority"))?,
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        parent_template_id: str_param_any(&params, &[
+                            "parent_template_id",
+                            "parentTemplateId",
+                        ])
+                        .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        blocked_by: blocked_by_from_params(&params),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": template.is_some(),
+                    "template": template.as_ref().map(template_to_json),
+                }))
+            },
+            "template_instantiate" => {
+                let template_id = str_param_any(&params, &["id", "template_id", "templateId"])
+                    .ok_or_else(|| Error::message("missing required parameter: template_id"))?
+                    .to_string();
+                let result = self
+                    .store
+                    .instantiate_task_template(InstantiateTaskTemplate {
+                        template_id,
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        parent_task_id: str_param_any(&params, &["parent_task_id", "parentTaskId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "result": result,
+                }))
+            },
+            "recurring_create" => {
+                let name = str_param(&params, "name")
+                    .ok_or_else(|| Error::message("missing required parameter: name"))?
+                    .to_string();
+                let template_id = str_param_any(&params, &["template_id", "templateId"])
+                    .ok_or_else(|| Error::message("missing required parameter: template_id"))?
+                    .to_string();
+                let item = self
+                    .store
+                    .create_recurring_task(NewRecurringTask {
+                        name,
+                        template_id,
+                        schedule: parse_schedule(&params)?,
+                        enabled: params
+                            .get("enabled")
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(true),
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "recurring": recurring_to_json(&item),
+                }))
+            },
+            "recurring_list" => {
+                let items = self
+                    .store
+                    .list_recurring_tasks(&moltis_work::types::RecurringTaskFilter {
+                        template_id: str_param_any(&params, &["template_id", "templateId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                        enabled: params.get("enabled").and_then(serde_json::Value::as_bool),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "recurring": items.iter().map(recurring_to_json).collect::<Vec<_>>(),
+                    "count": items.len(),
+                }))
+            },
+            "recurring_get" => {
+                let id = require_str(&params, "id")?;
+                let item = self.store.get_recurring_task(id).await?;
+                Ok(serde_json::json!({
+                    "ok": item.is_some(),
+                    "recurring": item.as_ref().map(recurring_to_json),
+                }))
+            },
+            "recurring_update" => {
+                let id = require_str(&params, "id")?;
+                let item = self
+                    .store
+                    .update_recurring_task(id, RecurringTaskPatch {
+                        name: str_param(&params, "name").map(ToString::to_string),
+                        template_id: str_param_any(&params, &["template_id", "templateId"])
+                            .map(ToString::to_string),
+                        schedule: params
+                            .get("schedule")
+                            .cloned()
+                            .map(serde_json::from_value)
+                            .transpose()
+                            .map_err(|error| Error::message(error.to_string()))?,
+                        enabled: params.get("enabled").and_then(serde_json::Value::as_bool),
+                        list_key: str_param_any(&params, &["list_id", "listId"])
+                            .map(ToString::to_string),
+                        goal_id: str_param_any(&params, &["goal_id", "goalId"])
+                            .map(ToString::to_string),
+                        owner: str_param(&params, "owner").map(ToString::to_string),
+                        project_id: str_param_any(&params, &["project_id", "projectId"])
+                            .map(ToString::to_string),
+                    })
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": item.is_some(),
+                    "recurring": item.as_ref().map(recurring_to_json),
+                }))
+            },
+            "recurring_materialize" => {
+                let recurring_id = str_param_any(&params, &["id", "recurring_id", "recurringId"]);
+                let result = self
+                    .store
+                    .materialize_due_recurring_tasks(
+                        recurring_id,
+                        params
+                            .get("limit")
+                            .and_then(serde_json::Value::as_u64)
+                            .map(|value| value as u32),
+                        params
+                            .get("force")
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(false),
+                        params
+                            .get("now_ms")
+                            .or_else(|| params.get("nowMs"))
+                            .and_then(serde_json::Value::as_u64),
+                    )
+                    .await?;
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "result": result,
                 }))
             },
             _ => Err(Error::message(format!("unknown task_list action: {action}")).into()),
@@ -544,20 +730,26 @@ impl AgentTool for TaskListTool {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
     type TestResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-    fn tool(tmp: &tempfile::TempDir) -> TaskListTool {
-        TaskListTool::new(tmp.path())
+    async fn tool() -> TestResult<TaskListTool> {
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await?;
+        moltis_work::run_migrations(&pool).await?;
+        sqlx::query("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY)")
+            .execute(&pool)
+            .await?;
+        SqliteSessionMetadata::init(&pool).await?;
+        let metadata = Arc::new(SqliteSessionMetadata::new(pool.clone()));
+        metadata.upsert("main", None).await?;
+        Ok(TaskListTool::new(pool, Some(metadata)))
     }
 
     #[tokio::test]
     async fn create_and_list_tasks() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
+        let task_tool = tool().await?;
         task_tool
             .execute(serde_json::json!({
                 "action": "create",
@@ -578,9 +770,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn claim_moves_task_to_in_progress() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
+    async fn claim_moves_task_to_in_progress_and_binds_session() -> TestResult<()> {
+        let task_tool = tool().await?;
         let created = task_tool
             .execute(serde_json::json!({
                 "action": "create",
@@ -595,54 +786,19 @@ mod tests {
             .execute(serde_json::json!({
                 "action": "claim",
                 "id": id,
+                "_session_key": "main",
                 "owner": "worker-a"
             }))
             .await?;
         assert_eq!(claimed["task"]["status"], "in_progress");
         assert_eq!(claimed["task"]["owner"], "worker-a");
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn claim_rejects_non_pending_task() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-        let created = task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "subject": "work"
-            }))
-            .await?;
-        let id = created["task"]["id"]
-            .as_str()
-            .ok_or_else(|| std::io::Error::other("missing task id"))?;
-
-        task_tool
-            .execute(serde_json::json!({
-                "action": "update",
-                "id": id,
-                "status": "completed"
-            }))
-            .await?;
-
-        let result = task_tool
-            .execute(serde_json::json!({
-                "action": "claim",
-                "id": id,
-                "owner": "worker-a"
-            }))
-            .await;
-        let err = result
-            .err()
-            .ok_or_else(|| std::io::Error::other("expected claim failure"))?;
-        assert!(err.to_string().contains("cannot be claimed"));
+        assert_eq!(claimed["task"]["sessionKey"], "main");
         Ok(())
     }
 
     #[tokio::test]
     async fn claim_rejects_when_blocked_dependencies_incomplete() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
+        let task_tool = tool().await?;
         let dep = task_tool
             .execute(serde_json::json!({
                 "action": "create",
@@ -685,225 +841,275 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_without_list_id_returns_all_tasks() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        // Create tasks in two different lists.
-        task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "CURRICULUM_1",
-                "subject": "task-a",
-                "description": "in list 1"
-            }))
-            .await?;
-        task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "CURRICULUM_2",
-                "subject": "task-b",
-                "description": "in list 2"
-            }))
+    async fn goal_plan_action_builds_templates_and_tasks() -> TestResult<()> {
+        let task_tool = tool().await?;
+        let goal = task_tool
+            .store
+            .create_goal(moltis_work::types::NewGoal {
+                slug: Some("stabilize-api".to_string()),
+                title: "Stabilize API".to_string(),
+                description: Some("Reduce churn and verify compatibility.".to_string()),
+                status: moltis_work::types::GoalStatus::Active,
+                project_id: Some("proj-api".to_string()),
+                parent_goal_id: None,
+            })
             .await?;
 
-        // Omitting list_id should now default to "*" and return both.
-        let result = task_tool
+        let planned = task_tool
             .execute(serde_json::json!({
-                "action": "list"
+                "action": "goal_plan",
+                "id": goal.id,
+                "preset": "maintenance",
+                "list_id": "stability",
+                "instantiate": true,
+                "owner": "planner-a",
             }))
             .await?;
-        assert_eq!(result["count"], 2);
+        assert_eq!(planned["result"]["preset"], "maintenance");
+        assert_eq!(
+            planned["result"]["templates"].as_array().map(Vec::len),
+            Some(5)
+        );
+        assert!(planned["result"]["instantiated"].is_object());
 
-        let subjects: Vec<&str> = result["tasks"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|t| t["subject"].as_str().unwrap())
-            .collect();
-        assert!(subjects.contains(&"task-a"));
-        assert!(subjects.contains(&"task-b"));
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn list_with_wildcard_returns_all_tasks() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "ALPHA",
-                "subject": "alpha-task"
-            }))
-            .await?;
-        task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "subject": "default-task"
-            }))
-            .await?;
-
-        let result = task_tool
+        let tasks = task_tool
             .execute(serde_json::json!({
                 "action": "list",
-                "list_id": "*"
+                "list_id": "stability",
             }))
             .await?;
-        assert_eq!(result["count"], 2);
+        assert_eq!(tasks["count"], 5);
         Ok(())
     }
 
     #[tokio::test]
-    async fn list_lists_returns_all_known_ids() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        task_tool
+    async fn tracker_import_and_links_actions_round_trip() -> TestResult<()> {
+        let task_tool = tool().await?;
+        let imported = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "LIST_X",
-                "subject": "x"
+                "action": "tracker_import",
+                "provider": "github",
+                "remote_id": "moltis-org/moltis#77",
+                "remote_title": "Sync imported issue",
+                "remote_status": "in_progress",
+                "remote_url": "https://github.com/moltis-org/moltis/issues/77",
+                "list_id": "imports",
             }))
             .await?;
-        task_tool
+        assert_eq!(imported["result"]["task"]["title"], "Sync imported issue");
+        assert_eq!(imported["result"]["task"]["status"], "in_progress");
+
+        let links = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "LIST_Y",
-                "subject": "y"
+                "action": "tracker_links",
+                "provider": "github",
             }))
             .await?;
-
-        let result = task_tool
-            .execute(serde_json::json!({
-                "action": "list_lists"
-            }))
-            .await?;
-        assert_eq!(result["count"], 2);
-
-        let ids: Vec<&str> = result["list_ids"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_str().unwrap())
-            .collect();
-        assert!(ids.contains(&"LIST_X"));
-        assert!(ids.contains(&"LIST_Y"));
+        assert_eq!(links["count"], 1);
+        assert_eq!(
+            links["links"][0]["remote_url"],
+            "https://github.com/moltis-org/moltis/issues/77"
+        );
         Ok(())
     }
 
     #[tokio::test]
-    async fn explicit_default_list_id_still_scopes() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        task_tool
+    async fn template_actions_round_trip_and_instantiate() -> TestResult<()> {
+        let task_tool = tool().await?;
+        let root = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "default",
-                "subject": "in-default"
+                "action": "template_create",
+                "subject": "Ship release",
+                "description": "Root release workflow",
+                "slug": "ship-release",
+                "priority": "high",
             }))
             .await?;
-        task_tool
+        let root_id = root["template"]["id"]
+            .as_str()
+            .ok_or_else(|| std::io::Error::other("missing root template id"))?;
+
+        let child = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "OTHER",
-                "subject": "in-other"
+                "action": "template_create",
+                "subject": "Cut tag",
+                "parent_template_id": root_id,
+                "blocked_by": [root_id],
             }))
             .await?;
+        let child_id = child["template"]["id"]
+            .as_str()
+            .ok_or_else(|| std::io::Error::other("missing child template id"))?;
 
-        // Explicitly passing list_id="default" should only return default tasks.
-        let result = task_tool
+        let listed = task_tool
+            .execute(serde_json::json!({
+                "action": "template_list",
+            }))
+            .await?;
+        assert_eq!(listed["count"], 2);
+
+        let fetched = task_tool
+            .execute(serde_json::json!({
+                "action": "template_get",
+                "id": child_id,
+            }))
+            .await?;
+        assert_eq!(fetched["template"]["parentTemplateId"], root_id);
+
+        let updated = task_tool
+            .execute(serde_json::json!({
+                "action": "template_update",
+                "id": child_id,
+                "subject": "Cut and publish tag",
+                "priority": "critical",
+            }))
+            .await?;
+        assert_eq!(updated["template"]["title"], "Cut and publish tag");
+        assert_eq!(updated["template"]["priority"], "critical");
+
+        let instantiated = task_tool
+            .execute(serde_json::json!({
+                "action": "template_instantiate",
+                "id": root_id,
+                "list_id": "release",
+                "owner": "worker-a",
+            }))
+            .await?;
+        let root_task_id = instantiated["result"]["root_task_id"]
+            .as_str()
+            .ok_or_else(|| std::io::Error::other("missing root task id"))?;
+
+        let tasks = task_tool
             .execute(serde_json::json!({
                 "action": "list",
-                "list_id": "default"
+                "list_id": "release",
             }))
             .await?;
-        assert_eq!(result["count"], 1);
-        assert_eq!(result["tasks"][0]["subject"], "in-default");
+        assert_eq!(tasks["count"], 2);
+        assert!(
+            tasks["tasks"]
+                .as_array()
+                .ok_or_else(|| std::io::Error::other("missing tasks array"))?
+                .iter()
+                .any(|task| task["id"] == root_task_id)
+        );
         Ok(())
     }
 
     #[tokio::test]
-    async fn wildcard_list_includes_list_id_field() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        task_tool
+    async fn recurring_actions_create_list_update_and_get() -> TestResult<()> {
+        let task_tool = tool().await?;
+        let template = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "LIST_A",
-                "subject": "a-task"
+                "action": "template_create",
+                "subject": "Weekly review",
             }))
             .await?;
+        let template_id = template["template"]["id"]
+            .as_str()
+            .ok_or_else(|| std::io::Error::other("missing template id"))?;
 
-        let result = task_tool
+        let recurring = task_tool
+            .execute(serde_json::json!({
+                "action": "recurring_create",
+                "name": "Weekly review cadence",
+                "template_id": template_id,
+                "schedule": {
+                    "kind": "every",
+                    "every_ms": 60000,
+                    "anchor_ms": 0
+                }
+            }))
+            .await?;
+        let recurring_id = recurring["recurring"]["id"]
+            .as_str()
+            .ok_or_else(|| std::io::Error::other("missing recurring id"))?;
+
+        let listed = task_tool
+            .execute(serde_json::json!({
+                "action": "recurring_list",
+            }))
+            .await?;
+        assert_eq!(listed["count"], 1);
+
+        let updated = task_tool
+            .execute(serde_json::json!({
+                "action": "recurring_update",
+                "id": recurring_id,
+                "name": "Weekly review cadence v2",
+            }))
+            .await?;
+        assert_eq!(updated["recurring"]["name"], "Weekly review cadence v2");
+
+        let fetched = task_tool
+            .execute(serde_json::json!({
+                "id": recurring_id,
+                "action": "recurring_get",
+            }))
+            .await?;
+        assert_eq!(fetched["recurring"]["name"], "Weekly review cadence v2");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recurring_materialize_action_creates_tasks() -> TestResult<()> {
+        let task_tool = tool().await?;
+        let template = task_tool
+            .store
+            .create_task_template(NewTaskTemplate {
+                slug: Some("weekly-review".to_string()),
+                title: "Weekly review".to_string(),
+                description: Some("Review active work".to_string()),
+                priority: TaskPriority::Medium,
+                list_key: Some("default".to_string()),
+                goal_id: None,
+                parent_template_id: None,
+                owner: Some("operator".to_string()),
+                project_id: None,
+                blocked_by: Vec::new(),
+            })
+            .await?;
+        let recurring = task_tool
+            .store
+            .create_recurring_task(NewRecurringTask {
+                name: "Weekly review cadence".to_string(),
+                template_id: template.id.clone(),
+                schedule: moltis_cron::types::CronSchedule::Every {
+                    every_ms: 60_000,
+                    anchor_ms: Some(0),
+                },
+                enabled: true,
+                list_key: Some("default".to_string()),
+                goal_id: None,
+                owner: Some("operator".to_string()),
+                project_id: None,
+            })
+            .await?;
+
+        let materialized = task_tool
+            .execute(serde_json::json!({
+                "action": "recurring_materialize",
+                "id": recurring.id,
+                "force": true,
+                "now_ms": 120000,
+            }))
+            .await?;
+        assert_eq!(materialized["result"]["count"], 1);
+
+        let tasks = task_tool
             .execute(serde_json::json!({
                 "action": "list",
-                "list_id": "*"
             }))
             .await?;
-        assert_eq!(result["count"], 1);
-        assert_eq!(result["tasks"][0]["list_id"], "LIST_A");
-        Ok(())
-    }
+        assert_eq!(tasks["count"], 1);
 
-    #[tokio::test]
-    async fn single_list_includes_list_id_field() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        task_tool
+        let fetched = task_tool
             .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "X",
-                "subject": "x-task"
+                "action": "recurring_get",
+                "id": recurring.id,
             }))
             .await?;
-
-        let result = task_tool
-            .execute(serde_json::json!({
-                "action": "list",
-                "list_id": "X"
-            }))
-            .await?;
-        assert_eq!(result["tasks"][0]["list_id"], "X");
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn list_lists_excludes_phantom_empty_lists() -> TestResult<()> {
-        let tmp = tempfile::tempdir()?;
-        let task_tool = tool(&tmp);
-
-        // Create a real list with a task.
-        task_tool
-            .execute(serde_json::json!({
-                "action": "create",
-                "list_id": "REAL",
-                "subject": "real-task"
-            }))
-            .await?;
-
-        // Try to get from a non-existent list — this creates a phantom empty list.
-        let get_result = task_tool
-            .execute(serde_json::json!({
-                "action": "get",
-                "list_id": "PHANTOM",
-                "id": "999"
-            }))
-            .await?;
-        assert_eq!(get_result["ok"], false);
-
-        // list_lists should only return REAL, not PHANTOM.
-        let result = task_tool
-            .execute(serde_json::json!({
-                "action": "list_lists"
-            }))
-            .await?;
-        assert_eq!(result["count"], 1);
-        assert_eq!(result["list_ids"][0], "REAL");
+        assert_eq!(fetched["recurring"]["lastMaterializedAtMs"], 120000);
         Ok(())
     }
 }

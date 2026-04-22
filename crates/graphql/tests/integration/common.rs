@@ -496,6 +496,10 @@ impl moltis_service_traits::McpService for MockMcp {
         self.0.call("mcp.tools", p)
     }
 
+    async fn call(&self, p: Value) -> ServiceResult {
+        self.0.call("mcp.call", p)
+    }
+
     async fn restart(&self, p: Value) -> ServiceResult {
         self.0.call("mcp.restart", p)
     }
@@ -860,6 +864,7 @@ fn build_mock_services(mock: &Arc<MockDispatch>) -> Arc<Services> {
         logs: Arc::new(MockLogs(mock.clone())),
         provider_setup: Arc::new(MockProviderSetup(mock.clone())),
         project: Arc::new(MockProject(mock.clone())),
+        work: Arc::new(moltis_service_traits::NoopWorkService),
         local_llm: Arc::new(MockLocalLlm(mock.clone())),
         system_info: Arc::new(MockSystemInfo(mock.clone())),
     })

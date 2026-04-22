@@ -195,6 +195,87 @@ pub(super) fn register(reg: &mut MethodRegistry) {
         }),
     );
 
+    // ── Work ───────────────────────────────────────────────────────
+    macro_rules! work_no_params {
+        ($name:literal, $method:ident) => {
+            reg.register(
+                $name,
+                Box::new(|ctx| {
+                    Box::pin(async move {
+                        ctx.state
+                            .services
+                            .work
+                            .$method()
+                            .await
+                            .map_err(ErrorShape::from)
+                    })
+                }),
+            );
+        };
+    }
+    macro_rules! work_params {
+        ($name:literal, $method:ident) => {
+            reg.register(
+                $name,
+                Box::new(|ctx| {
+                    Box::pin(async move {
+                        ctx.state
+                            .services
+                            .work
+                            .$method(ctx.params.clone())
+                            .await
+                            .map_err(ErrorShape::from)
+                    })
+                }),
+            );
+        };
+    }
+
+    work_no_params!("work.goals.list", goals_list);
+    work_params!("work.goals.get", goals_get);
+    work_params!("work.goals.create", goals_create);
+    work_params!("work.goals.update", goals_update);
+    work_params!("work.goals.delete", goals_delete);
+    work_params!("work.goals.plan", goals_plan);
+    work_params!("work.templates.list", templates_list);
+    work_params!("work.templates.get", templates_get);
+    work_params!("work.templates.create", templates_create);
+    work_params!("work.templates.update", templates_update);
+    work_params!("work.templates.instantiate", templates_instantiate);
+    work_params!("work.tasks.list", tasks_list);
+    work_params!("work.tasks.get", tasks_get);
+    work_params!("work.tasks.create", tasks_create);
+    work_params!("work.tasks.update", tasks_update);
+    work_params!("work.tasks.claim", tasks_claim);
+    work_params!("work.comments.list", comments_list);
+    work_params!("work.comments.add", comments_add);
+    work_params!("work.runs.list", runs_list);
+    work_params!("work.runs.create", runs_create);
+    work_params!("work.runs.update", runs_update);
+    work_params!("work.approvals.list", approvals_list);
+    work_params!("work.approvals.create", approvals_create);
+    work_params!("work.approvals.update", approvals_update);
+    work_params!("work.costs.list", costs_list);
+    work_params!("work.costs.record", costs_record);
+    work_params!("work.budgets.list", budgets_list);
+    work_params!("work.budgets.save", budgets_save);
+    work_params!("work.budgets.enforce", budgets_enforce);
+    work_params!("work.recurring.list", recurring_list);
+    work_params!("work.recurring.get", recurring_get);
+    work_params!("work.recurring.create", recurring_create);
+    work_params!("work.recurring.update", recurring_update);
+    work_params!("work.recurring.materialize", recurring_materialize);
+    work_params!(
+        "work.recurring.materializations.list",
+        recurring_materializations_list
+    );
+    work_params!("work.trackers.links.list", trackers_links_list);
+    work_params!("work.trackers.import", trackers_import);
+    work_params!("work.dashboard", dashboard);
+    work_no_params!("work.portfolio", portfolio);
+    work_params!("work.package.export", package_export);
+    work_params!("work.package.import", package_import);
+
     // ── Voice Config ───────────────────────────────────────────────
     #[cfg(feature = "voice")]
     {

@@ -764,6 +764,7 @@ pub(super) async fn finalize_prepared_gateway(
                         to: hb.to.clone(),
                     }),
                     enabled: Some(true),
+                    task_id: Some(hb.task_id.clone().unwrap_or_default()),
                     sandbox: Some(moltis_cron::types::CronSandboxConfig {
                         enabled: hb.sandbox_enabled,
                         image: hb.sandbox_image.clone(),
@@ -802,6 +803,7 @@ pub(super) async fn finalize_prepared_gateway(
                         auto_prune_container: None,
                     },
                     wake_mode: moltis_cron::types::CronWakeMode::default(),
+                    task_id: hb.task_id.clone(),
                 };
                 match cron_service.add(create).await {
                     Ok(job) => tracing::info!(id = %job.id, "heartbeat job created"),

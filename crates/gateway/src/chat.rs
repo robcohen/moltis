@@ -158,6 +158,10 @@ impl ChatRuntime for GatewayChatRuntime {
         &*self.state.services.project
     }
 
+    fn work_service(&self) -> &dyn moltis_service_traits::WorkService {
+        &*self.state.services.work
+    }
+
     fn mcp_service(&self) -> &dyn moltis_service_traits::McpService {
         &*self.state.services.mcp
     }

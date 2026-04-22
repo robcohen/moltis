@@ -28,6 +28,8 @@ pub struct PatchParams {
     pub archived: Option<bool>,
     #[serde(default, deserialize_with = "double_option", alias = "project_id")]
     pub project_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option", alias = "task_id")]
+    pub task_id: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option", alias = "worktree_branch")]
     pub worktree_branch: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option", alias = "sandbox_image")]
@@ -107,6 +109,7 @@ mod tests {
         assert!(p.model.is_none());
         assert!(p.archived.is_none());
         assert!(p.project_id.is_none());
+        assert!(p.task_id.is_none());
         assert!(p.sandbox_enabled.is_none());
     }
 
@@ -153,6 +156,7 @@ mod tests {
         let p: PatchParams = serde_json::from_value(json!({
             "key": "main",
             "project_id": "proj-1",
+            "task_id": "task-1",
             "worktree_branch": "feature/abc",
             "sandbox_image": "custom:latest",
             "sandbox_enabled": false,
@@ -160,6 +164,7 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(p.project_id, Some(Some("proj-1".to_string())));
+        assert_eq!(p.task_id, Some(Some("task-1".to_string())));
         assert_eq!(p.worktree_branch, Some(Some("feature/abc".to_string())));
         assert_eq!(p.sandbox_image, Some(Some("custom:latest".to_string())));
         assert_eq!(p.sandbox_enabled, Some(Some(false)));
@@ -185,6 +190,16 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(p.project_id, Some(Some("proj-1".to_string())));
+    }
+
+    #[test]
+    fn patch_params_set_task_id() {
+        let p: PatchParams = serde_json::from_value(json!({
+            "key": "main",
+            "taskId": "task-1",
+        }))
+        .unwrap();
+        assert_eq!(p.task_id, Some(Some("task-1".to_string())));
     }
 
     #[test]

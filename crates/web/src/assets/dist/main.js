@@ -1,5 +1,5 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/index.js","chunks/theme.js","chunks/open-modal.js","chunks/ws-connect.js","chunks/branding.js","chunks/voice-utils.js","chunks/time-format.js"])))=>i.map(i=>d[i]);
-var _a, _b;
+var _a, _b, _c, _d;
 import { u, f as forceReconnect, c as connectWs, s as subscribeEvents, _ as _wsConnect } from "./chunks/ws-connect.js";
 import { $, s as sessionTokens, f as formatTokens$1, c as chatMsgBox, u as updateCountdown, p as parseErrorMessage, a as chatInput, b as sendRpc, d as commandModeEnabled, e as sessionExecPromptSymbol, g as chatBatchLoading, h as sessionContextWindow, i as sessionToolsEnabled, j as sessionExecMode, k as sessionCurrentInputTokens, _ as __vitePreload, l as setUnseenErrors, m as setUnseenWarns, n as unseenErrors, o as unseenWarns, q as connected, r as sessionStore, t as sessions, v as activeSessionKey, w as lastHistoryIndex, x as setLastHistoryIndex, y as renderAudioPlayer, z as renderMarkdown, A as setSessionContextWindow, B as setSessionTokens, C as setSessionCurrentInputTokens, D as setSessionToolsEnabled, E as toolCallSummary, F as renderScreenshot, G as renderDocument, H as formatAssistantTokenUsage, I as formatTokenSpeed, J as tokenSpeedTone, K as modelStore, L as parseAgentsListPayload, M as setHostExecIsRoot, N as setSessionExecMode, O as setSessionExecPromptSymbol, P as setChatBatchLoading, Q as setChatSeq, R as y, S as g, T as nodeComboBtn, U as nodeDropdownList, V as nodeCombo, W as nodeDropdown, X as nodeComboLabel, Y as projectComboLabel, Z as t, a0 as projects, a1 as activeProjectId, a2 as projectCombo, a3 as projectDropdown, a4 as projectDropdownList, a5 as setActiveProjectId, a6 as j, a7 as setSessionSandboxEnabled, a8 as hostExecIsRoot, a9 as sandboxLabel, aa as sandboxToggleBtn, ab as sessionSandboxEnabled, ac as setSessionSandboxImage, ad as sandboxImageLabel, ae as sandboxInfo, af as sandboxImageDropdown, ag as sandboxImageBtn, ah as sessionSandboxImage, ai as projectStore, aj as setSessions, ak as insertSessionInOrder, al as Session, am as chatSeq, an as setSelectedModelId, ao as modelComboLabel, ap as setSessionSwitchInProgress, aq as setStreamEl, ar as setStreamText, as as setLastToolOutput, at as setVoicePending, au as setActiveSessionKey, av as y$1, aw as d, ax as A, ay as S, az as projectFilterId, aA as getById$1, aB as q, aC as warmAudioPlayback, aD as selectedModelId, aE as formatBytes$3, aF as setCommandModeEnabled, aG as chatHistory, aH as chatHistoryIdx, aI as setChatHistoryDraft, aJ as setChatHistoryIdx, aK as chatHistoryDraft, aL as setChatHistory, aM as R, aN as setChatMsgBox, aO as setChatInput, aP as setChatSendBtn, aQ as setModelCombo, aR as setModelComboBtn, aS as setModelComboLabel, aT as setModelDropdown, aU as setModelSearchInput, aV as setModelDropdownList, aW as setNodeCombo, aX as setNodeComboBtn, aY as setNodeComboLabel, aZ as setNodeDropdown, a_ as setNodeDropdownList, a$ as setSandboxToggleBtn, b0 as setSandboxLabel, b1 as setSandboxImageBtn, b2 as setSandboxImageLabel, b3 as setSandboxImageDropdown, b4 as models, b5 as chatSendBtn, b6 as setModels, b7 as modelComboBtn, b8 as modelSearchInput, b9 as modelDropdownList, ba as modelCombo, bb as modelDropdown, bc as setModelIdx, bd as modelIdx, be as REASONING_SEP, bf as models$1, bg as useSignal, bh as connected$1, bi as setCachedChannels, bj as setRefreshChannelsPage, bk as cachedChannels, bl as setChannelEventUnsub, bm as channelEventUnsub, bn as setProjects, bo as setProjectFilterId, bp as refreshProvidersPage, bq as modelVersionScore, br as streamEl, bs as renderMapPointGroups, bt as renderMapLinks, bu as lastToolOutput, bv as localizeStructuredError, bw as voicePending, bx as streamText, by as setSandboxInfo, bz as networkAuditEventHandler, bA as logsEventHandler, bB as setSubscribed, bC as projects$1, bD as sandboxInfo$1, bE as localizedApiErrorMessage, bF as setLogsEventHandler, bG as setNetworkAuditEventHandler, bH as setRefreshProvidersPage, bI as setLocale, bJ as esc, bK as projectStore$1, bL as _modelStore, bM as S$1, bN as _sessionStoreModule, bO as _i18n, bP as _helpers, bQ as initTheme, bR as injectMarkdownStyles, bS as init, bT as translateStaticElements, bU as setAll$1, bV as setAll$2, bW as select$1, bX as selectedModelId$1 } from "./chunks/theme.js";
 import { f as formatPageTitle, a as applyIdentityFavicon } from "./chunks/branding.js";
@@ -4755,6 +4755,7 @@ function sendTranscribedMessage(text, audioFilename) {
   sendRpc("chat.send", chatParams).then((sendRes) => {
     var _a2;
     if (sendRes && !sendRes.ok && sendRes.error) {
+      setSessionReplying(activeSessionKey, false);
       chatAddMsg("error", ((_a2 = sendRes.error) == null ? void 0 : _a2.message) || "Request failed");
     }
   });
@@ -5339,7 +5340,10 @@ function handleChatSendRpcResponse(res, userEl) {
     markMessageQueued(userEl, activeSessionKey);
     return;
   }
-  if (!res.ok && res.error) chatAddMsg("error", res.error.message || "Request failed");
+  if (!res.ok && res.error) {
+    setSessionReplying(activeSessionKey, false);
+    chatAddMsg("error", res.error.message || "Request failed");
+  }
 }
 function buildChatMessage(text, seq, displayText) {
   const userText = displayText !== void 0 ? displayText : text;
@@ -6131,7 +6135,7 @@ const chatPageHTML = '<div style="position:absolute;inset:0;display:grid;grid-te
 registerPrefix(
   routes.chats,
   function initChat(container, sessionKeyFromUrl) {
-    var _a2, _b2, _c;
+    var _a2, _b2, _c2;
     container.style.cssText = "position:relative";
     container.innerHTML = chatPageHTML;
     setChatMsgBox($("messages"));
@@ -6160,7 +6164,7 @@ registerPrefix(
     (_b2 = chatMsgBox) == null ? void 0 : _b2.addEventListener("copy", handleChatCopy);
     initVoiceInput($("micBtn"));
     initializeChatMediaDrop();
-    (_c = chatInput) == null ? void 0 : _c.focus();
+    (_c2 = chatInput) == null ? void 0 : _c2.focus();
   },
   function teardownChat() {
     teardownVoiceInput();
@@ -6802,7 +6806,7 @@ function AddMatrixModal() {
         redirect_uri: redirectUri,
         config: oidcConfig
       }).then((res) => {
-        var _a2, _b2, _c;
+        var _a2, _b2, _c2;
         const r2 = res;
         if ((r2 == null ? void 0 : r2.ok) && ((_a2 = r2.payload) == null ? void 0 : _a2.auth_url)) {
           oidcWaiting.value = true;
@@ -6835,7 +6839,7 @@ function AddMatrixModal() {
           }, 1e3);
         } else {
           saving.value = false;
-          error2.value = ((_b2 = r2 == null ? void 0 : r2.error) == null ? void 0 : _b2.message) || ((_c = r2 == null ? void 0 : r2.error) == null ? void 0 : _c.detail) || "Failed to start OIDC login.";
+          error2.value = ((_b2 = r2 == null ? void 0 : r2.error) == null ? void 0 : _b2.message) || ((_c2 = r2 == null ? void 0 : r2.error) == null ? void 0 : _c2.detail) || "Failed to start OIDC login.";
         }
       });
       return;
@@ -7542,7 +7546,7 @@ function AddSlackModal() {
   );
 }
 function AddTeamsModal() {
-  var _a2, _b2, _c, _d, _e, _f;
+  var _a2, _b2, _c2, _d2, _e, _f;
   const error2 = useSignal("");
   const saving = useSignal(false);
   const addModel = useSignal("");
@@ -7684,7 +7688,7 @@ function AddTeamsModal() {
         !(tsLoading.value || ((_a2 = tsStatus.value) == null ? void 0 : _a2.mode) === "funnel" && ((_b2 = tsStatus.value) == null ? void 0 : _b2.url)) && /* @__PURE__ */ u("div", { className: "rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs flex flex-col gap-2", children: [
           /* @__PURE__ */ u("span", { className: "font-medium text-[var(--text-strong)]", children: "Public URL required" }),
           /* @__PURE__ */ u("span", { className: "text-[var(--muted)]", children: "Teams sends messages to your server via webhook. Your Moltis instance must be reachable over HTTPS." }),
-          ((_c = tsStatus.value) == null ? void 0 : _c.installed) && ((_d = tsStatus.value) == null ? void 0 : _d.tailscale_up) ? /* @__PURE__ */ u("div", { className: "flex flex-col gap-2", children: [
+          ((_c2 = tsStatus.value) == null ? void 0 : _c2.installed) && ((_d2 = tsStatus.value) == null ? void 0 : _d2.tailscale_up) ? /* @__PURE__ */ u("div", { className: "flex flex-col gap-2", children: [
             /* @__PURE__ */ u("span", { className: "text-[var(--muted)]", children: [
               "Tailscale is connected. Enable ",
               /* @__PURE__ */ u("strong", { children: "Funnel" }),
@@ -8172,7 +8176,7 @@ function AddWhatsAppModal() {
         pairingStarted.value = true;
         if (qrPollRef.current) clearInterval(qrPollRef.current);
         qrPollRef.current = setInterval(async () => {
-          var _a4, _b3, _c;
+          var _a4, _b3, _c2;
           try {
             const st = await sendRpc("channels.status", {});
             if (!(st == null ? void 0 : st.ok)) return;
@@ -8191,7 +8195,7 @@ function AddWhatsAppModal() {
               loadChannels();
               return;
             }
-            if ((_c = ch.extra) == null ? void 0 : _c.qr_data) {
+            if ((_c2 = ch.extra) == null ? void 0 : _c2.qr_data) {
               waQrData.value = ch.extra.qr_data;
               if (ch.extra.qr_svg) waQrSvg.value = ch.extra.qr_svg;
             }
@@ -8311,9 +8315,9 @@ function EditChannelModal() {
   const editMatrixOtpCooldown = useSignal("300");
   const editAdvancedConfigPatch = useSignal("");
   y$1(() => {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a2, _b2, _c2, _d2, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
     editModel.value = ((_a2 = ch == null ? void 0 : ch.config) == null ? void 0 : _a2.model) || "";
-    allowlistItems.value = ((_b2 = ch == null ? void 0 : ch.config) == null ? void 0 : _b2.allowlist) || ((_c = ch == null ? void 0 : ch.config) == null ? void 0 : _c.user_allowlist) || ((_d = ch == null ? void 0 : ch.config) == null ? void 0 : _d.allowed_pubkeys) || [];
+    allowlistItems.value = ((_b2 = ch == null ? void 0 : ch.config) == null ? void 0 : _b2.allowlist) || ((_c2 = ch == null ? void 0 : ch.config) == null ? void 0 : _c2.user_allowlist) || ((_d2 = ch == null ? void 0 : ch.config) == null ? void 0 : _d2.allowed_pubkeys) || [];
     roomAllowlistItems.value = ((_e = ch == null ? void 0 : ch.config) == null ? void 0 : _e.room_allowlist) || [];
     editCredential.value = "";
     editWebhookSecret.value = ((_f = ch == null ? void 0 : ch.config) == null ? void 0 : _f.webhook_secret) || "";
@@ -8346,7 +8350,7 @@ function EditChannelModal() {
     if (found == null ? void 0 : found.provider) config.model_provider = found.provider;
   }
   function addChannelCredentials(config, form) {
-    var _a2, _b2, _c;
+    var _a2, _b2, _c2;
     if (isTeams) {
       config.app_id = cfg.app_id || (ch == null ? void 0 : ch.account_id);
       config.app_password = editCredential.value || cfg.app_password || "";
@@ -8361,7 +8365,7 @@ function EditChannelModal() {
       config.relays = relaysVal.split(",").map((r2) => r2.trim()).filter(Boolean);
     } else if (isMatrix) {
       config.homeserver = ((_b2 = form.querySelector("[data-field=homeserver]")) == null ? void 0 : _b2.value) || cfg.homeserver || "";
-      config.user_id = ((_c = form.querySelector("[data-field=userId]")) == null ? void 0 : _c.value) || cfg.user_id || "";
+      config.user_id = ((_c2 = form.querySelector("[data-field=userId]")) == null ? void 0 : _c2.value) || cfg.user_id || "";
       config.device_id = cfg.device_id || void 0;
       config.device_display_name = editMatrixDeviceDisplayName.value.trim() || null;
       config.ownership_mode = normalizeMatrixAuthMode(editMatrixAuthMode.value) === "password" ? normalizeMatrixOwnershipMode(editMatrixOwnershipMode.value) : "user_managed";
@@ -8375,14 +8379,14 @@ function EditChannelModal() {
     }
   }
   function buildUpdateConfig(form) {
-    var _a2, _b2, _c, _d;
+    var _a2, _b2, _c2, _d2;
     const updateConfig = {};
     updateConfig.dm_policy = ((_a2 = form.querySelector("[data-field=dmPolicy]")) == null ? void 0 : _a2.value) || "open";
     updateConfig.allowlist = allowlistItems.value;
     if (isMatrix) {
       updateConfig.user_allowlist = allowlistItems.value;
       updateConfig.room_policy = ((_b2 = form.querySelector("[data-field=roomPolicy]")) == null ? void 0 : _b2.value) || cfg.room_policy || "allowlist";
-      updateConfig.auto_join = ((_c = form.querySelector("[data-field=autoJoin]")) == null ? void 0 : _c.value) || cfg.auto_join || "always";
+      updateConfig.auto_join = ((_c2 = form.querySelector("[data-field=autoJoin]")) == null ? void 0 : _c2.value) || cfg.auto_join || "always";
       updateConfig.room_allowlist = roomAllowlistItems.value;
       updateConfig.otp_self_approval = editMatrixOtpSelfApproval.value;
       updateConfig.otp_cooldown_secs = normalizeMatrixOtpCooldown(editMatrixOtpCooldown.value);
@@ -8393,7 +8397,7 @@ function EditChannelModal() {
       updateConfig.otp_cooldown_secs = cfg.otp_cooldown_secs ?? 300;
     }
     if (!(isWhatsApp || isNostr)) {
-      updateConfig.mention_mode = ((_d = form.querySelector("[data-field=mentionMode]")) == null ? void 0 : _d.value) || "mention";
+      updateConfig.mention_mode = ((_d2 = form.querySelector("[data-field=mentionMode]")) == null ? void 0 : _d2.value) || "mention";
     }
     addChannelCredentials(updateConfig, form);
     addModelToConfig(updateConfig);
@@ -8934,7 +8938,7 @@ function MatrixInfoRow({ label: label2, value, copyLabel = null }) {
   ] });
 }
 function MatrixOwnershipCard({ channel, matrixStatus }) {
-  var _a2, _b2, _c, _d;
+  var _a2, _b2, _c2, _d2;
   const retryingOwnership = useSignal(false);
   const retryOwnershipError = useSignal("");
   const ownershipMode = normalizeMatrixOwnershipMode(matrixStatus == null ? void 0 : matrixStatus.ownership_mode);
@@ -8986,7 +8990,7 @@ function MatrixOwnershipCard({ channel, matrixStatus }) {
     hasAccountDetails && /* @__PURE__ */ u("details", { className: "mt-2 rounded-md border border-sky-600/20 bg-sky-100/50 px-3 py-2", children: [
       /* @__PURE__ */ u("summary", { className: "cursor-pointer text-[11px] font-medium uppercase tracking-wide text-sky-800", children: "Matrix account details" }),
       /* @__PURE__ */ u("div", { className: "mt-2 grid gap-2", children: [
-        /* @__PURE__ */ u(MatrixInfoRow, { label: "Homeserver", value: ((_c = channel.config) == null ? void 0 : _c.homeserver) || "", copyLabel: "Homeserver copied" }),
+        /* @__PURE__ */ u(MatrixInfoRow, { label: "Homeserver", value: ((_c2 = channel.config) == null ? void 0 : _c2.homeserver) || "", copyLabel: "Homeserver copied" }),
         /* @__PURE__ */ u(MatrixInfoRow, { label: "Matrix user", value: (matrixStatus == null ? void 0 : matrixStatus.user_id) || "", copyLabel: "Matrix user ID copied" }),
         /* @__PURE__ */ u(
           MatrixInfoRow,
@@ -9000,7 +9004,7 @@ function MatrixOwnershipCard({ channel, matrixStatus }) {
           MatrixInfoRow,
           {
             label: "Device name",
-            value: (matrixStatus == null ? void 0 : matrixStatus.device_display_name) || ((_d = channel.config) == null ? void 0 : _d.device_display_name) || "",
+            value: (matrixStatus == null ? void 0 : matrixStatus.device_display_name) || ((_d2 = channel.config) == null ? void 0 : _d2.device_display_name) || "",
             copyLabel: "Matrix device name copied"
           }
         )
@@ -10207,13 +10211,13 @@ function saveAndFinishProvider(provider, keyVal, endpointVal, modelVal, selected
     savePromise = saveProviderKey(provider.name, keyVal || "", endpointVal, effectiveModelVal);
   }
   savePromise.then(async (res) => {
-    var _a2, _b2, _c, _d;
+    var _a2, _b2, _c2, _d2;
     if (!(res == null ? void 0 : res.ok)) {
       showError(((_a2 = res == null ? void 0 : res.error) == null ? void 0 : _a2.message) || "Failed to save credentials.");
       return;
     }
     const savedProviderName = saveAsCustomProvider ? ((_b2 = res == null ? void 0 : res.payload) == null ? void 0 : _b2.providerName) || provider.name : provider.name;
-    const successDisplayName = saveAsCustomProvider ? ((_c = res == null ? void 0 : res.payload) == null ? void 0 : _c.displayName) || provider.displayName : provider.displayName;
+    const successDisplayName = saveAsCustomProvider ? ((_c2 = res == null ? void 0 : res.payload) == null ? void 0 : _c2.displayName) || provider.displayName : provider.displayName;
     let modelTimedOut = false;
     if (modelIds.length > 0) {
       const firstModelId = modelIds[0];
@@ -10237,7 +10241,7 @@ function saveAndFinishProvider(provider, keyVal, endpointVal, modelVal, selected
         models: modelsForSave
       });
       if (!(saveModelsRes == null ? void 0 : saveModelsRes.ok)) {
-        showError(((_d = saveModelsRes == null ? void 0 : saveModelsRes.error) == null ? void 0 : _d.message) || "Failed to save models.");
+        showError(((_d2 = saveModelsRes == null ? void 0 : saveModelsRes.error) == null ? void 0 : _d2.message) || "Failed to save models.");
         return;
       }
       if (modelServiceUnavailable) {
@@ -12165,7 +12169,7 @@ function handleChatDelta(p, isActive, isChatPage, eventSession) {
   if (chatMsgBox) chatMsgBox.scrollTop = chatMsgBox.scrollHeight;
 }
 function handleChatFinal(p, isActive, isChatPage, eventSession) {
-  var _a2, _b2, _c;
+  var _a2, _b2, _c2;
   clearPendingToolCallEndsForSession(eventSession);
   updateSessionRunId(eventSession, p.runId);
   bumpSessionCount(eventSession, 1);
@@ -12297,7 +12301,7 @@ function handleChatFinal(p, isActive, isChatPage, eventSession) {
   setLastToolOutput("");
   setVoicePending(false);
   maybeRefreshFullContext();
-  if ((_c = chatMsgBox) == null ? void 0 : _c.lastElementChild) {
+  if ((_c2 = chatMsgBox) == null ? void 0 : _c2.lastElementChild) {
     highlightCodeBlocks(chatMsgBox.lastElementChild);
   }
   moveFirstQueuedToChat();
@@ -12393,7 +12397,7 @@ function handleChatRetrying(p, isActive, isChatPage, eventSession) {
   if (chatMsgBox) chatMsgBox.scrollTop = chatMsgBox.scrollHeight;
 }
 function handleChatError(p, isActive, isChatPage, eventSession) {
-  var _a2, _b2, _c;
+  var _a2, _b2, _c2;
   clearPendingToolCallEndsForSession(eventSession);
   setSessionReplying(eventSession, false);
   setSessionActiveRunId(eventSession, null);
@@ -12411,7 +12415,7 @@ function handleChatError(p, isActive, isChatPage, eventSession) {
     chatAddErrorMsg(p.message || "unknown");
   }
   if ((_b2 = p.error) == null ? void 0 : _b2.canContinue) {
-    const lastCard = (_c = chatMsgBox) == null ? void 0 : _c.querySelector(".error-card:last-child");
+    const lastCard = (_c2 = chatMsgBox) == null ? void 0 : _c2.querySelector(".error-card:last-child");
     if (lastCard) {
       const btn2 = document.createElement("button");
       btn2.className = "provider-btn error-continue-btn";
@@ -12945,8 +12949,12 @@ const heartbeatRunning = y(false);
 const heartbeatConfig = y(get("heartbeat_config") || {});
 const sandboxImages = y([]);
 const channelAccounts = y([]);
+const workTasks = y([]);
 const heartbeatModel = y(((_a = get("heartbeat_config")) == null ? void 0 : _a.model) || "");
 const heartbeatSandboxImage = y(((_b = get("heartbeat_config")) == null ? void 0 : _b.sandbox_image) || "");
+const heartbeatTaskId = y(
+  ((_c = get("heartbeat_config")) == null ? void 0 : _c.taskId) || ((_d = get("heartbeat_config")) == null ? void 0 : _d.task_id) || ""
+);
 function loadSandboxImages() {
   fetch("/api/images/cached").then((r2) => r2.json()).then((d2) => {
     sandboxImages.value = (d2 == null ? void 0 : d2.images) || [];
@@ -12959,6 +12967,19 @@ function loadChannelAccounts() {
     const r2 = res;
     if (r2 == null ? void 0 : r2.ok) channelAccounts.value = (((_a2 = r2.payload) == null ? void 0 : _a2.channels) || []).filter((c) => c.status === "connected");
   });
+}
+function loadWorkTasks() {
+  sendRpc("work.tasks.list", {}).then((res) => {
+    if (!(res == null ? void 0 : res.ok)) return;
+    const payload = res.payload;
+    workTasks.value = Array.isArray(payload) ? payload : (payload == null ? void 0 : payload.tasks) || [];
+  });
+}
+function workTaskOptions() {
+  return workTasks.value.map((task) => ({
+    value: task.id,
+    label: `${task.title || task.subject || task.id}${task.status ? ` (${task.status})` : ""}`
+  }));
 }
 function loadHeartbeatStatus() {
   sendRpc("heartbeat.status", {}).then((res) => {
@@ -13090,11 +13111,12 @@ function collectHeartbeatForm(form) {
       timezone: form.querySelector("[data-hb=ahTz]").value.trim() || "local"
     },
     sandbox_enabled: form.querySelector("[data-hb=sandboxEnabled]").checked,
-    sandbox_image: heartbeatSandboxImage.value || void 0
+    sandbox_image: heartbeatSandboxImage.value || void 0,
+    task_id: heartbeatTaskId.value || void 0
   };
 }
 function HeartbeatSection() {
-  var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  var _a2, _b2, _c2, _d2, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
   const cfg = heartbeatConfig.value;
   const saving = heartbeatSaving.value;
   const promptSource = ((_a2 = heartbeatStatus.value) == null ? void 0 : _a2.promptSource) || "default";
@@ -13110,6 +13132,7 @@ function HeartbeatSection() {
         heartbeatConfig.value = updated;
         heartbeatModel.value = updated.model || "";
         heartbeatSandboxImage.value = updated.sandbox_image || "";
+        heartbeatTaskId.value = updated.task_id || updated.taskId || "";
         refresh();
         loadHeartbeatStatus();
         loadJobs();
@@ -13276,7 +13299,7 @@ function HeartbeatSection() {
               "data-hb": "ahEnd",
               type: "time",
               className: "provider-key-input",
-              value: ((_c = cfg.active_hours) == null ? void 0 : _c.end) === "24:00" ? "23:59" : ((_d = cfg.active_hours) == null ? void 0 : _d.end) || "23:59"
+              value: ((_c2 = cfg.active_hours) == null ? void 0 : _c2.end) === "24:00" ? "23:59" : ((_d2 = cfg.active_hours) == null ? void 0 : _d2.end) || "23:59"
             }
           )
         ] })
@@ -13303,6 +13326,22 @@ function HeartbeatSection() {
           /* @__PURE__ */ u("option", { value: "Australia/Sydney", selected: ((_r = cfg.active_hours) == null ? void 0 : _r.timezone) === "Australia/Sydney", children: "Australia/Sydney (AEST/AEDT)" })
         ] })
       ] })
+    ] }),
+    /* @__PURE__ */ u("div", { style: { marginTop: "24px", borderTop: "1px solid var(--border)", paddingTop: "16px" }, children: [
+      /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)] mb-3", children: "Task Binding" }),
+      /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mb-3", children: "Attach heartbeat runs to a durable work task." }),
+      /* @__PURE__ */ u(
+        ComboSelect,
+        {
+          options: workTaskOptions(),
+          value: heartbeatTaskId.value,
+          onChange: (v) => {
+            heartbeatTaskId.value = v;
+          },
+          placeholder: "No task",
+          searchPlaceholder: "Search tasks\\u2026"
+        }
+      )
     ] }),
     /* @__PURE__ */ u("div", { style: { marginTop: "24px", borderTop: "1px solid var(--border)", paddingTop: "16px" }, children: [
       /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)] mb-3", children: "Sandbox" }),
@@ -13349,10 +13388,11 @@ function StatusBar() {
   return /* @__PURE__ */ u("div", { className: "cron-status-bar", children: parts.join(" • ") });
 }
 function CronJobRow({ job }) {
-  var _a2, _b2, _c, _d, _e, _f, _g;
+  var _a2, _b2, _c2, _d2, _e, _f, _g;
   const modelLabel = ((_a2 = job.payload) == null ? void 0 : _a2.kind) === "agentTurn" ? job.payload.model || "default" : "—";
-  const deliveryLabel = ((_b2 = job.payload) == null ? void 0 : _b2.deliver) && ((_c = job.payload) == null ? void 0 : _c.channel) ? `→ ${job.payload.channel}` : null;
-  const executionLabel = ((_d = job.sandbox) == null ? void 0 : _d.enabled) === false ? "host" : ((_e = job.sandbox) == null ? void 0 : _e.image) ? `sandbox (${job.sandbox.image})` : "sandbox (default)";
+  const deliveryLabel = ((_b2 = job.payload) == null ? void 0 : _b2.deliver) && ((_c2 = job.payload) == null ? void 0 : _c2.channel) ? `→ ${job.payload.channel}` : null;
+  const taskLabel = job.taskId || job.task_id || "—";
+  const executionLabel = ((_d2 = job.sandbox) == null ? void 0 : _d2.enabled) === false ? "host" : ((_e = job.sandbox) == null ? void 0 : _e.image) ? `sandbox (${job.sandbox.image})` : "sandbox (default)";
   function onToggle(e) {
     sendRpc("cron.update", { id: job.id, patch: { enabled: e.target.checked } }).then(() => {
       loadJobs();
@@ -13384,6 +13424,7 @@ function CronJobRow({ job }) {
     /* @__PURE__ */ u("td", { children: job.name }),
     /* @__PURE__ */ u("td", { className: "cron-mono", children: formatSchedule(job.schedule) }),
     /* @__PURE__ */ u("td", { className: "cron-mono", children: modelLabel }),
+    /* @__PURE__ */ u("td", { className: "cron-mono", children: taskLabel }),
     /* @__PURE__ */ u("td", { className: "cron-mono", children: deliveryLabel ? /* @__PURE__ */ u("span", { className: "text-xs", children: deliveryLabel }) : "—" }),
     /* @__PURE__ */ u("td", { className: "cron-mono", children: executionLabel }),
     /* @__PURE__ */ u("td", { className: "cron-mono", children: ((_f = job.state) == null ? void 0 : _f.nextRunAtMs) ? /* @__PURE__ */ u("time", { "data-epoch-ms": job.state.nextRunAtMs, children: new Date(job.state.nextRunAtMs).toISOString() }) : "—" }),
@@ -13418,6 +13459,7 @@ function CronJobTable() {
       /* @__PURE__ */ u("th", { children: "Name" }),
       /* @__PURE__ */ u("th", { children: "Schedule" }),
       /* @__PURE__ */ u("th", { children: "Model" }),
+      /* @__PURE__ */ u("th", { children: "Task" }),
       /* @__PURE__ */ u("th", { children: "Delivery" }),
       /* @__PURE__ */ u("th", { children: "Execution" }),
       /* @__PURE__ */ u("th", { children: "Next Run" }),
@@ -13489,6 +13531,7 @@ function CronModal() {
   const errorField = useSignal(null);
   const jobModel = useSignal("");
   const jobSandboxImage = useSignal("");
+  const jobTaskId = useSignal("");
   const jobName = useSignal("");
   const payloadKind = useSignal("systemEvent");
   const sessionTarget = useSignal("main");
@@ -13504,7 +13547,7 @@ function CronModal() {
   const schedEverySecs = useSignal("");
   const schedAtTimestamp = useSignal("");
   y$1(() => {
-    var _a2, _b2, _c, _d, _e;
+    var _a2, _b2, _c2, _d2, _e;
     if (editingJob.value) {
       const j2 = editingJob.value;
       saving.value = false;
@@ -13512,6 +13555,7 @@ function CronModal() {
       schedKind.value = j2.schedule.kind;
       jobModel.value = j2.payload.kind === "agentTurn" ? j2.payload.model || "" : "";
       jobSandboxImage.value = ((_a2 = j2.sandbox) == null ? void 0 : _a2.image) || "";
+      jobTaskId.value = j2.taskId || j2.task_id || "";
       jobName.value = j2.name;
       payloadKind.value = j2.payload.kind;
       sessionTarget.value = j2.sessionTarget || "main";
@@ -13519,8 +13563,8 @@ function CronModal() {
       executionTarget.value = ((_b2 = j2.sandbox) == null ? void 0 : _b2.enabled) === false ? "host" : "sandbox";
       deleteAfterRun.value = !!j2.deleteAfterRun;
       jobEnabled.value = j2.enabled;
-      deliverToChannel.value = ((_c = j2.payload) == null ? void 0 : _c.deliver) === true;
-      deliverChannel.value = ((_d = j2.payload) == null ? void 0 : _d.channel) || "";
+      deliverToChannel.value = ((_c2 = j2.payload) == null ? void 0 : _c2.deliver) === true;
+      deliverChannel.value = ((_d2 = j2.payload) == null ? void 0 : _d2.channel) || "";
       deliverTo.value = ((_e = j2.payload) == null ? void 0 : _e.to) || "";
       schedCronExpr.value = j2.schedule.kind === "cron" ? j2.schedule.expr || "" : "";
       schedCronTz.value = j2.schedule.kind === "cron" ? j2.schedule.tz || "" : "";
@@ -13532,6 +13576,7 @@ function CronModal() {
       schedKind.value = "cron";
       jobModel.value = "";
       jobSandboxImage.value = "";
+      jobTaskId.value = "";
       jobName.value = "";
       payloadKind.value = "systemEvent";
       sessionTarget.value = "main";
@@ -13587,7 +13632,8 @@ function CronModal() {
       sessionTarget: sessionTarget.value,
       deleteAfterRun: deleteAfterRun.value,
       enabled: jobEnabled.value,
-      sandbox: { enabled: sandboxEnabled, image: sandboxEnabled ? jobSandboxImage.value || null : null }
+      sandbox: { enabled: sandboxEnabled, image: sandboxEnabled ? jobSandboxImage.value || null : null },
+      taskId: pk === "agentTurn" ? jobTaskId.value || void 0 : void 0
     };
     saving.value = true;
     const rpcMethod = isEdit ? "cron.update" : "cron.add";
@@ -13745,6 +13791,22 @@ function CronModal() {
         ),
         /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Only used for Agent Turn jobs." }),
         payloadKind.value === "agentTurn" && /* @__PURE__ */ u("div", { style: { marginTop: "12px", borderTop: "1px solid var(--border)", paddingTop: "12px" }, children: [
+          /* @__PURE__ */ u("div", { className: "mb-3", children: [
+            /* @__PURE__ */ u("label", { className: "block text-xs text-[var(--muted)] mb-1", children: "Task Binding" }),
+            /* @__PURE__ */ u(
+              ComboSelect,
+              {
+                options: workTaskOptions(),
+                value: jobTaskId.value,
+                onChange: (v) => {
+                  jobTaskId.value = v;
+                },
+                placeholder: "No task",
+                searchPlaceholder: "Search tasks\\u2026"
+              }
+            ),
+            /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Attach this job's agent turns to a durable work task." })
+          ] }),
           /* @__PURE__ */ u("label", { className: "text-xs text-[var(--muted)] flex items-center gap-2", children: [
             /* @__PURE__ */ u(
               "input",
@@ -13892,6 +13954,7 @@ function HeartbeatPanel() {
   y$1(() => {
     loadHeartbeatStatus();
     loadSandboxImages();
+    loadWorkTasks();
     loadHeartbeatRuns();
   }, []);
   return /* @__PURE__ */ u("div", { className: "p-6", children: /* @__PURE__ */ u(HeartbeatSection, {}) });
@@ -13902,6 +13965,7 @@ function CronJobsPanel() {
     loadJobs();
     loadSandboxImages();
     loadChannelAccounts();
+    loadWorkTasks();
   }, []);
   return /* @__PURE__ */ u("div", { className: "p-4 flex flex-col gap-4", children: [
     /* @__PURE__ */ u("div", { className: "flex items-center gap-3", children: [
@@ -13932,7 +13996,7 @@ function CronsPage() {
   ] });
 }
 function initCrons(container, param) {
-  var _a2, _b2;
+  var _a2, _b2, _c2, _d2;
   _cronsContainer = container;
   container.style.cssText = "padding:0;overflow:hidden;";
   cronJobs.value = get("crons") || [];
@@ -13945,9 +14009,12 @@ function initCrons(container, param) {
   heartbeatRuns.value = get("heartbeat_runs") || [];
   sandboxImages.value = [];
   channelAccounts.value = [];
+  workTasks.value = [];
   heartbeatModel.value = ((_a2 = get("heartbeat_config")) == null ? void 0 : _a2.model) || "";
   heartbeatSandboxImage.value = ((_b2 = get("heartbeat_config")) == null ? void 0 : _b2.sandbox_image) || "";
+  heartbeatTaskId.value = ((_c2 = get("heartbeat_config")) == null ? void 0 : _c2.taskId) || ((_d2 = get("heartbeat_config")) == null ? void 0 : _d2.task_id) || "";
   activeSection$1.value = param === "heartbeat" ? "heartbeat" : "jobs";
+  loadWorkTasks();
   loadHeartbeatRuns();
   loadHeartbeatStatus();
   R(/* @__PURE__ */ u(CronsPage, {}), container);
@@ -14045,12 +14112,12 @@ function ProjectEditForm(props) {
     fetchCachedImages();
   }, []);
   function onSave() {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h;
+    var _a2, _b2, _c2, _d2, _e, _f, _g, _h;
     const updated = JSON.parse(JSON.stringify(p));
     updated.label = ((_a2 = labelRef.current) == null ? void 0 : _a2.value.trim()) || p.label;
     updated.directory = ((_b2 = dirRef.current) == null ? void 0 : _b2.value.trim()) || p.directory;
-    updated.system_prompt = ((_c = promptRef.current) == null ? void 0 : _c.value.trim()) || null;
-    updated.setup_command = ((_d = setupRef.current) == null ? void 0 : _d.value.trim()) || null;
+    updated.system_prompt = ((_c2 = promptRef.current) == null ? void 0 : _c2.value.trim()) || null;
+    updated.setup_command = ((_d2 = setupRef.current) == null ? void 0 : _d2.value.trim()) || null;
     updated.teardown_command = ((_e = teardownRef.current) == null ? void 0 : _e.value.trim()) || null;
     updated.branch_prefix = ((_f = prefixRef.current) == null ? void 0 : _f.value.trim()) || null;
     updated.auto_worktree = (_g = wtRef.current) == null ? void 0 : _g.checked;
@@ -14213,6 +14280,76 @@ function ProjectCard(props) {
     ] })
   ] });
 }
+function WorkBoard() {
+  function refreshWork() {
+    sendRpc("work.portfolio", {});
+    sendRpc("work.dashboard", {});
+  }
+  return /* @__PURE__ */ u("section", { className: "rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 max-w-form", children: [
+    /* @__PURE__ */ u("div", { className: "flex items-center justify-between gap-3 mb-4", children: [
+      /* @__PURE__ */ u("div", { children: [
+        /* @__PURE__ */ u("h2", { className: "text-lg font-medium text-[var(--text-strong)]", children: "Work board" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Durable goals, tasks, templates, recurring work, tracker imports, and package operations." })
+      ] }),
+      /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", onClick: refreshWork, children: "Refresh" })
+    ] }),
+    /* @__PURE__ */ u("div", { className: "grid gap-3 md:grid-cols-2", children: [
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Portfolio" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Cross-project blockers, pending approvals, and active runs." }),
+        /* @__PURE__ */ u("div", { className: "flex flex-wrap gap-2 mt-3 text-xs text-[var(--muted)]", children: [
+          /* @__PURE__ */ u("span", { children: "Cross-project blockers" }),
+          /* @__PURE__ */ u("span", { children: "Pending approvals" }),
+          /* @__PURE__ */ u("span", { children: "Active runs" })
+        ] })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Goal planner" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Turn goals into task plans and reusable execution templates." }),
+        /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary mt-3", type: "button", children: "Plan goal" })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Template library" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Create reusable task templates and instantiate them into work." }),
+        /* @__PURE__ */ u("div", { className: "flex flex-wrap gap-2 mt-3", children: [
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Create template" }),
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Instantiate template" })
+        ] })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Recurring work" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Schedule template materialization and inspect Recent materializations." }),
+        /* @__PURE__ */ u("div", { className: "flex flex-wrap gap-2 mt-3", children: [
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Create recurring job" }),
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Run recurring now" })
+        ] }),
+        /* @__PURE__ */ u("div", { className: "text-xs text-[var(--muted)] mt-3", children: "Recent materializations" })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Tracker sync" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Fetch from MCP, import tracker items, and review Recent links." }),
+        /* @__PURE__ */ u("div", { className: "flex flex-wrap gap-2 mt-3", children: [
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Fetch into form" }),
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Import tracker item" })
+        ] }),
+        /* @__PURE__ */ u("div", { className: "text-xs text-[var(--muted)] mt-3", children: "Fetch from MCP" }),
+        /* @__PURE__ */ u("div", { className: "text-xs text-[var(--muted)] mt-1", children: "Recent links" })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Project budget" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Attribute model costs and enforce per-project budgets." })
+      ] }),
+      /* @__PURE__ */ u("div", { className: "border border-[var(--border)] rounded-md p-3 md:col-span-2", children: [
+        /* @__PURE__ */ u("h3", { className: "text-sm font-medium text-[var(--text-strong)]", children: "Work package" }),
+        /* @__PURE__ */ u("p", { className: "text-xs text-[var(--muted)] mt-1", children: "Export or import project work packages for handoff." }),
+        /* @__PURE__ */ u("div", { className: "flex flex-wrap gap-2 mt-3", children: [
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Export package" }),
+          /* @__PURE__ */ u("button", { className: "provider-btn provider-btn-secondary", type: "button", children: "Import package" })
+        ] })
+      ] })
+    ] })
+  ] });
+}
 function ProjectsPageComponent() {
   y$1(() => {
     sendRpc("projects.list", {}).then((res) => {
@@ -14328,6 +14465,7 @@ function ProjectsPageComponent() {
         (p) => editingProject.value === p.id ? /* @__PURE__ */ u(ProjectEditForm, { project: p }, p.id) : /* @__PURE__ */ u(ProjectCard, { project: p }, p.id)
       )
     ] }),
+    /* @__PURE__ */ u(WorkBoard, {}),
     /* @__PURE__ */ u(ConfirmDialog, {})
   ] });
 }
@@ -14817,7 +14955,7 @@ function SkillDetailPanel({
   ] });
 }
 function RepoCard({ repo }) {
-  var _a2, _b2, _c;
+  var _a2, _b2, _c2;
   const expanded = useSignal(false);
   const searchQuery = useSignal("");
   const searchResults2 = useSignal([]);
@@ -14980,7 +15118,7 @@ function RepoCard({ repo }) {
         " ",
         /* @__PURE__ */ u("code", { children: shortSha(repo.provenance.original_commit_sha) })
       ] }),
-      ((_c = repo.provenance) == null ? void 0 : _c.imported_from) && /* @__PURE__ */ u("div", { children: [
+      ((_c2 = repo.provenance) == null ? void 0 : _c2.imported_from) && /* @__PURE__ */ u("div", { children: [
         /* @__PURE__ */ u("strong", { children: "Imported from:" }),
         " ",
         /* @__PURE__ */ u("code", { children: repo.provenance.imported_from })
@@ -20364,7 +20502,7 @@ function PrometheusEndpoint() {
   ] });
 }
 function MonitoringPage({ initialTab }) {
-  var _a2, _b2, _c, _d;
+  var _a2, _b2, _c2, _d2;
   const [activeTab2, setActiveTab] = d(initialTab || "overview");
   const [timeRange, setTimeRange] = d("1h");
   function handleTabChange(tab) {
@@ -20425,7 +20563,7 @@ function MonitoringPage({ initialTab }) {
           latestPoint: historyPoints.value[historyPoints.value.length - 1]
         }
       ),
-      /* @__PURE__ */ u(ProviderTable, { byProvider: (_d = (_c = (_b2 = metricsData.value) == null ? void 0 : _b2.categories) == null ? void 0 : _c.llm) == null ? void 0 : _d.by_provider }),
+      /* @__PURE__ */ u(ProviderTable, { byProvider: (_d2 = (_c2 = (_b2 = metricsData.value) == null ? void 0 : _b2.categories) == null ? void 0 : _c2.llm) == null ? void 0 : _d2.by_provider }),
       /* @__PURE__ */ u(PrometheusEndpoint, {})
     ] }),
     activeTab2 === "charts" && /* @__PURE__ */ u(ChartsSection, { points: historyPoints.value, timeRange, onTimeRangeChange: setTimeRange })
@@ -20488,13 +20626,13 @@ function AgentForm({ agent, onSave, onCancel }) {
     let attempts = 0;
     function load() {
       sendRpc("agents.identity.get", { agent_id: agentId }).then((res) => {
-        var _a2, _b2, _c;
+        var _a2, _b2, _c2;
         if ((((_a2 = res == null ? void 0 : res.error) == null ? void 0 : _a2.code) === "UNAVAILABLE" || ((_b2 = res == null ? void 0 : res.error) == null ? void 0 : _b2.message) === "WebSocket not connected") && attempts < WS_RETRY_LIMIT) {
           attempts += 1;
           window.setTimeout(load, WS_RETRY_DELAY_MS);
           return;
         }
-        if ((res == null ? void 0 : res.ok) && ((_c = res.payload) == null ? void 0 : _c.soul)) {
+        if ((res == null ? void 0 : res.ok) && ((_c2 = res.payload) == null ? void 0 : _c2.soul)) {
           setSoul(res.payload.soul);
         }
       });
@@ -20789,7 +20927,7 @@ function AgentsPageComponent({ subPath }) {
     let attempts = 0;
     function load() {
       sendRpc("agents.list", {}).then((res) => {
-        var _a2, _b2, _c;
+        var _a2, _b2, _c2;
         if ((((_a2 = res == null ? void 0 : res.error) == null ? void 0 : _a2.code) === "UNAVAILABLE" || ((_b2 = res == null ? void 0 : res.error) == null ? void 0 : _b2.message) === "WebSocket not connected") && attempts < WS_RETRY_LIMIT) {
           attempts += 1;
           window.setTimeout(load, WS_RETRY_DELAY_MS);
@@ -20801,7 +20939,7 @@ function AgentsPageComponent({ subPath }) {
           setDefaultId(parsed.defaultId);
           setAgents(parsed.agents.map((a) => ({ ...a, id: a.id || "", name: a.name || a.id || "" })));
         } else {
-          setError(((_c = res == null ? void 0 : res.error) == null ? void 0 : _c.message) || "Failed to load agents");
+          setError(((_c2 = res == null ? void 0 : res.error) == null ? void 0 : _c2.message) || "Failed to load agents");
         }
       });
     }
@@ -24234,15 +24372,15 @@ function NodesPage() {
       if (!(p == null ? void 0 : p.nodeId)) return;
       const mem = p.mem;
       nodes.value = nodes.value.map((n) => {
-        var _a2, _b2, _c, _d, _e, _f;
+        var _a2, _b2, _c2, _d2, _e, _f;
         if (n.nodeId !== p.nodeId) return n;
         return {
           ...n,
           telemetry: {
             memTotal: (mem == null ? void 0 : mem.total) ?? ((_a2 = n.telemetry) == null ? void 0 : _a2.memTotal),
             memAvailable: (mem == null ? void 0 : mem.available) ?? ((_b2 = n.telemetry) == null ? void 0 : _b2.memAvailable),
-            cpuCount: p.cpuCount ?? ((_c = n.telemetry) == null ? void 0 : _c.cpuCount),
-            cpuUsage: p.cpuUsage ?? ((_d = n.telemetry) == null ? void 0 : _d.cpuUsage),
+            cpuCount: p.cpuCount ?? ((_c2 = n.telemetry) == null ? void 0 : _c2.cpuCount),
+            cpuUsage: p.cpuUsage ?? ((_d2 = n.telemetry) == null ? void 0 : _d2.cpuUsage),
             uptimeSecs: p.uptime ?? ((_e = n.telemetry) == null ? void 0 : _e.uptimeSecs),
             services: p.services ?? ((_f = n.telemetry) == null ? void 0 : _f.services) ?? [],
             stale: false
@@ -25798,7 +25936,7 @@ function DeliveryRow({ delivery }) {
   ] });
 }
 function WebhookModal() {
-  var _a2, _b2, _c, _d, _e;
+  var _a2, _b2, _c2, _d2, _e;
   const isEdit = !!editingWebhook.value;
   const saving = useSignal(false);
   const error2 = useSignal("");
@@ -25808,8 +25946,8 @@ function WebhookModal() {
   const authSecretRef = A(null);
   const selectedAgent = useSignal(isEdit ? ((_a2 = editingWebhook.value) == null ? void 0 : _a2.agentId) || "" : "");
   const selectedModel = useSignal(isEdit ? ((_b2 = editingWebhook.value) == null ? void 0 : _b2.model) || "" : "");
-  const sourceProfile = useSignal(isEdit ? ((_c = editingWebhook.value) == null ? void 0 : _c.sourceProfile) || "generic" : "generic");
-  const authMode = useSignal(isEdit ? ((_d = editingWebhook.value) == null ? void 0 : _d.authMode) || "static_header" : "static_header");
+  const sourceProfile = useSignal(isEdit ? ((_c2 = editingWebhook.value) == null ? void 0 : _c2.sourceProfile) || "generic" : "generic");
+  const authMode = useSignal(isEdit ? ((_d2 = editingWebhook.value) == null ? void 0 : _d2.authMode) || "static_header" : "static_header");
   const sessionMode = useSignal(isEdit ? ((_e = editingWebhook.value) == null ? void 0 : _e.sessionMode) || "per_delivery" : "per_delivery");
   const gonAgents = parseAgentsListPayload(get("agents"));
   const agentOptions = (Array.isArray(gonAgents == null ? void 0 : gonAgents.agents) ? gonAgents.agents : []).map((a) => ({
@@ -25832,7 +25970,7 @@ function WebhookModal() {
     }
   }, [editingWebhook.value]);
   function onSave(e) {
-    var _a3, _b3, _c2, _d2, _e2, _f, _g, _h, _i;
+    var _a3, _b3, _c3, _d3, _e2, _f, _g, _h, _i;
     e.preventDefault();
     saving.value = true;
     error2.value = "";
@@ -25844,7 +25982,7 @@ function WebhookModal() {
     }
     const params = {
       name,
-      description: ((_d2 = (_c2 = descRef.current) == null ? void 0 : _c2.value) == null ? void 0 : _d2.trim()) || null,
+      description: ((_d3 = (_c3 = descRef.current) == null ? void 0 : _c3.value) == null ? void 0 : _d3.trim()) || null,
       agentId: selectedAgent.value || null,
       model: selectedModel.value || null,
       systemPromptSuffix: ((_f = (_e2 = promptSuffixRef.current) == null ? void 0 : _e2.value) == null ? void 0 : _f.trim()) || null,
@@ -30380,7 +30518,7 @@ function ToolsSection() {
     setLoadingTools(true);
     setToolsErr(null);
     Promise.allSettled([sendRpc("chat.context", {}), sendRpc("node.list", {})]).then((results) => {
-      var _a2, _b2, _c;
+      var _a2, _b2, _c2;
       const contextResult = results[0];
       if (contextResult.status !== "fulfilled" || !((_a2 = contextResult.value) == null ? void 0 : _a2.ok)) {
         const errValue = contextResult.status === "fulfilled" ? contextResult.value : null;
@@ -30388,7 +30526,7 @@ function ToolsSection() {
       }
       const nextToolData = contextResult.value.payload || {};
       const nodesResult = results[1];
-      const nextNodeInventory = nodesResult.status === "fulfilled" && ((_c = nodesResult.value) == null ? void 0 : _c.ok) && Array.isArray(nodesResult.value.payload) ? nodesResult.value.payload : [];
+      const nextNodeInventory = nodesResult.status === "fulfilled" && ((_c2 = nodesResult.value) == null ? void 0 : _c2.ok) && Array.isArray(nodesResult.value.payload) ? nodesResult.value.payload : [];
       setToolData(nextToolData);
       setNodeInventory(nextNodeInventory);
       setLoadingTools(false);
@@ -31032,7 +31170,7 @@ function VoiceProviderRow({
 function LocalProviderInstructions({ providerId, voxtralReqs }) {
   const ref = A(null);
   y$1(() => {
-    var _a2, _b2, _c;
+    var _a2, _b2, _c2;
     const container = ref.current;
     if (!container) return;
     while (container.firstChild) container.removeChild(container.firstChild);
@@ -31062,7 +31200,7 @@ function LocalProviderInstructions({ providerId, voxtralReqs }) {
         if (reqEl) {
           const detectedEl = reqEl.querySelector("[data-voxtral-detected]");
           if (detectedEl) detectedEl.textContent = detected;
-          if (!voxtralReqs.compatible && ((_c = voxtralReqs.reasons) == null ? void 0 : _c.length)) {
+          if (!voxtralReqs.compatible && ((_c2 = voxtralReqs.reasons) == null ? void 0 : _c2.length)) {
             const ul = reqEl.querySelector("[data-voxtral-reasons]");
             for (const r2 of voxtralReqs.reasons) {
               const li = document.createElement("li");

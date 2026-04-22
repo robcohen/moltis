@@ -60,6 +60,7 @@ test.describe("Cron jobs page", () => {
 		await expect(page.getByText("Deliver to channel", { exact: true })).toBeVisible();
 		await expect(page.getByText("Channel Account", { exact: true })).toBeVisible();
 		await expect(page.getByText("Chat ID", { exact: true })).toBeVisible();
+		await expect(page.getByText("Task Binding", { exact: true })).toBeVisible();
 		expect(pageErrors).toEqual([]);
 	});
 
@@ -92,6 +93,8 @@ test.describe("Cron jobs page", () => {
 
 		await page.locator('[data-field="executionTarget"]').selectOption("host");
 		await expect(page.locator('[data-field="executionTarget"]')).toHaveValue("host");
+		await page.locator('[data-field="payloadKind"]').selectOption("agentTurn");
+		await expect(page.getByText("Task Binding", { exact: true })).toBeVisible();
 		expect(pageErrors).toEqual([]);
 	});
 

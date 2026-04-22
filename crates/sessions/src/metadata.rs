@@ -25,6 +25,8 @@ pub struct SessionEntry {
     pub last_seen_message_count: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
     #[serde(default)]
     pub archived: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -126,6 +128,7 @@ impl SessionMetadata {
                 message_count: 0,
                 last_seen_message_count: 0,
                 project_id: None,
+                task_id: None,
                 archived: false,
                 worktree_branch: None,
                 sandbox_enabled: None,
@@ -163,6 +166,15 @@ impl SessionMetadata {
     pub fn set_project_id(&mut self, key: &str, project_id: Option<String>) {
         if let Some(entry) = self.entries.get_mut(key) {
             entry.project_id = project_id;
+            entry.updated_at = now_ms();
+            entry.version += 1;
+        }
+    }
+
+    /// Set the task_id for a session.
+    pub fn set_task_id(&mut self, key: &str, task_id: Option<String>) {
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.task_id = task_id;
             entry.updated_at = now_ms();
             entry.version += 1;
         }
@@ -301,6 +313,7 @@ struct SessionRow {
     message_count: i32,
     last_seen_message_count: i32,
     project_id: Option<String>,
+    task_id: Option<String>,
     archived: i32,
     worktree_branch: Option<String>,
     sandbox_enabled: Option<i32>,
@@ -327,6 +340,7 @@ impl From<SessionRow> for SessionEntry {
             message_count: r.message_count as u32,
             last_seen_message_count: r.last_seen_message_count as u32,
             project_id: r.project_id,
+            task_id: r.task_id,
             archived: r.archived != 0,
             worktree_branch: r.worktree_branch,
             sandbox_enabled: r.sandbox_enabled.map(|v| v != 0),
@@ -391,6 +405,7 @@ impl SqliteSessionMetadata {
                 message_count   INTEGER NOT NULL DEFAULT 0,
                 last_seen_message_count INTEGER NOT NULL DEFAULT 0,
                 project_id      TEXT    REFERENCES projects(id) ON DELETE SET NULL,
+                task_id         TEXT,
                 archived        INTEGER NOT NULL DEFAULT 0,
                 worktree_branch TEXT,
                 sandbox_enabled     INTEGER,
@@ -576,6 +591,22 @@ impl SqliteSessionMetadata {
             .execute(&self.pool)
             .await
             .ok();
+        self.emit(crate::session_events::SessionEvent::Patched {
+            session_key: key.to_string(),
+        });
+    }
+
+    pub async fn set_task_id(&self, key: &str, task_id: Option<String>) {
+        let now = now_ms() as i64;
+        sqlx::query(
+            "UPDATE sessions SET task_id = ?, updated_at = ?, version = version + 1 WHERE key = ?",
+        )
+        .bind(&task_id)
+        .bind(now)
+        .bind(key)
+        .execute(&self.pool)
+        .await
+        .ok();
         self.emit(crate::session_events::SessionEvent::Patched {
             session_key: key.to_string(),
         });

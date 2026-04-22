@@ -8,9 +8,9 @@ use crate::{
     NoopModelService, NoopOnboardingService, NoopProjectService, NoopProviderSetupService,
     NoopSessionService, NoopSkillsStub, NoopSttService, NoopSystemInfoService, NoopTtsService,
     NoopUpdateService, NoopUsageService, NoopVoicewakeService, NoopWebLoginService,
-    OnboardingService, ProjectService, ProviderSetupService, SessionService, SkillsService,
-    SttService, SystemInfoService, TtsService, UpdateService, UsageService, VoicewakeService,
-    WebLoginService,
+    NoopWorkService, OnboardingService, ProjectService, ProviderSetupService, SessionService,
+    SkillsService, SttService, SystemInfoService, TtsService, UpdateService, UsageService,
+    VoicewakeService, WebLoginService, WorkService,
 };
 
 /// Bundle of all domain service trait objects.
@@ -39,6 +39,7 @@ pub struct Services {
     pub logs: Arc<dyn LogsService>,
     pub provider_setup: Arc<dyn ProviderSetupService>,
     pub project: Arc<dyn ProjectService>,
+    pub work: Arc<dyn WorkService>,
     pub local_llm: Arc<dyn LocalLlmService>,
     pub system_info: Arc<dyn SystemInfoService>,
 }
@@ -67,6 +68,7 @@ impl Default for Services {
             logs: Arc::new(NoopLogsService),
             provider_setup: Arc::new(NoopProviderSetupService),
             project: Arc::new(NoopProjectService),
+            work: Arc::new(NoopWorkService),
             local_llm: Arc::new(NoopLocalLlmService),
             system_info: Arc::new(NoopSystemInfoService),
         }

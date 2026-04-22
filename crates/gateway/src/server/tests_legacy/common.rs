@@ -73,5 +73,6 @@ pub(crate) fn cron_delivery_request() -> moltis_cron::service::AgentTurnRequest 
         to: Some("123456".to_string()),
         session_target: moltis_cron::types::SessionTarget::Isolated,
         sandbox: moltis_cron::types::CronSandboxConfig::default(),
+        task_id: None,
     }
 }

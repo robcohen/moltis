@@ -25,6 +25,8 @@ interface CronJob {
 	deleteAfterRun?: boolean;
 	state?: { lastStatus?: string; nextRunAtMs?: number };
 	sandbox?: { enabled?: boolean; image?: string };
+	taskId?: string;
+	task_id?: string;
 }
 
 interface CronSchedule {
@@ -64,6 +66,8 @@ interface HeartbeatConfig {
 	active_hours?: { start?: string; end?: string; timezone?: string };
 	sandbox_enabled?: boolean;
 	sandbox_image?: string;
+	task_id?: string;
+	taskId?: string;
 }
 
 interface HeartbeatStatusInfo {
@@ -96,6 +100,13 @@ interface ChannelAccount {
 	status: string;
 }
 
+interface WorkTask {
+	id: string;
+	title?: string;
+	subject?: string;
+	status?: string;
+}
+
 // ── Signals ──────────────────────────────────────────────────
 
 const initialCrons = (gon.get("crons") as CronJob[] | null) || [];
@@ -116,8 +127,14 @@ const heartbeatRunning = signal(false);
 const heartbeatConfig = signal<HeartbeatConfig>((gon.get("heartbeat_config") as HeartbeatConfig | null) || {});
 const sandboxImages = signal<SandboxImage[]>([]);
 const channelAccounts = signal<ChannelAccount[]>([]);
+const workTasks = signal<WorkTask[]>([]);
 const heartbeatModel = signal((gon.get("heartbeat_config") as HeartbeatConfig | null)?.model || "");
 const heartbeatSandboxImage = signal((gon.get("heartbeat_config") as HeartbeatConfig | null)?.sandbox_image || "");
+const heartbeatTaskId = signal(
+	(gon.get("heartbeat_config") as HeartbeatConfig | null)?.taskId ||
+		(gon.get("heartbeat_config") as HeartbeatConfig | null)?.task_id ||
+		"",
+);
 
 function loadSandboxImages(): void {
 	fetch("/api/images/cached")
@@ -134,6 +151,19 @@ function loadChannelAccounts(): void {
 		const r = res as { ok?: boolean; payload?: { channels?: ChannelAccount[] } } | null;
 		if (r?.ok) channelAccounts.value = (r.payload?.channels || []).filter((c) => c.status === "connected");
 	});
+}
+function loadWorkTasks(): void {
+	sendRpc("work.tasks.list", {}).then((res) => {
+		if (!res?.ok) return;
+		const payload = res.payload as { tasks?: WorkTask[] } | WorkTask[] | null;
+		workTasks.value = Array.isArray(payload) ? payload : payload?.tasks || [];
+	});
+}
+function workTaskOptions(): { value: string; label: string }[] {
+	return workTasks.value.map((task) => ({
+		value: task.id,
+		label: `${task.title || task.subject || task.id}${task.status ? ` (${task.status})` : ""}`,
+	}));
 }
 function loadHeartbeatStatus(): void {
 	sendRpc("heartbeat.status", {}).then((res) => {
@@ -283,6 +313,7 @@ function collectHeartbeatForm(form: Element): HeartbeatConfig {
 		},
 		sandbox_enabled: (form.querySelector("[data-hb=sandboxEnabled]") as HTMLInputElement).checked,
 		sandbox_image: heartbeatSandboxImage.value || undefined,
+		task_id: heartbeatTaskId.value || undefined,
 	};
 }
 
@@ -303,6 +334,7 @@ function HeartbeatSection(): VNode {
 				heartbeatConfig.value = updated;
 				heartbeatModel.value = updated.model || "";
 				heartbeatSandboxImage.value = updated.sandbox_image || "";
+				heartbeatTaskId.value = updated.task_id || updated.taskId || "";
 				refreshGon();
 				loadHeartbeatStatus();
 				loadJobs();
@@ -527,6 +559,21 @@ function HeartbeatSection(): VNode {
 				</div>
 			</div>
 
+			{/* Task Binding */}
+			<div style={{ marginTop: "24px", borderTop: "1px solid var(--border)", paddingTop: "16px" }}>
+				<h3 className="text-sm font-medium text-[var(--text-strong)] mb-3">Task Binding</h3>
+				<p className="text-xs text-[var(--muted)] mb-3">Attach heartbeat runs to a durable work task.</p>
+				<ComboSelect
+					options={workTaskOptions()}
+					value={heartbeatTaskId.value}
+					onChange={(v: string) => {
+						heartbeatTaskId.value = v;
+					}}
+					placeholder="No task"
+					searchPlaceholder="Search tasks\u2026"
+				/>
+			</div>
+
 			{/* Sandbox */}
 			<div style={{ marginTop: "24px", borderTop: "1px solid var(--border)", paddingTop: "16px" }}>
 				<h3 className="text-sm font-medium text-[var(--text-strong)] mb-3">Sandbox</h3>
@@ -585,6 +632,7 @@ function StatusBar(): VNode {
 function CronJobRow({ job }: { job: CronJob }): VNode {
 	const modelLabel = job.payload?.kind === "agentTurn" ? job.payload.model || "default" : "\u2014";
 	const deliveryLabel = job.payload?.deliver && job.payload?.channel ? `\u2192 ${job.payload.channel}` : null;
+	const taskLabel = job.taskId || job.task_id || "\u2014";
 	const executionLabel =
 		job.sandbox?.enabled === false
 			? "host"
@@ -624,6 +672,7 @@ function CronJobRow({ job }: { job: CronJob }): VNode {
 			<td>{job.name}</td>
 			<td className="cron-mono">{formatSchedule(job.schedule)}</td>
 			<td className="cron-mono">{modelLabel}</td>
+			<td className="cron-mono">{taskLabel}</td>
 			<td className="cron-mono">{deliveryLabel ? <span className="text-xs">{deliveryLabel}</span> : "\u2014"}</td>
 			<td className="cron-mono">{executionLabel}</td>
 			<td className="cron-mono">
@@ -680,6 +729,7 @@ function CronJobTable(): VNode {
 					<th>Name</th>
 					<th>Schedule</th>
 					<th>Model</th>
+					<th>Task</th>
 					<th>Delivery</th>
 					<th>Execution</th>
 					<th>Next Run</th>
@@ -760,6 +810,7 @@ function CronModal(): VNode {
 	const errorField = useSignal<string | null>(null);
 	const jobModel = useSignal("");
 	const jobSandboxImage = useSignal("");
+	const jobTaskId = useSignal("");
 	const jobName = useSignal("");
 	const payloadKind = useSignal("systemEvent");
 	const sessionTarget = useSignal("main");
@@ -783,6 +834,7 @@ function CronModal(): VNode {
 			schedKind.value = j.schedule.kind;
 			jobModel.value = j.payload.kind === "agentTurn" ? j.payload.model || "" : "";
 			jobSandboxImage.value = j.sandbox?.image || "";
+			jobTaskId.value = j.taskId || j.task_id || "";
 			jobName.value = j.name;
 			payloadKind.value = j.payload.kind;
 			sessionTarget.value = j.sessionTarget || "main";
@@ -803,6 +855,7 @@ function CronModal(): VNode {
 			schedKind.value = "cron";
 			jobModel.value = "";
 			jobSandboxImage.value = "";
+			jobTaskId.value = "";
 			jobName.value = "";
 			payloadKind.value = "systemEvent";
 			sessionTarget.value = "main";
@@ -863,6 +916,7 @@ function CronModal(): VNode {
 			deleteAfterRun: deleteAfterRun.value,
 			enabled: jobEnabled.value,
 			sandbox: { enabled: sandboxEnabled, image: sandboxEnabled ? jobSandboxImage.value || null : null },
+			taskId: pk === "agentTurn" ? jobTaskId.value || undefined : undefined,
 		};
 		saving.value = true;
 		const rpcMethod = isEdit ? "cron.update" : "cron.add";
@@ -1007,6 +1061,19 @@ function CronModal(): VNode {
 
 				{payloadKind.value === "agentTurn" && (
 					<div style={{ marginTop: "12px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
+						<div className="mb-3">
+							<label className="block text-xs text-[var(--muted)] mb-1">Task Binding</label>
+							<ComboSelect
+								options={workTaskOptions()}
+								value={jobTaskId.value}
+								onChange={(v: string) => {
+									jobTaskId.value = v;
+								}}
+								placeholder="No task"
+								searchPlaceholder="Search tasks\u2026"
+							/>
+							<p className="text-xs text-[var(--muted)] mt-1">Attach this job's agent turns to a durable work task.</p>
+						</div>
 						<label className="text-xs text-[var(--muted)] flex items-center gap-2">
 							<input
 								type="checkbox"
@@ -1132,6 +1199,7 @@ function HeartbeatPanel(): VNode {
 	useEffect(() => {
 		loadHeartbeatStatus();
 		loadSandboxImages();
+		loadWorkTasks();
 		loadHeartbeatRuns();
 	}, []);
 	return (
@@ -1147,6 +1215,7 @@ function CronJobsPanel(): VNode {
 		loadJobs();
 		loadSandboxImages();
 		loadChannelAccounts();
+		loadWorkTasks();
 	}, []);
 	return (
 		<div className="p-4 flex flex-col gap-4">
@@ -1195,9 +1264,15 @@ export function initCrons(container: HTMLElement, param?: string | null): void {
 	heartbeatRuns.value = (gon.get("heartbeat_runs") as CronRun[] | null) || [];
 	sandboxImages.value = [];
 	channelAccounts.value = [];
+	workTasks.value = [];
 	heartbeatModel.value = (gon.get("heartbeat_config") as HeartbeatConfig | null)?.model || "";
 	heartbeatSandboxImage.value = (gon.get("heartbeat_config") as HeartbeatConfig | null)?.sandbox_image || "";
+	heartbeatTaskId.value =
+		(gon.get("heartbeat_config") as HeartbeatConfig | null)?.taskId ||
+		(gon.get("heartbeat_config") as HeartbeatConfig | null)?.task_id ||
+		"";
 	activeSection.value = param === "heartbeat" ? "heartbeat" : "jobs";
+	loadWorkTasks();
 	loadHeartbeatRuns();
 	loadHeartbeatStatus();
 	render(<CronsPage />, container);

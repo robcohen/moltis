@@ -332,6 +332,220 @@ impl WebhooksService for NoopWebhooksService {
 }
 
 #[async_trait]
+pub trait WorkService: Send + Sync {
+    async fn goals_list(&self) -> ServiceResult;
+    async fn goals_get(&self, params: Value) -> ServiceResult;
+    async fn goals_create(&self, params: Value) -> ServiceResult;
+    async fn goals_update(&self, params: Value) -> ServiceResult;
+    async fn goals_delete(&self, params: Value) -> ServiceResult;
+    async fn goals_plan(&self, params: Value) -> ServiceResult;
+    async fn templates_list(&self, params: Value) -> ServiceResult;
+    async fn templates_get(&self, params: Value) -> ServiceResult;
+    async fn templates_create(&self, params: Value) -> ServiceResult;
+    async fn templates_update(&self, params: Value) -> ServiceResult;
+    async fn templates_instantiate(&self, params: Value) -> ServiceResult;
+    async fn tasks_list(&self, params: Value) -> ServiceResult;
+    async fn tasks_get(&self, params: Value) -> ServiceResult;
+    async fn tasks_create(&self, params: Value) -> ServiceResult;
+    async fn tasks_update(&self, params: Value) -> ServiceResult;
+    async fn tasks_claim(&self, params: Value) -> ServiceResult;
+    async fn comments_list(&self, params: Value) -> ServiceResult;
+    async fn comments_add(&self, params: Value) -> ServiceResult;
+    async fn runs_list(&self, params: Value) -> ServiceResult;
+    async fn runs_create(&self, params: Value) -> ServiceResult;
+    async fn runs_update(&self, params: Value) -> ServiceResult;
+    async fn approvals_list(&self, params: Value) -> ServiceResult;
+    async fn approvals_create(&self, params: Value) -> ServiceResult;
+    async fn approvals_update(&self, params: Value) -> ServiceResult;
+    async fn costs_list(&self, params: Value) -> ServiceResult;
+    async fn costs_record(&self, params: Value) -> ServiceResult;
+    async fn budgets_list(&self, params: Value) -> ServiceResult;
+    async fn budgets_save(&self, params: Value) -> ServiceResult;
+    async fn budgets_enforce(&self, params: Value) -> ServiceResult;
+    async fn recurring_list(&self, params: Value) -> ServiceResult;
+    async fn recurring_get(&self, params: Value) -> ServiceResult;
+    async fn recurring_create(&self, params: Value) -> ServiceResult;
+    async fn recurring_update(&self, params: Value) -> ServiceResult;
+    async fn recurring_materialize(&self, params: Value) -> ServiceResult;
+    async fn recurring_materializations_list(&self, params: Value) -> ServiceResult;
+    async fn trackers_links_list(&self, params: Value) -> ServiceResult;
+    async fn trackers_import(&self, params: Value) -> ServiceResult;
+    async fn dashboard(&self, params: Value) -> ServiceResult;
+    async fn portfolio(&self) -> ServiceResult;
+    async fn package_export(&self, params: Value) -> ServiceResult;
+    async fn package_import(&self, params: Value) -> ServiceResult;
+}
+
+pub struct NoopWorkService;
+
+#[async_trait]
+impl WorkService for NoopWorkService {
+    async fn goals_list(&self) -> ServiceResult {
+        Ok(serde_json::json!([]))
+    }
+
+    async fn goals_get(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn goals_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn goals_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn goals_delete(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn goals_plan(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn templates_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "templates": [], "count": 0 }))
+    }
+
+    async fn templates_get(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn templates_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn templates_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn templates_instantiate(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn tasks_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "tasks": [], "count": 0 }))
+    }
+
+    async fn tasks_get(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn tasks_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn tasks_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn tasks_claim(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn comments_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "comments": [], "count": 0 }))
+    }
+
+    async fn comments_add(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn runs_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "runs": [], "count": 0 }))
+    }
+
+    async fn runs_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn runs_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn approvals_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "approvals": [], "count": 0 }))
+    }
+
+    async fn approvals_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn approvals_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn costs_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "costs": [], "count": 0 }))
+    }
+
+    async fn costs_record(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn budgets_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "budgets": [], "count": 0 }))
+    }
+
+    async fn budgets_save(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn budgets_enforce(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn recurring_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "items": [], "count": 0 }))
+    }
+
+    async fn recurring_get(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn recurring_create(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn recurring_update(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn recurring_materialize(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn recurring_materializations_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "materializations": [], "count": 0 }))
+    }
+
+    async fn trackers_links_list(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({ "links": [], "count": 0 }))
+    }
+
+    async fn trackers_import(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn dashboard(&self, _params: Value) -> ServiceResult {
+        Ok(serde_json::json!({}))
+    }
+
+    async fn portfolio(&self) -> ServiceResult {
+        Ok(serde_json::json!({}))
+    }
+
+    async fn package_export(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+
+    async fn package_import(&self, _params: Value) -> ServiceResult {
+        Err("work service not configured".into())
+    }
+}
+
+#[async_trait]
 pub trait ChatService: Send + Sync {
     async fn send(&self, params: Value) -> ServiceResult;
 
@@ -521,6 +735,7 @@ pub trait McpService: Send + Sync {
     async fn disable(&self, params: Value) -> ServiceResult;
     async fn status(&self, params: Value) -> ServiceResult;
     async fn tools(&self, params: Value) -> ServiceResult;
+    async fn call(&self, params: Value) -> ServiceResult;
     async fn restart(&self, params: Value) -> ServiceResult;
     async fn update(&self, params: Value) -> ServiceResult;
     async fn reauth(&self, params: Value) -> ServiceResult;
@@ -561,6 +776,10 @@ impl McpService for NoopMcpService {
     }
 
     async fn tools(&self, _params: Value) -> ServiceResult {
+        Err("MCP not configured".into())
+    }
+
+    async fn call(&self, _params: Value) -> ServiceResult {
         Err("MCP not configured".into())
     }
 

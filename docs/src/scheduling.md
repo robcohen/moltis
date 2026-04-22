@@ -19,6 +19,10 @@ Heartbeat replies can also be delivered to a configured channel destination via
 `[heartbeat] deliver`, `channel`, and `to` in `moltis.toml`, or from the web UI
 under **Settings -> Heartbeat**.
 
+Heartbeat runs can also bind to a durable work task with `[heartbeat] task_id`.
+When set, each heartbeat run inherits the task's prompt context, budget
+enforcement, approvals, and durable run history.
+
 ## Event-Driven Heartbeat Wake
 
 Normally the heartbeat fires on its regular schedule. The **wake** system lets
@@ -96,6 +100,10 @@ The agent manages jobs through the built-in `cron` tool. Available actions:
 - **`remove`** — Delete a job
 - **`runs`** — View recent execution history for a job
 
+Agent-turn jobs may also set `taskId` to bind scheduled runs to a durable work
+task. This makes cron execution show up in the work graph instead of living as
+an orphaned background session.
+
 ### One-Shot Jobs
 
 Set `deleteAfterRun: true` to automatically remove a job after its first
@@ -134,6 +142,28 @@ Example:
   }
 }
 ```
+
+## Work Graph Binding
+
+Agent-turn cron jobs support an optional `taskId` field:
+
+```json
+{
+  "name": "daily repo sweep",
+  "schedule": { "kind": "cron", "expr": "0 8 * * *", "tz": "Europe/Lisbon" },
+  "sessionTarget": "isolated",
+  "taskId": "task-123",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Review open work and post a short summary.",
+    "deliver": false
+  }
+}
+```
+
+When `taskId` is present, Moltis binds the cron-created session to that task
+before the run starts. The run then uses the same task context, budget checks,
+and operator views as an interactive session bound to the same work item.
 
 Channel delivery is separate from session targeting. The cron job still runs in
 an isolated cron session, then Moltis forwards the finished output to the

@@ -67,6 +67,48 @@ impl LiveMcpService {
         &self.manager
     }
 
+    fn flatten_tools_call_result(
+        result: moltis_mcp::types::ToolsCallResult,
+    ) -> Result<Value, ServiceError> {
+        if result.is_error {
+            let text = result
+                .content
+                .iter()
+                .filter_map(|content| match content {
+                    moltis_mcp::types::ToolContent::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Err(ServiceError::message(if text.is_empty() {
+                "MCP tool returned an error"
+            } else {
+                &text
+            }));
+        }
+
+        let texts: Vec<&str> = result
+            .content
+            .iter()
+            .filter_map(|content| match content {
+                moltis_mcp::types::ToolContent::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+
+        if texts.len() == 1 {
+            if let Ok(value) = serde_json::from_str(texts[0]) {
+                return Ok(value);
+            }
+            return Ok(Value::String(texts[0].to_string()));
+        }
+
+        Ok(serde_json::json!({
+            "content": texts,
+            "raw": result,
+        }))
+    }
+
     pub async fn set_credential_store(&self, credential_store: Arc<crate::auth::CredentialStore>) {
         *self.credential_store.write().await = Some(credential_store);
     }
@@ -267,6 +309,27 @@ impl McpService for LiveMcpService {
             Some(tools) => Ok(serde_json::to_value(&tools)?),
             None => Err(format!("MCP server '{name}' not found or not running").into()),
         }
+    }
+
+    async fn call(&self, params: Value) -> ServiceResult {
+        let name = params
+            .get("name")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "missing 'name' parameter".to_string())?;
+        let tool = params
+            .get("tool")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "missing 'tool' parameter".to_string())?;
+        let arguments = params
+            .get("arguments")
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({}));
+        let result = self
+            .manager
+            .call_tool(name, tool, arguments)
+            .await
+            .map_err(ServiceError::message)?;
+        Self::flatten_tools_call_result(result)
     }
 
     async fn restart(&self, params: Value) -> ServiceResult {
