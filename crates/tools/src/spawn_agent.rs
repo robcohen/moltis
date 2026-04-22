@@ -324,6 +324,10 @@ impl AgentTool for SpawnAgentTool {
     }
 
     fn parameters_schema(&self) -> serde_json::Value {
+        let preset_description = format!(
+            "Agent preset name. Default installs include: {}. Presets define model, tool policies, and behavior.",
+            moltis_config::agent_defs::BUILTIN_AGENT_PRESET_NAMES.join(", ")
+        );
         serde_json::json!({
             "type": "object",
             "properties": {
@@ -337,7 +341,7 @@ impl AgentTool for SpawnAgentTool {
                 },
                 "preset": {
                     "type": "string",
-                    "description": "Agent preset name (e.g. 'researcher', 'coder'). Presets define model, tool policies, and behavior."
+                    "description": preset_description
                 },
                 "model": {
                     "type": "string",

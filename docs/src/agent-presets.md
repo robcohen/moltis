@@ -5,6 +5,18 @@ Use them to control model cost, tool access, session visibility, and behavior.
 
 ## Quick Start
 
+Default Moltis installs include these built-in presets:
+
+- `ceo` - coordinator that decomposes ambiguous work and delegates.
+- `cto` - technical architecture and implementation planning.
+- `engineer` - implementation agent with read/write/edit/exec tools.
+- `reviewer` - read-only-ish review agent for correctness, security, and regressions.
+- `qa` - quality agent for targeted test and browser validation.
+- `researcher` - evidence gathering and synthesis.
+
+TOML presets and markdown agent definitions override built-ins with the same
+name, so you can replace any default role without changing Moltis code.
+
 ```toml
 [agents.presets.researcher]
 identity.name = "scout"
@@ -105,7 +117,9 @@ Presets can also be defined as markdown files with YAML frontmatter, discovered 
 - `.moltis/agents/*.md` (project-local)
 
 Project-local files override user-global files with the same `name`.
-TOML presets always take precedence over markdown definitions.
+TOML presets always take precedence over markdown definitions. Built-in
+defaults are loaded last, so both TOML and markdown definitions can override
+them by reusing a built-in preset name.
 
 Example `~/.moltis/agents/reviewer.md`:
 

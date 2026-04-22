@@ -304,6 +304,10 @@ mode = "deterministic"              # "deterministic" | "recency_preserving" | "
 # SUB-AGENT SPAWN PRESETS (OPTIONAL)
 # ══════════════════════════════════════════════════════════════════════════════
 # Configure reusable presets for sub-agents spawned via the `spawn_agent` tool.
+# Moltis also provides built-in presets on default installs:
+#   ceo, cto, engineer, reviewer, qa, researcher
+# Define a preset with the same name here or in `.moltis/agents/<name>.md` to
+# override the built-in behavior.
 #
 # ⚠️  SCOPE: `[agents.presets.*]` applies ONLY to sub-agents spawned via the
 # `spawn_agent` tool. The `tools.allow` / `tools.deny` fields under a preset

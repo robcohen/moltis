@@ -287,6 +287,10 @@ User profile collected during onboarding.
 | `default_preset` | optional string | `null` | Default preset name used when `spawn_agent.preset` is omitted. Applies only to sub-agents. |
 | `presets` | map of `AgentPreset` | `{}` | Named spawn presets, keyed by name. |
 
+Runtime also merges built-in presets for default installations: `ceo`, `cto`,
+`engineer`, `reviewer`, `qa`, and `researcher`. Configured TOML presets and
+markdown agent definitions override built-ins with the same name.
+
 
 ### `agents.presets.<name>` — AgentPreset
 
@@ -1094,4 +1098,3 @@ context_window = 1_000_000
 
 
 ---
-

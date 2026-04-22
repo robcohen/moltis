@@ -105,7 +105,8 @@ pub fn discover_and_load() -> MoltisConfig {
         apply_env_overrides(config)
     };
 
-    // Merge markdown agent definitions (TOML presets take precedence).
+    // Merge agent definitions by precedence:
+    // TOML config > user/project markdown definitions > built-in defaults.
     let agent_defs = crate::agent_defs::discover_agent_defs();
     if !agent_defs.is_empty() {
         debug!(
@@ -114,6 +115,7 @@ pub fn discover_and_load() -> MoltisConfig {
         );
         crate::agent_defs::merge_agent_defs(&mut cfg.agents.presets, agent_defs);
     }
+    crate::agent_defs::merge_builtin_agent_defs(&mut cfg.agents.presets);
 
     cfg
 }

@@ -21,6 +21,79 @@ use tracing::{debug, warn};
 
 use crate::schema::{AgentIdentity, AgentPreset, PresetToolPolicy};
 
+/// Built-in sub-agent presets available on a default installation.
+pub const BUILTIN_AGENT_PRESET_NAMES: &[&str] =
+    &["ceo", "cto", "engineer", "reviewer", "qa", "researcher"];
+
+const BUILTIN_AGENT_DEFS: &[&str] = &[
+    r#"---
+name: ceo
+theme: strategic coordinator
+delegate_only: true
+max_iterations: 18
+timeout_secs: 600
+---
+You are the CEO sub-agent. Your job is to turn ambiguous user goals into clear priorities, delegate work to the right specialist, and keep the overall plan coherent.
+
+Do not do implementation work yourself. Triage the task, identify owners, sequence the work, and return decisions, risks, and concrete next actions. Use delegation when the work should be split across specialists.
+"#,
+    r#"---
+name: cto
+theme: pragmatic technical leader
+tools: Read, Glob, Grep, exec, web_search, web_fetch, task_list, sessions_list, sessions_history, sessions_search, sessions_send
+max_iterations: 25
+timeout_secs: 900
+---
+You are the CTO sub-agent. Own architecture, technical tradeoffs, system design, and implementation planning.
+
+Prefer simple, maintainable designs. Inspect the code before proposing changes. Surface risks early, choose boring proven technology by default, and hand back a plan that an engineer can execute.
+"#,
+    r#"---
+name: engineer
+theme: focused implementation engineer
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, exec, web_search, web_fetch, task_list
+max_iterations: 35
+timeout_secs: 1200
+---
+You are the Engineer sub-agent. Implement scoped changes end to end.
+
+Read the existing code first, make the smallest maintainable change that solves the problem, update tests or docs when behavior changes, and report exactly what changed and how it was verified.
+"#,
+    r#"---
+name: reviewer
+theme: skeptical code reviewer
+tools: Read, Glob, Grep, exec, web_search, web_fetch, task_list
+max_iterations: 25
+timeout_secs: 900
+---
+You are the Reviewer sub-agent. Review code for correctness, regressions, security issues, missing tests, and maintainability risks.
+
+Prioritize findings over summaries. Cite concrete files, functions, and behaviors. Do not rewrite code unless explicitly asked; return actionable review notes.
+"#,
+    r#"---
+name: qa
+theme: rigorous quality engineer
+tools: Read, Glob, Grep, exec, browser, web_fetch, task_list
+max_iterations: 30
+timeout_secs: 1200
+---
+You are the QA sub-agent. Validate behavior from the user's perspective and from the system's test surface.
+
+Design targeted checks, run relevant tests when possible, look for edge cases and flaky assumptions, and report reproducible failures with exact commands or steps.
+"#,
+    r#"---
+name: researcher
+theme: evidence-driven researcher
+tools: Read, Glob, Grep, web_search, web_fetch, calc, task_list
+max_iterations: 22
+timeout_secs: 900
+---
+You are the Researcher sub-agent. Gather facts, compare options, and synthesize evidence.
+
+Use primary sources where possible. Separate facts from inference, include links or file references, and finish with a concise recommendation and uncertainty level.
+"#,
+];
+
 /// Frontmatter fields parsed from the YAML block.
 #[derive(Debug, Default, serde::Deserialize)]
 #[serde(default)]
@@ -129,6 +202,30 @@ pub fn merge_agent_defs(
     for (name, preset) in defs {
         presets.entry(name).or_insert(preset);
     }
+}
+
+/// Return built-in sub-agent presets bundled with Moltis.
+///
+/// These are intentionally lowest precedence: TOML presets and markdown agent
+/// definitions can override any built-in by reusing the same preset name.
+pub fn builtin_agent_defs() -> HashMap<String, AgentPreset> {
+    let mut defs = HashMap::new();
+    for content in BUILTIN_AGENT_DEFS {
+        match parse_agent_md(content) {
+            Ok((name, preset)) => {
+                defs.insert(name, preset);
+            },
+            Err(e) => {
+                warn!(error = %e, "failed to parse built-in agent definition");
+            },
+        }
+    }
+    defs
+}
+
+/// Merge built-in presets without overriding user configuration.
+pub fn merge_builtin_agent_defs(presets: &mut HashMap<String, AgentPreset>) {
+    merge_agent_defs(presets, builtin_agent_defs());
 }
 
 fn load_defs_from_dir(dir: &Path, defs: &mut HashMap<String, AgentPreset>) {
@@ -315,6 +412,43 @@ Search thoroughly.
         assert_eq!(presets["reviewer"].model.as_deref(), Some("opus"));
         // New def should be added.
         assert_eq!(presets["scout"].model.as_deref(), Some("sonnet"));
+    }
+
+    #[test]
+    fn test_builtin_agent_defs_include_default_roles() {
+        let defs = builtin_agent_defs();
+        for name in BUILTIN_AGENT_PRESET_NAMES {
+            assert!(defs.contains_key(*name), "missing built-in preset {name}");
+        }
+        assert!(defs["ceo"].delegate_only);
+        assert!(
+            defs["engineer"]
+                .tools
+                .allow
+                .iter()
+                .any(|tool| tool == "Edit")
+        );
+        assert!(
+            !defs["reviewer"]
+                .tools
+                .allow
+                .iter()
+                .any(|tool| tool == "Write")
+        );
+    }
+
+    #[test]
+    fn test_builtin_agent_defs_do_not_override_user_defs() {
+        let mut presets = HashMap::new();
+        presets.insert("cto".to_string(), AgentPreset {
+            model: Some("custom-model".into()),
+            ..Default::default()
+        });
+
+        merge_builtin_agent_defs(&mut presets);
+
+        assert_eq!(presets["cto"].model.as_deref(), Some("custom-model"));
+        assert!(presets.contains_key("qa"));
     }
 
     #[test]
