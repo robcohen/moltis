@@ -1,0 +1,44 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Now that moltis comes with tons of skills, it might be too much. Add something about skills in the onboarding for people to choose to enable them or not (the bundled ones) and same in settings / skills.
+
+### Prompt 2
+
+commit push create a PR
+
+### Prompt 3
+
+I think the settings/skills page is getting too long now, could you add tabs for skills categories, repositories, skills list. Default should be skills list.
+
+### Prompt 4
+
+In the tab name, add the number of skills, the number of enabled categories, the number of added repositories
+
+### Prompt 5
+
+Now you have tabs, you can use tabs to separate tailscale and ngrok in https://localhost:52791/settings/remote-access to make the page better
+
+### Prompt 6
+
+Add tabs for https://localhost:52791/settings/ssh for ssh keys and targets
+
+You can also remove this from tools, the settings navigation is enough:
+
+<div class="rounded border border-[var(--border)] bg-[var(--surface2)] p-3 max-w-[1100px]"><div class="text-xs text-[var(--muted)] leading-relaxed">Use this as the operator view of what the model can currently reach. For setup changes, jump straight to the relevant control surface.</div><div class="mt-3 flex gap-2 flex-wrap"><button type="button"...
+
+### Prompt 7
+
+[Request interrupted by user]
+
+### Prompt 8
+
+Add tabs for https://localhost:52791/settings/ssh for ssh keys and targets
+
+You can also remove this from tools, the settings navigation is enough:
+
+<div class="rounded border border-[var(--border)] bg-[var(--surface2)] p-3 max-w-[1100px]"><div class="text-xs text-[var(--muted)] leading-relaxed">Use this as the operator view of what the model can currently reach. For setup changes, jump straight to the relevant control surface.</div><div class="mt-3 flex gap-2 flex-wrap"><button type="button"...
+

@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ddaad8dd8c81",
+  "strategy": "manual-commit",
+  "branch": "guiltless-wander",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/pages/sections/SshSection.tsx",
+    "crates/web/ui/src/pages/sections/ToolsSection.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/dd/aad8dd8c81/0/metadata.json",
+      "transcript": "/dd/aad8dd8c81/0/full.jsonl",
+      "context": "/dd/aad8dd8c81/0/context.md",
+      "content_hash": "/dd/aad8dd8c81/0/content_hash.txt",
+      "prompt": "/dd/aad8dd8c81/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 18829,
+    "cache_read_tokens": 4768324,
+    "output_tokens": 4188,
+    "api_call_count": 19
+  }
+}
