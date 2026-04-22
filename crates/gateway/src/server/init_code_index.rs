@@ -76,9 +76,12 @@ pub(crate) async fn init_code_index(
 
     #[cfg(feature = "code-index-builtin")]
     {
-        let index_root = code_index_config.data_dir.as_ref()
+        let default_index_root = data_dir.join("code-index");
+        let index_root = code_index_config
+            .data_dir
+            .as_ref()
             .map(|p| p.as_path())
-            .unwrap_or_else(|| data_dir.join("code-index").as_path());
+            .unwrap_or_else(|| default_index_root.as_path());
         let db_path = index_root.join("index.db");
         match moltis_code_index::store_sqlite::SqliteCodeIndexStore::new(&db_path).await {
             Ok(store) => {
