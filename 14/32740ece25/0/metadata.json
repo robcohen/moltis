@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "1432740ece25",
+  "session_id": "4ffe75b5-1dbf-4492-b766-b64701e3b735",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T09:37:27.178409Z",
+  "branch": "guiltless-wander",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/pages/SkillsPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "81c66dd2aef3",
+  "checkpoint_transcript_start": 967,
+  "transcript_lines_at_start": 967,
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 25219,
+    "cache_read_tokens": 3346516,
+    "output_tokens": 4253,
+    "api_call_count": 18
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T09:37:24.581848Z",
+    "agent_lines": 27,
+    "human_added": 55,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 82,
+    "agent_percentage": 32.926829268292686
+  }
+}
