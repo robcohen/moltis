@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "60eab8a708a0",
+  "session_id": "9cccdb33-65d9-4d52-923c-ba11fc2de11c",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T10:54:28.00051Z",
+  "branch": "shared-price",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/config/src/env_subst.rs",
+    "crates/config/src/loader/config_io.rs",
+    "crates/config/src/lib.rs",
+    "crates/gateway/src/server/prepare_core.rs",
+    "crates/config/src/loader/tests.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9db8c001c4fc",
+  "token_usage": {
+    "input_tokens": 204,
+    "cache_creation_tokens": 132244,
+    "cache_read_tokens": 5868404,
+    "output_tokens": 30747,
+    "api_call_count": 60
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T10:54:23.287616Z",
+    "agent_lines": 286,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 286,
+    "agent_percentage": 100
+  }
+}
