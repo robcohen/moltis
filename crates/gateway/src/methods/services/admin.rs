@@ -3,6 +3,9 @@ use super::*;
 #[cfg(feature = "voice")]
 use crate::methods::voice;
 
+#[cfg(any(feature = "qmd", feature = "code-index-builtin"))]
+use tracing::info;
+
 pub(super) fn register(reg: &mut MethodRegistry) {
     // Update
     reg.register(
@@ -133,6 +136,59 @@ pub(super) fn register(reg: &mut MethodRegistry) {
         "projects.upsert",
         Box::new(|ctx| {
             Box::pin(async move {
+                // Check if code_index_enabled is transitioning from off → on
+                #[cfg(any(feature = "qmd", feature = "code-index-builtin"))]
+                {
+                    let project_id = ctx
+                        .params
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+
+                    let new_enabled = ctx
+                        .params
+                        .get("code_index_enabled")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(true);
+
+                    if let Some(ref pid) = project_id {
+                        if new_enabled {
+                            // Fetch old project to check previous state
+                            if let Ok(Some(old)) = ctx
+                                .state
+                                .services
+                                .project
+                                .get(serde_json::json!({ "id": pid }))
+                                .await
+                            {
+                                let old_enabled = old
+                                    .get("code_index_enabled")
+                                    .and_then(|v| v.as_bool())
+                                    .unwrap_or(true);
+
+                                if !old_enabled && new_enabled {
+                                    let dir = old
+                                        .get("directory")
+                                        .and_then(|v| v.as_str())
+                                        .map(std::path::PathBuf::from);
+
+                                    if let Some(project_dir) = dir {
+                                        info!(
+                                            project_id = %pid,
+                                            "code-index: re-indexing project (enabled by user)"
+                                        );
+                                        let _ = ctx
+                                            .state
+                                            .code_index
+                                            .index_project(pid, true, &project_dir)
+                                            .await;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 ctx.state
                     .services
                     .project

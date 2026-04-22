@@ -23,6 +23,8 @@ pub mod channel_webhook_dedup;
 pub mod channel_webhook_middleware;
 pub mod channel_webhook_rate_limit;
 pub mod chat;
+#[cfg(any(feature = "qmd", feature = "code-index-builtin"))]
+pub mod code_index_tools;
 pub mod chat_error;
 pub mod cron;
 #[cfg(feature = "local-llm")]
