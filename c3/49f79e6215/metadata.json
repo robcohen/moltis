@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "c349f79e6215",
+  "strategy": "manual-commit",
+  "branch": "guiltless-wander",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crates/chat/src/prompt.rs",
+    "crates/config/src/schema/runtime.rs",
+    "crates/config/src/validate/schema_map.rs",
+    "crates/gateway/src/methods/dispatch.rs",
+    "crates/gateway/src/methods/services/system.rs",
+    "crates/gateway/src/services.rs",
+    "crates/graphql/tests/integration/common.rs",
+    "crates/service-traits/src/interfaces.rs",
+    "crates/web/src/api.rs",
+    "crates/web/src/assets/dist/chunks/onboarding-view.js",
+    "crates/web/src/assets/dist/chunks/onboarding.js",
+    "crates/web/src/assets/dist/chunks/onboarding2.js",
+    "crates/web/src/assets/dist/chunks/onboarding3.js",
+    "crates/web/src/assets/dist/main.js",
+    "crates/web/ui/src/locales/en/onboarding.ts",
+    "crates/web/ui/src/locales/fr/onboarding.ts",
+    "crates/web/ui/src/locales/zh/onboarding.ts",
+    "crates/web/ui/src/onboarding-view.tsx",
+    "crates/web/ui/src/onboarding/steps/SkillsStep.tsx",
+    "crates/web/ui/src/pages/SkillsPage.tsx",
+    "crates/web/ui/src/types/rpc-methods.ts",
+    "crates/web/ui/src/types/skill-source.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c3/49f79e6215/0/metadata.json",
+      "transcript": "/c3/49f79e6215/0/full.jsonl",
+      "context": "/c3/49f79e6215/0/context.md",
+      "content_hash": "/c3/49f79e6215/0/content_hash.txt",
+      "prompt": "/c3/49f79e6215/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 160,
+    "cache_creation_tokens": 341403,
+    "cache_read_tokens": 18919328,
+    "output_tokens": 40758,
+    "api_call_count": 154
+  }
+}
