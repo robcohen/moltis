@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "942b62ad4b63",
+  "session_id": "71f77e72-7151-4dfa-a698-0165fbd409b4",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T09:32:22.416949Z",
+  "branch": "groovy-willow",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/gateway/src/broadcast.rs"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "db5f0009a72f",
+  "token_usage": {
+    "input_tokens": 23,
+    "cache_creation_tokens": 35847,
+    "cache_read_tokens": 457981,
+    "output_tokens": 2059,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T09:32:20.825996Z",
+    "agent_lines": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 2,
+    "agent_percentage": 100
+  }
+}

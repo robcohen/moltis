@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "942b62ad4b63",
+  "strategy": "manual-commit",
+  "branch": "groovy-willow",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "crates/gateway/src/broadcast.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/94/2b62ad4b63/0/metadata.json",
+      "transcript": "/94/2b62ad4b63/0/full.jsonl",
+      "context": "/94/2b62ad4b63/0/context.md",
+      "content_hash": "/94/2b62ad4b63/0/content_hash.txt",
+      "prompt": "/94/2b62ad4b63/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 23,
+    "cache_creation_tokens": 35847,
+    "cache_read_tokens": 457981,
+    "output_tokens": 2059,
+    "api_call_count": 15
+  }
+}
