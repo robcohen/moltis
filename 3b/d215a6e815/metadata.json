@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "3bd215a6e815",
+  "strategy": "manual-commit",
+  "branch": "guiltless-wander",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "crates/web/ui/src/pages/sections/ToolsSection.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3b/d215a6e815/0/metadata.json",
+      "transcript": "/3b/d215a6e815/0/full.jsonl",
+      "context": "/3b/d215a6e815/0/context.md",
+      "content_hash": "/3b/d215a6e815/0/content_hash.txt",
+      "prompt": "/3b/d215a6e815/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 9,
+    "cache_creation_tokens": 12846,
+    "cache_read_tokens": 2098805,
+    "output_tokens": 1844,
+    "api_call_count": 9
+  }
+}

@@ -1,0 +1,24 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Now that moltis comes with tons of skills, it might be too much. Add something about skills in the onboarding for people to choose to enable them or not (the bundled ones) and same in settings / skills.
+
+### Prompt 2
+
+commit push create a PR
+
+### Prompt 3
+
+I think the settings/skills page is getting too long now, could you add tabs for skills categories, repositories, skills list. Default should be skills list.
+
+### Prompt 4
+
+In the tab name, add the number of skills, the number of enabled categories, the number of added repositories
+
+### Prompt 5
+
+Now you have tabs, you can use tabs to separate tailscale and ngrok in https://localhost:52791/settings/remote-access to make the page better
+
