@@ -250,6 +250,7 @@ pub struct MoltisConfig {
     pub voice: VoiceConfig,
     pub cron: CronConfig,
     pub caldav: CalDavConfig,
+    pub home_assistant: HomeAssistantConfig,
     pub webhooks: WebhooksConfig,
     /// Code-index configuration for codebase search tools.
     pub code_index: CodeIndexTomlConfig,

@@ -44,14 +44,14 @@ pub use {
     schema::{
         AgentIdentity, AgentMemoryWriteMode, AgentPreset, AgentsConfig, AuthConfig, CacheRetention,
         CalDavAccountConfig, CalDavConfig, ChannelToolPolicyOverride, ChannelsConfig, ChatConfig,
-        CodeIndexTomlConfig, CompactionConfig, CompactionMode, GeoLocation, GroupToolPolicy, MemoryBackend,
+        CodeIndexTomlConfig, CompactionConfig, CompactionMode, GeoLocation, GroupToolPolicy,
+        HeartbeatConfig, HomeAssistantAccountConfig, HomeAssistantConfig, MemoryBackend,
         MemoryCitationsMode, MemoryProvider, MemoryScope, MemorySearchMergeStrategy, MemoryStyle,
         MessageQueueMode, MoltisConfig, NgrokConfig, PresetMemoryConfig, PresetToolPolicy,
         PromptMemoryMode, ResolvedIdentity, SessionAccessPolicyConfig, SessionExportMode, Timezone,
         ToolMode, ToolPolicyConfig, ToolRegistryMode, UserProfile, UserProfileWriteMode,
         VoiceConfig, VoiceElevenLabsConfig, VoiceOpenAiConfig, VoiceSttConfig, VoiceSttProvider,
-        VoiceTtsConfig, VoiceWhisperConfig, WireApi,
+        VoiceTtsConfig, VoiceWhisperConfig, WireApi, parse_byte_size,
     },
-    schema::parse_byte_size,
     validate::{Diagnostic, Severity, ValidationResult},
 };

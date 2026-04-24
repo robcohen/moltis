@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use moltis_agents::tool_registry::AgentTool;
-use moltis_projects::ProjectStore;
-use serde_json::json;
+use {
+    async_trait::async_trait, moltis_agents::tool_registry::AgentTool,
+    moltis_projects::ProjectStore, serde_json::json,
+};
 
 /// Wraps a code-index tool, returning a "disabled" response when
 /// `code_index_enabled` is `false` for the specified project.
@@ -19,10 +19,7 @@ pub struct ProjectAwareCodeIndexTool {
 }
 
 impl ProjectAwareCodeIndexTool {
-    pub fn new(
-        inner: Box<dyn AgentTool>,
-        project_store: Arc<dyn ProjectStore>,
-    ) -> Self {
+    pub fn new(inner: Box<dyn AgentTool>, project_store: Arc<dyn ProjectStore>) -> Self {
         Self {
             inner: Arc::from(inner),
             project_store,
@@ -31,7 +28,10 @@ impl ProjectAwareCodeIndexTool {
 
     /// Extract the `project_id` from tool parameters.
     fn project_id(params: &serde_json::Value) -> Option<String> {
-        params.get("project_id").and_then(|v| v.as_str()).map(String::from)
+        params
+            .get("project_id")
+            .and_then(|v| v.as_str())
+            .map(String::from)
     }
 
     /// Check whether code indexing is enabled for the given project.
@@ -77,11 +77,12 @@ impl AgentTool for ProjectAwareCodeIndexTool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use moltis_projects::{Project, ProjectStore};
-    use std::collections::HashMap;
-    use std::path::PathBuf;
-    use tokio::sync::Mutex;
+    use {
+        super::*,
+        moltis_projects::{Project, ProjectStore},
+        std::{collections::HashMap, path::PathBuf},
+        tokio::sync::Mutex,
+    };
 
     /// In-memory mock project store for testing.
     struct MockProjectStore {
@@ -126,7 +127,10 @@ mod tests {
         }
 
         async fn upsert(&self, project: Project) -> moltis_projects::Result<()> {
-            self.projects.lock().await.insert(project.id.clone(), project);
+            self.projects
+                .lock()
+                .await
+                .insert(project.id.clone(), project);
             Ok(())
         }
 
@@ -184,7 +188,10 @@ mod tests {
 
     #[tokio::test]
     async fn delegates_to_inner_when_enabled() {
-        let store: Arc<dyn ProjectStore> = Arc::new(MockProjectStore::new(vec![test_project("enabled-proj", true)]));
+        let store: Arc<dyn ProjectStore> = Arc::new(MockProjectStore::new(vec![test_project(
+            "enabled-proj",
+            true,
+        )]));
         let inner = MockInnerTool::new(json!({"results": []}));
         let wrapper = ProjectAwareCodeIndexTool::new(Box::new(inner), store);
 
@@ -217,9 +224,11 @@ mod tests {
             .unwrap();
 
         assert_eq!(result["disabled"], json!(true));
-        assert!(result["message"]
-            .as_str()
-            .is_some_and(|m| m.contains("disabled-proj")));
+        assert!(
+            result["message"]
+                .as_str()
+                .is_some_and(|m| m.contains("disabled-proj"))
+        );
     }
 
     #[tokio::test]

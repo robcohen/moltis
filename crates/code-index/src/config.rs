@@ -1,7 +1,6 @@
 //! Configuration for codebase indexing.
 
-use std::path::PathBuf;
-use std::sync::LazyLock;
+use std::{path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -133,17 +132,18 @@ impl Default for CodeIndexConfig {
 
 impl From<&moltis_config::CodeIndexTomlConfig> for CodeIndexConfig {
     fn from(toml: &moltis_config::CodeIndexTomlConfig) -> Self {
-        let max_file_size_bytes = moltis_config::parse_byte_size(&toml.max_file_size).unwrap_or_else(|e| {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                max_file_size = %toml.max_file_size,
-                error = %e,
-                "code-index: invalid max_file_size, falling back to 1MB"
-            );
-            #[cfg(not(feature = "tracing"))]
-            let _ = (&toml.max_file_size, &e);
-            DEFAULT_MAX_FILE_SIZE_BYTES
-        });
+        let max_file_size_bytes = moltis_config::parse_byte_size(&toml.max_file_size)
+            .unwrap_or_else(|e| {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    max_file_size = %toml.max_file_size,
+                    error = %e,
+                    "code-index: invalid max_file_size, falling back to 1MB"
+                );
+                #[cfg(not(feature = "tracing"))]
+                let _ = (&toml.max_file_size, &e);
+                DEFAULT_MAX_FILE_SIZE_BYTES
+            });
 
         Self {
             enabled: toml.enabled,
@@ -162,10 +162,7 @@ impl From<&moltis_config::CodeIndexTomlConfig> for CodeIndexConfig {
                 paths.extend(toml.skip_paths.iter().cloned());
                 paths
             },
-            data_dir: toml
-                .data_dir
-                .as_ref()
-                .map(|s| PathBuf::from(s)),
+            data_dir: toml.data_dir.as_ref().map(|s| PathBuf::from(s)),
         }
     }
 }

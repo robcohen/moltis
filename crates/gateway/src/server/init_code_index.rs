@@ -31,8 +31,7 @@ pub(crate) async fn init_code_index(
     config: &moltis_config::MoltisConfig,
 ) -> Arc<moltis_code_index::CodeIndex> {
     // Build CodeIndexConfig from TOML, then overlay data_dir.
-    let mut code_index_config =
-        moltis_code_index::CodeIndexConfig::from(&config.code_index);
+    let mut code_index_config = moltis_code_index::CodeIndexConfig::from(&config.code_index);
     // TOML data_dir overrides the default; if not set, use data_dir/code-index.
     if code_index_config.data_dir.is_none() {
         code_index_config.data_dir = Some(data_dir.join("code-index"));
