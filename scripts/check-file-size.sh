@@ -8,8 +8,6 @@ MAX_LINES=1500
 
 # Files queued for decomposition — remove as they're split below the limit.
 ALLOW_LIST=$'
-crates/agents/src/runner/tests/basic.rs
-crates/tools/src/approval.rs
 '
 
 # Check if a file is in the allowlist (bash 3.2 compatible).
