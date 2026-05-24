@@ -636,6 +636,7 @@ function mountSessionHeaderControls(): void {
 			<SessionHeader
 				showSelectors={false}
 				showName={true}
+				showRenameButton={true}
 				showShare={false}
 				showFork={false}
 				showStop={false}

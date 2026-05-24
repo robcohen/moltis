@@ -933,6 +933,18 @@ impl LiveChatService {
 
         let provider_name = provider.name().to_string();
         let model_id = provider.id().to_string();
+        if self
+            .session_metadata
+            .get(&session_key)
+            .await
+            .and_then(|entry| entry.model)
+            .as_deref()
+            != Some(model_id.as_str())
+        {
+            self.session_metadata
+                .set_model(&session_key, Some(model_id.clone()))
+                .await;
+        }
         let model_store = Arc::clone(&self.model_store);
         let session_store = Arc::clone(&self.session_store);
         let session_metadata = Arc::clone(&self.session_metadata);

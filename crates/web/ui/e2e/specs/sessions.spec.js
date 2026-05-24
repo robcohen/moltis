@@ -107,6 +107,16 @@ test.describe("Session management", () => {
 		expect(pageErrors).toEqual([]);
 	});
 
+	test("session header exposes auto-title action", async ({ page }) => {
+		const pageErrors = await navigateAndWait(page, "/");
+		await waitForWsConnected(page);
+		await createSession(page);
+
+		await expect(page.getByRole("button", { name: "Auto-title" })).toBeVisible();
+
+		expect(pageErrors).toEqual([]);
+	});
+
 	test("opening full context button opens and closes the full context view", async ({ page }) => {
 		const pageErrors = await navigateAndWait(page, "/");
 		await waitForWsConnected(page);
