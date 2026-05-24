@@ -287,4 +287,28 @@ mod tests {
 
         assert!(err.to_string().contains("provider unavailable"));
     }
+
+    #[tokio::test]
+    async fn generate_title_for_session_skip_keeps_existing_label() {
+        let (state, _dir) = test_state(Arc::new(MockTitleProvider {
+            result: Ok("Should Not Be Used"),
+        }))
+        .await;
+        let metadata = state.services.session_metadata.as_ref().unwrap();
+        metadata
+            .upsert("session:short", Some("Existing Label".to_string()))
+            .await
+            .unwrap();
+
+        let title = generate_title_for_session(&state, "session:short")
+            .await
+            .unwrap();
+
+        assert_eq!(title, None);
+        let label = metadata
+            .get("session:short")
+            .await
+            .and_then(|entry| entry.label);
+        assert_eq!(label.as_deref(), Some("Existing Label"));
+    }
 }

@@ -325,9 +325,16 @@ pub(super) fn register(reg: &mut MethodRegistry) {
                         ErrorShape::new(error_codes::INVALID_REQUEST, "missing 'key' parameter")
                     })?
                     .to_string();
-                let label = crate::session::title::generate_title_for_session(&ctx.state, &key)
+                let generated = crate::session::title::generate_title_for_session(&ctx.state, &key)
                     .await
                     .map_err(|e| ErrorShape::new(error_codes::UNAVAILABLE, e.to_string()))?;
+                let label = if generated.is_some() {
+                    generated
+                } else if let Some(ref meta) = ctx.state.services.session_metadata {
+                    meta.get(&key).await.and_then(|e| e.label)
+                } else {
+                    None
+                };
                 Ok(serde_json::json!({ "ok": true, "label": label }))
             })
         }),
