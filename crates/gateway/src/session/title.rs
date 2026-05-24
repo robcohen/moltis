@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn generate_title_for_session_skip_keeps_existing_label() {
+    async fn generate_title_for_session_too_few_messages_keeps_existing_label() {
         let (state, _dir) = test_state(Arc::new(MockTitleProvider {
             result: Ok("Should Not Be Used"),
         }))
