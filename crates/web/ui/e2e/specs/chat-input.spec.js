@@ -451,11 +451,7 @@ test.describe("Chat input and slash commands", () => {
 		const displayName = "Claude Sonnet 4 20250514 Thinking Extended Beta";
 		const fullTitle = `${displayName} (${modelId})`;
 
-		await setMockModels(
-			page,
-			[{ id: modelId, displayName, provider: "requesty", supportsReasoning: false }],
-			modelId,
-		);
+		await setMockModels(page, [{ id: modelId, displayName, provider: "requesty", supportsReasoning: false }], modelId);
 
 		await page.locator("#modelComboBtn").click();
 		const dropdown = page.locator("#modelDropdown");
