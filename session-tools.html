@@ -81,7 +81,11 @@ sessions.can_send = false"><code><span class="line"><span style="color:#24292EFF
 </ul>
 <p>When no policy is configured, all sessions are visible and sendable.</p>
 <h2 id="coordination-patterns">Coordination Patterns</h2>
-<p>Use <code>spawn_agent</code> when work is short-lived and synchronous.</p>
+<p>Use <code>spawn_agent</code> when work is short-lived and synchronous. For longer delegated
+work, call <code>spawn_agent</code> with <code>nonblocking: true</code>; it returns a <code>task_id</code> while
+the sub-agent continues in the background. Use <code>spawn_status</code> to check progress,
+<code>spawn_result</code> to fetch the final output, <code>spawn_list</code> to recover task IDs after
+context loss, and <code>cancel_spawn</code> to stop work that is no longer needed.</p>
 <p>Use session tools when you need:</p>
 <ul>
 <li>long-lived specialist sessions</li>
