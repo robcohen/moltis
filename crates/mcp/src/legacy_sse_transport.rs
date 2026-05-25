@@ -42,7 +42,7 @@ const SSE_ENDPOINT_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(30);
 pub struct LegacySseTransport {
     client: Client,
     /// The SSE endpoint URL (where we GET to discover the message URL).
-    sse_url: Url,
+    sse_url: Secret<String>,
     display_url: String,
     default_headers: HeaderMap,
     next_id: AtomicU64,
@@ -80,7 +80,7 @@ impl LegacySseTransport {
 
         Ok(Arc::new(Self {
             client,
-            sse_url: Url::parse(remote.request_url())?,
+            sse_url: Secret::new(remote.request_url().to_string()),
             display_url: remote.display_url().to_string(),
             default_headers: remote.headers().clone(),
             next_id: AtomicU64::new(1),
@@ -102,7 +102,7 @@ impl LegacySseTransport {
 
         Ok(Arc::new(Self {
             client,
-            sse_url: Url::parse(remote.request_url())?,
+            sse_url: Secret::new(remote.request_url().to_string()),
             display_url: remote.display_url().to_string(),
             default_headers: remote.headers().clone(),
             next_id: AtomicU64::new(1),
@@ -125,7 +125,7 @@ impl LegacySseTransport {
 
         let mut req = self
             .client
-            .get(self.sse_url.clone())
+            .get(self.sse_url.expose_secret())
             .timeout(SSE_ENDPOINT_DISCOVERY_TIMEOUT)
             .header("Accept", "text/event-stream");
 
@@ -177,7 +177,7 @@ impl LegacySseTransport {
                 .with_context(|| format!("error reading SSE stream from '{}'", self.display_url))?;
             buf.push_str(&String::from_utf8_lossy(&chunk));
 
-            if let Ok(url) = parse_endpoint_event(&buf, self.sse_url.as_str()) {
+            if let Ok(url) = parse_endpoint_event(&buf, self.sse_url.expose_secret()) {
                 return Ok(url);
             }
         }
@@ -410,7 +410,7 @@ impl McpTransport for LegacySseTransport {
         // For legacy SSE, we just try to reach the SSE endpoint.
         let mut req = self
             .client
-            .get(self.sse_url.clone())
+            .get(self.sse_url.expose_secret())
             .timeout(Duration::from_secs(5))
             .header("Accept", "text/event-stream");
 

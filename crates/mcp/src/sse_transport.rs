@@ -12,7 +12,7 @@ use std::{
 };
 
 use {
-    reqwest::{Client, Url, header::HeaderMap},
+    reqwest::{Client, header::HeaderMap},
     secrecy::{ExposeSecret, Secret},
     tokio::sync::RwLock,
     tracing::{debug, info, warn},
@@ -35,7 +35,7 @@ const STREAMABLE_ACCEPT_HEADER: &str = "application/json, text/event-stream";
 /// HTTP/SSE-based transport for a remote MCP server.
 pub struct SseTransport {
     client: Client,
-    request_url: Url,
+    request_url: Secret<String>,
     display_url: String,
     default_headers: HeaderMap,
     next_id: AtomicU64,
@@ -75,7 +75,7 @@ impl SseTransport {
 
         Ok(Arc::new(Self {
             client,
-            request_url: Url::parse(remote.request_url())?,
+            request_url: Secret::new(remote.request_url().to_string()),
             display_url: remote.display_url().to_string(),
             default_headers: remote.headers().clone(),
             next_id: AtomicU64::new(1),
@@ -118,7 +118,7 @@ impl SseTransport {
 
         Ok(Arc::new(Self {
             client,
-            request_url: Url::parse(remote.request_url())?,
+            request_url: Secret::new(remote.request_url().to_string()),
             display_url: remote.display_url().to_string(),
             default_headers: remote.headers().clone(),
             next_id: AtomicU64::new(1),
@@ -131,7 +131,7 @@ impl SseTransport {
     async fn build_post(&self) -> Result<reqwest::RequestBuilder> {
         let mut req = self
             .client
-            .post(self.request_url.clone())
+            .post(self.request_url.expose_secret())
             .header("Content-Type", "application/json")
             .header("Accept", STREAMABLE_ACCEPT_HEADER)
             .header(MCP_PROTOCOL_VERSION_HEADER, PROTOCOL_VERSION);
@@ -460,7 +460,7 @@ impl McpTransport for SseTransport {
         // Try a lightweight GET request to check connectivity and session continuity.
         let mut req = self
             .client
-            .get(self.request_url.clone())
+            .get(self.request_url.expose_secret())
             .timeout(std::time::Duration::from_secs(5))
             .header("Accept", STREAMABLE_ACCEPT_HEADER)
             .header(MCP_PROTOCOL_VERSION_HEADER, PROTOCOL_VERSION);
@@ -505,7 +505,7 @@ impl McpTransport for SseTransport {
 
         let mut req = self
             .client
-            .delete(self.request_url.clone())
+            .delete(self.request_url.expose_secret())
             .timeout(std::time::Duration::from_secs(5))
             .header(MCP_PROTOCOL_VERSION_HEADER, PROTOCOL_VERSION)
             .header(MCP_SESSION_ID_HEADER, session_id);
