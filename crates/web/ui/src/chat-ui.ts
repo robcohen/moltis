@@ -61,6 +61,9 @@ function sanitizeMarkdownNode(node: Node): Node {
 	for (const child of Array.from(node.childNodes)) {
 		clone.appendChild(sanitizeMarkdownNode(child));
 	}
+	if (clone.tagName === "A" && clone.getAttribute("target") === "_blank") {
+		clone.setAttribute("rel", "noopener noreferrer");
+	}
 	return clone;
 }
 
