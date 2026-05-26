@@ -78,7 +78,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_REF: ${{ github.ref_name }}
-        run: gh workflow run provider-integration.yml --ref "$RELEASE_REF"
+        run: gh workflow run provider-integration.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_REF"
 
   biome:
     needs: zizmor
