@@ -122,7 +122,7 @@ impl TmuxController {
         if text.trim().is_empty() {
             anyhow::bail!("tmux input cannot be empty");
         }
-        let before = self.capture_pane(target).unwrap_or_default();
+        let before = self.capture_pane(target)?;
         let pane_state_before = classify_pane_state(&before);
         if pane_state_before == TmuxPaneState::Busy {
             return Ok(TmuxDeliveryReceipt {
@@ -158,7 +158,7 @@ impl TmuxController {
             .output()?;
         command_success(&enter, "send tmux enter")?;
 
-        let after = self.capture_pane(target).unwrap_or_default();
+        let after = self.capture_pane(target)?;
         let pane_state_after = classify_pane_state(&after);
         let status = if after != before {
             TmuxDeliveryStatus::Applied
@@ -209,7 +209,6 @@ pub fn classify_pane_state(output: &str) -> TmuxPaneState {
         return TmuxPaneState::ReadyPrompt;
     }
     if trimmed.contains("thinking")
-        || trimmed.contains("running")
         || trimmed.contains("esc to interrupt")
         || trimmed.contains("ctrl-c")
     {
@@ -314,6 +313,14 @@ mod tests {
         assert_eq!(
             classify_pane_state("Thinking... press Esc to interrupt"),
             TmuxPaneState::Busy
+        );
+    }
+
+    #[test]
+    fn classify_running_text_as_unknown_without_interrupt_hint() {
+        assert_eq!(
+            classify_pane_state("Tests are running"),
+            TmuxPaneState::Unknown
         );
     }
 
