@@ -129,11 +129,21 @@ fn is_transient_provider_error(error: &anyhow::Error) -> bool {
         || message.contains("connection termination")
 }
 
+fn is_account_unavailable_provider_error(provider_name: &str, error: &anyhow::Error) -> bool {
+    if provider_name != "alibaba-coding" {
+        return false;
+    }
+
+    let message = error.to_string().to_ascii_lowercase();
+    message.contains("http 401")
+        && (message.contains("invalid_api_key") || message.contains("invalid access token"))
+}
+
 async fn complete_scenario_with_retries(
     provider: &OpenAiProvider,
     provider_name: &str,
     scenario: &Scenario,
-) -> moltis_agents::model::CompletionResponse {
+) -> Option<moltis_agents::model::CompletionResponse> {
     for attempt in 0..3 {
         let result = provider
             .complete(
@@ -148,9 +158,15 @@ async fn complete_scenario_with_retries(
             .await;
 
         match result {
-            Ok(response) => return response,
+            Ok(response) => return Some(response),
             Err(error) if attempt < 2 && is_transient_provider_error(&error) => {
                 tokio::time::sleep(Duration::from_secs(2_u64.pow(attempt + 1))).await;
+            },
+            Err(error) if is_account_unavailable_provider_error(provider_name, &error) => {
+                eprintln!(
+                    "skipping {provider_name} serialization scenarios: live account unavailable: {error:#}"
+                );
+                return None;
             },
             Err(error) => {
                 panic!(
@@ -176,7 +192,11 @@ async fn run_provider_scenarios(provider_name: &str, provider: OpenAiProvider) {
             continue;
         }
 
-        let response = complete_scenario_with_retries(&provider, provider_name, scenario).await;
+        let Some(response) =
+            complete_scenario_with_retries(&provider, provider_name, scenario).await
+        else {
+            return;
+        };
 
         assert_eq!(
             response.tool_calls.len(),

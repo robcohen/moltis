@@ -748,6 +748,35 @@ mod tests {
     }
 
     #[test]
+    fn direct_gemini_provider_defaults_to_extra_content() {
+        let p = provider(
+            "gemini-3.1-flash-lite",
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta/openai",
+        );
+        let mut metadata = serde_json::Map::new();
+        metadata.insert("thought_signature".to_string(), serde_json::json!("sig123"));
+
+        let messages =
+            p.serialize_messages_for_request(&[ChatMessage::assistant_with_tools(None, vec![
+                moltis_agents::model::ToolCall {
+                    id: "call_1".to_string(),
+                    name: "get_weather".to_string(),
+                    arguments: serde_json::json!({"location": "London"}),
+                    argument_diagnostic: None,
+                    metadata: Some(metadata),
+                },
+            ])]);
+
+        let tool_call = &messages[0]["tool_calls"][0];
+        assert!(tool_call.get("thought_signature").is_none());
+        assert_eq!(
+            tool_call["extra_content"]["google"]["thought_signature"],
+            "sig123"
+        );
+    }
+
+    #[test]
     fn custom_provider_with_gemini_url_does_not_get_gemini_extra_content() {
         let p = provider(
             "gemini-3.1-flash-lite",

@@ -39,6 +39,7 @@ impl OpenAiProvider {
         provider_name: String,
     ) -> Self {
         let model_capabilities = ModelCapabilities::infer(&model);
+        let capabilities = default_capabilities_for_provider(&provider_name);
         Self {
             api_key,
             model,
@@ -53,7 +54,7 @@ impl OpenAiProvider {
             cache_retention: moltis_config::CacheRetention::Short,
             strict_tools_override: None,
             reasoning_content_override: None,
-            capabilities: OpenAiProviderCapabilities::DEFAULT,
+            capabilities,
             model_capabilities,
             context_window_global: std::collections::HashMap::new(),
             context_window_provider: std::collections::HashMap::new(),
@@ -331,6 +332,18 @@ impl OpenAiProvider {
             format!("{base}/v1/responses")
         }
     }
+}
+
+fn default_capabilities_for_provider(provider_name: &str) -> OpenAiProviderCapabilities {
+    if provider_name == "gemini" {
+        return OpenAiProviderCapabilities {
+            default_strict_tools: false,
+            requires_gemini_tool_call_extra_content: true,
+            ..OpenAiProviderCapabilities::DEFAULT
+        };
+    }
+
+    OpenAiProviderCapabilities::DEFAULT
 }
 
 #[async_trait]
