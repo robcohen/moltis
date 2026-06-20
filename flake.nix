@@ -149,7 +149,12 @@
             pkg-config
           ];
           cargoBuildFlags = ["--bin" "moltis"];
-          MOLTIS_VERSION = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "nix");
+          # Match the calendar tag this branch is built on top of. The
+          # in-app update checker compares this string against the
+          # releases manifest as a calendar version, so a git short-rev
+          # here makes the banner permanently misfire. Bump alongside
+          # every upstream merge.
+          MOLTIS_VERSION = "20260603.01";
 
           meta = with pkgs.lib; {
             description = "Personal AI gateway inspired by OpenClaw";
